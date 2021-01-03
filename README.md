@@ -1,5 +1,4 @@
-Column Generation Solver
-===
+# Column Generation Solver
 
 A solver based on column generation.
 
@@ -7,7 +6,7 @@ A solver based on column generation.
 
 [image source](https://commons.wikimedia.org/wiki/File:ColonnesPavillonTrajan.jpg)
 
-# Description
+## Description
 
 The goal of this repository is to provide a simple framework to quickly implement heuristic algorithms based on column generation.
 
@@ -32,7 +31,7 @@ Features:
   * Static and self-adjusting Wentges smoothing
   * Static and automatic directional smoothing
 
-# Examples
+## Examples
 
 Cutting Stock Problem
 * Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
@@ -49,7 +48,7 @@ Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https:
 Graph Coloring Problem from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp)
 * Pricing problem: Maximum-Weight Independent Set Problem solved with the `largeneighborhoodsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver)
 
-# Usage, running examples from command line
+## Usage, running examples from command line
 
 You need to have a linear programming solver already installed. Then update the corresponding entry in the `WORKSPACE` file. You may only need to update the `path` attribute of the solver you are using. Then, compile with one of the following command:
 ```shell
@@ -63,7 +62,7 @@ Then, examples can be executed as follows:
 ./bazel-bin/examples/main -v -p multipleknapsack -a "limiteddiscrepancysearch" -i "data/multipleknapsack/FK_1/random10_100_4_1000_1_1.txt"
 ```
 
-# Usage, C++ library
+## Usage, C++ library
 
 See examples.
 
