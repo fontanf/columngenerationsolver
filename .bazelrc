@@ -1,0 +1,9 @@
+build --compilation_mode=opt
+
+############################ Optional dependencies #############################
+
+build --define coinor=true
+build --define cplex=true
+#build --define xpress=true
+#build --define gurobi=true
+
