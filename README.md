@@ -63,7 +63,7 @@ Then, examples can be executed as follows:
 ./bazel-bin/examples/main -v -p multipleknapsack -a "limiteddiscrepancysearch" -i "data/multipleknapsack/FK_1/random10_100_4_1000_1_1.txt"
 ```
 
-# Usage, C library
+# Usage, C++ library
 
 See examples.
 
