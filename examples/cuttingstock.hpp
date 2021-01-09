@@ -145,7 +145,7 @@ public:
         filled_demands_(instance.item_type_number())
     { }
 
-    virtual void initialize_pricing(
+    virtual std::vector<ColIdx> initialize_pricing(
             const std::vector<Column>& columns,
             const std::vector<std::pair<ColIdx, Value>>& fixed_columns);
 
@@ -188,7 +188,7 @@ columngenerationsolver::Parameters get_parameters(
     return p;
 }
 
-void PricingSolver::initialize_pricing(
+std::vector<ColIdx> PricingSolver::initialize_pricing(
             const std::vector<Column>& columns,
             const std::vector<std::pair<ColIdx, Value>>& fixed_columns)
 {
@@ -204,6 +204,7 @@ void PricingSolver::initialize_pricing(
             filled_demands_[row_index] += value * row_coefficient;
         }
     }
+    return {};
 }
 
 std::vector<Column> PricingSolver::solve_pricing(

@@ -33,10 +33,10 @@ Features:
 
 ## Examples
 
-Cutting Stock Problem
+[Cutting Stock Problem](examples/cuttingstock.hpp)
 * Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-Multiple Knapsack Problem
+[Multiple Knapsack Problem](examples/multipleknapsack.hpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
 Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp)

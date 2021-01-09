@@ -55,4 +55,23 @@ inline LimitedDiscrepancySearchOptionalParameters read_limiteddiscrepancysearch_
     return parameters;
 }
 
+inline HeuristicTreeSearchOptionalParameters read_heuristictreesearch_args(
+        const std::vector<char*> argv)
+{
+    HeuristicTreeSearchOptionalParameters parameters;
+    boost::program_options::options_description desc("Allowed options");
+    desc.add_options()
+        ("growth-rate,g", boost::program_options::value<double>(&parameters.growth_rate), "")
+        ;
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line((Counter)argv.size(), argv.data(), desc), vm);
+    try {
+        boost::program_options::notify(vm);
+    } catch (const boost::program_options::required_option& e) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+    return parameters;
+}
+
 }

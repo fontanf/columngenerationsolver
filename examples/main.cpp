@@ -1,5 +1,6 @@
 #include "examples/cuttingstock.hpp"
 #include "examples/multipleknapsack.hpp"
+#include "examples/capacitatedvehiclerouting.hpp"
 
 #include "columngenerationsolver/read_args.hpp"
 
@@ -43,6 +44,11 @@ void run(
         op.info = info;
         op.columngeneration_parameters = columngeneration_parameters;
         limiteddiscrepancysearch(p, op);
+    } else if (algorithm_args[0] == "heuristictreesearch") {
+        auto op = read_heuristictreesearch_args(algorithm_argv);
+        op.info = info;
+        op.columngeneration_parameters = columngeneration_parameters;
+        heuristictreesearch(p, op);
     } else {
         std::cerr << "\033[31m" << "ERROR, unknown algorithm: '" << algorithm_args[0] << "'.\033[0m" << std::endl;
     }
@@ -95,6 +101,10 @@ int main(int argc, char *argv[])
     } else if (problem == "multipleknapsack") {
         multipleknapsacksolver::Instance instance(instance_path, format);
         Parameters p = multipleknapsacksolver::get_parameters(instance, linear_programming_solver);
+        run(algorithm, columngeneration_args_string, vm.count("verbose"), time_limit, p);
+    } else if (problem == "capacitatedvehiclerouting") {
+        capacitatedvehicleroutingsolver::Instance instance(instance_path, format);
+        Parameters p = capacitatedvehicleroutingsolver::get_parameters(instance, linear_programming_solver);
         run(algorithm, columngeneration_args_string, vm.count("verbose"), time_limit, p);
     } else {
         std::cerr << "\033[31m" << "ERROR, unknown problem: '" << problem << "'.\033[0m" << std::endl;

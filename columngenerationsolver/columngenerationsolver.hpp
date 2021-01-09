@@ -45,7 +45,7 @@ class PricingSolver
 {
 public:
     virtual ~PricingSolver() { }
-    virtual void initialize_pricing(
+    virtual std::vector<ColIdx> initialize_pricing(
             const std::vector<Column>& columns,
             const std::vector<std::pair<ColIdx, Value>>& fixed_columns) = 0;
     virtual std::vector<Column> solve_pricing(
@@ -164,6 +164,34 @@ struct LimitedDiscrepancySearchOptionalParameters
 inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         Parameters& parameters,
         LimitedDiscrepancySearchOptionalParameters = {});
+
+/*************************** Heuristic Tree Search ****************************/
+
+struct HeuristicTreeSearchOutput
+{
+    std::vector<std::pair<ColIdx, Value>> solution;
+    Value solution_value = 0;
+    Value bound;
+    Counter total_column_number = 0;
+    Counter added_column_number = 0;
+};
+
+typedef std::function<void(const HeuristicTreeSearchOutput&)> HeuristicTreeSearchCallback;
+
+struct HeuristicTreeSearchOptionalParameters
+{
+    HeuristicTreeSearchCallback new_bound_callback
+        = [](const HeuristicTreeSearchOutput& o) { (void)o; };
+    Counter thread_number = 3;
+    double growth_rate = 1.5;
+    bool* end = NULL;
+    ColumnGenerationOptionalParameters columngeneration_parameters;
+    optimizationtools::Info info = optimizationtools::Info();
+};
+
+inline HeuristicTreeSearchOutput heuristictreesearch(
+        Parameters& parameters,
+        HeuristicTreeSearchOptionalParameters = {});
 
 /******************************************************************************/
 
@@ -417,8 +445,6 @@ inline void display_end(
             << "Relative gap (%):     " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
             << "Total column number:  " << output.total_column_number << std::endl
             << "Added column number:  " << output.added_column_number << std::endl
-            << "Time LP solve (s):    " << output.time_lpsolve << std::endl
-            << "Time pricing (s):     " << output.time_pricing << std::endl
             << "Total time (s):       " << time << std::endl);
 }
 
@@ -629,9 +655,18 @@ ColumnGenerationOutput columngeneration(
         }
     }
 
+    // Initialize pricing solver.
+    //std::cout << "Initialize pricing solver..." << std::endl;
+    std::vector<ColIdx> infeasible_columns = parameters.pricing_solver->initialize_pricing(parameters.columns, *fixed_columns);
+    std::vector<int8_t> feasible(parameters.columns.size(), 1);
+    for (ColIdx col: infeasible_columns)
+        feasible[col] = 0;
+
     // Add initial columns.
     //std::cout << "Add initial columns..." << std::endl;
     for (ColIdx col = 0; col < (ColIdx)parameters.columns.size(); ++col) {
+        if (!feasible[col])
+            continue;
         const Column& column = parameters.columns[col];
         std::vector<RowIdx> ri(new_row_number);
         std::vector<Value> rc(new_row_number);
@@ -664,10 +699,6 @@ ColumnGenerationOutput columngeneration(
                 parameters.column_lower_bound,
                 parameters.column_upper_bound);
     }
-
-    // Initialize pricing solver.
-    //std::cout << "Initialize pricing solver..." << std::endl;
-    parameters.pricing_solver->initialize_pricing(parameters.columns, *fixed_columns);
 
     std::vector<Value> duals_sep(m, 0); // Duals given to the pricing solver.
     std::vector<Value> duals_in(m, 0); // π_in, duals at the previous point.
@@ -1250,6 +1281,46 @@ LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
     output.total_column_number = parameters.columns.size();
     display_end(output, optional_parameters.info);
     VER(optional_parameters.info, "Node number:          " << output.node_number << std::endl);
+    return output;
+}
+
+/*************************** Heuristic Tree Search ****************************/
+
+struct HeuristicTreeSearchNode
+{
+    std::shared_ptr<HeuristicTreeSearchNode> father = nullptr;
+    ColIdx col = -1;
+    Value value = 0;
+    Value discrepancy = 0;
+    Value value_sum = 1;
+    ColIdx depth = 0;
+};
+
+HeuristicTreeSearchOutput heuristictreesearch(
+        Parameters& parameters,
+        HeuristicTreeSearchOptionalParameters optional_parameters)
+{
+    VER(optional_parameters.info, "*** heuristictreesearch ***" << std::endl);
+    VER(optional_parameters.info, "---" << std::endl);
+    VER(optional_parameters.info, "Linear programming solver:                " << parameters.linear_programming_solver << std::endl);
+    VER(optional_parameters.info, "Static Wentges smoothing parameter:       " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Static directional smoothing parameter:   " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:         " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl);
+    VER(optional_parameters.info, "Automatic directional smoothing:          " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "Column generation iteration limit:        " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "---" << std::endl);
+
+    HeuristicTreeSearchOutput output;
+    output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?
+        std::numeric_limits<Value>::infinity():
+        -std::numeric_limits<Value>::infinity();
+    output.bound = (parameters.objective_sense == ObjectiveSense::Min)?
+        -std::numeric_limits<Value>::infinity():
+        std::numeric_limits<Value>::infinity();
+    display_initialize(parameters, optional_parameters.info);
+
+    output.total_column_number = parameters.columns.size();
+    display_end(output, optional_parameters.info);
     return output;
 }
 

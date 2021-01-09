@@ -29,12 +29,24 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_library(
+        name = "capacitatedvehiclerouting",
+        hdrs = ["capacitatedvehiclerouting.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:utils",
+                "//columngenerationsolver:columngenerationsolver",
+                #"@knapsacksolver//knapsacksolver/algorithms:minknap",
+        ],
+        visibility = ["//visibility:public"],
+)
+
 cc_binary(
         name = "main",
         srcs = ["main.cpp"],
         deps = [
                 ":cuttingstock",
                 ":multipleknapsack",
+                ":capacitatedvehiclerouting",
                 "//columngenerationsolver:read_args",
                 "@boost//:program_options",
         ] + COINOR_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP,
