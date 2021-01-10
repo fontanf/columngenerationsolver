@@ -40,6 +40,17 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_library(
+        name = "starobservationscheduling",
+        hdrs = ["starobservationscheduling.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:utils",
+                "//columngenerationsolver:columngenerationsolver",
+                "//examples/pricingsolver:singlenightstarobservationscheduling",
+        ],
+        visibility = ["//visibility:public"],
+)
+
 cc_binary(
         name = "main",
         srcs = ["main.cpp"],
@@ -47,6 +58,7 @@ cc_binary(
                 ":cuttingstock",
                 ":multipleknapsack",
                 ":capacitatedvehiclerouting",
+                ":starobservationscheduling",
                 "//columngenerationsolver:read_args",
                 "@boost//:program_options",
         ] + COINOR_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP,

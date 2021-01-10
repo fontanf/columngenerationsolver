@@ -1,6 +1,7 @@
 #include "examples/cuttingstock.hpp"
 #include "examples/multipleknapsack.hpp"
 #include "examples/capacitatedvehiclerouting.hpp"
+#include "examples/starobservationscheduling.hpp"
 
 #include "columngenerationsolver/read_args.hpp"
 
@@ -105,6 +106,10 @@ int main(int argc, char *argv[])
     } else if (problem == "capacitatedvehiclerouting") {
         capacitatedvehicleroutingsolver::Instance instance(instance_path, format);
         Parameters p = capacitatedvehicleroutingsolver::get_parameters(instance, linear_programming_solver);
+        run(algorithm, columngeneration_args_string, vm.count("verbose"), time_limit, p);
+    } else if (problem == "starobservationscheduling") {
+        starobservationschedulingsolver::Instance instance(instance_path, format);
+        Parameters p = starobservationschedulingsolver::get_parameters(instance, linear_programming_solver);
         run(algorithm, columngeneration_args_string, vm.count("verbose"), time_limit, p);
     } else {
         std::cerr << "\033[31m" << "ERROR, unknown problem: '" << problem << "'.\033[0m" << std::endl;

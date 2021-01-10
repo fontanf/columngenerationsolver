@@ -1,3 +1,5 @@
+#pragma once
+
 #include "columngenerationsolver/columngenerationsolver.hpp"
 
 #include "knapsacksolver/algorithms/minknap.hpp"
@@ -14,8 +16,8 @@
  * Objective:
  * - minimize the number of bin used.
  *
- * The linear programming formulation of the Multiple Knapsack Problem
- * based on Dantzig–Wolfe decomposition is written as follows:
+ * The linear programming formulation of the problem based on Dantzig–Wolfe
+ * decomposition is written as follows:
  *
  * Variables:
  * - yᵏ ∈ {0, qmax} representing a set of items fitting into a bin.

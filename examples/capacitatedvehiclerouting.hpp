@@ -1,3 +1,5 @@
+#pragma once
+
 #include "columngenerationsolver/columngenerationsolver.hpp"
 
 #include "optimizationtools/utils.hpp"
@@ -41,7 +43,7 @@
  * rc(yᵏ) = dᵏ - ∑ⱼ xⱼᵏ vⱼ
  *
  * Therefore, finding a variable of minium reduced cost reduces to solving
- * an Elementary Resource Constrainted Shortest Path Problems.
+ * an Elementary Shortest Path Problems with Resource Constraints.
  *
  */
 
@@ -128,8 +130,6 @@ private:
                 distances_ = std::vector<std::vector<Distance>>(n, std::vector<Distance>(n, -1));
             } else if (line[0] == "EDGE_WEIGHT_TYPE") {
                 edge_weight_type = line[2];
-                if (edge_weight_type != "EUC_2D")
-                    std::cerr << "\033[31m" << "ERROR, EDGE_WEIGHT_TYPE \"" << edge_weight_type << "\" not implemented." << "\033[0m" << std::endl;
             } else if (line[0] == "CAPACITY") {
                 Demand c = std::stol(line[2]);
                 set_demand(0, c);
@@ -156,6 +156,8 @@ private:
                     set_distance(j1, j2, d);
                 }
             }
+        } else {
+            std::cerr << "\033[31m" << "ERROR, EDGE_WEIGHT_TYPE \"" << edge_weight_type << "\" not implemented." << "\033[0m" << std::endl;
         }
     }
 
@@ -188,7 +190,7 @@ private:
 
     std::vector<Demand> visited_customers_;
 
-    std::vector<LocationId> ercspp2cvrp_;
+    std::vector<LocationId> espprc2cvrp_;
 
 };
 
@@ -246,27 +248,27 @@ std::vector<Column> PricingSolver::solve_pricing(
     knapsacksolver::Profit mult = 10000;
 
     // Build knapsack instance.
-    ercspp2cvrp_.clear();
+    espprc2cvrp_.clear();
     for (LocationId j = 1; j < n; ++j) {
         if (visited_customers_[j] == 1)
             continue;
         knapsacksolver::Profit profit = std::floor(mult * duals[j]);
         if (profit <= 0)
             continue;
-        ercspp2cvrp_.push_back(j);
+        espprc2cvrp_.push_back(j);
     }
-    LocationId n_ercspp = ercspp2cvrp_.size();
-    // TODO Create RCSPP instance of size n_ercspp.
-    for (LocationId j_ercspp = 0; j_ercspp < n_ercspp; ++j_ercspp) {
-        LocationId j = ercspp2cvrp_[j_ercspp];
-        // TODO Set x, y and demand of j_ercspp to instance_.x(j),
+    LocationId n_espprc = espprc2cvrp_.size();
+    // TODO Create RCSPP instance of size n_espprc.
+    for (LocationId j_espprc = 0; j_espprc < n_espprc; ++j_espprc) {
+        LocationId j = espprc2cvrp_[j_espprc];
+        // TODO Set x, y and demand of j_espprc to instance_.x(j),
         // instance_.y(j) and instance.demand(j).
-        for (LocationId j2_ercspp = 0; j2_ercspp < n_ercspp; ++j2_ercspp) {
-            LocationId j2 = ercspp2cvrp_[j2_ercspp];
+        for (LocationId j2_espprc = 0; j2_espprc < n_espprc; ++j2_espprc) {
+            LocationId j2 = espprc2cvrp_[j2_espprc];
             Distance d = mult * instance_.distance(j, j2)
                 - std::floor(mult * duals[j]);
             (void)d;
-            // TODO Set distance d between j_ercspp and j2_ercspp.
+            // TODO Set distance d between j_espprc and j2_espprc.
         }
     }
 
@@ -278,8 +280,8 @@ std::vector<Column> PricingSolver::solve_pricing(
     Column column;
     column.objective_coefficient = 1;
     std::vector<Demand> demands(instance_.location_number(), 0);
-    for (LocationId j_ercspp: solution) {
-        column.row_indices.push_back(ercspp2cvrp_[j_ercspp]);
+    for (LocationId j_espprc: solution) {
+        column.row_indices.push_back(espprc2cvrp_[j_espprc]);
         column.row_coefficients.push_back(1);
     }
     return {column};

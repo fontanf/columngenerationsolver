@@ -531,9 +531,15 @@ ColumnGenerationOutput columngeneration(
         Parameters& parameters,
         ColumnGenerationOptionalParameters optional_parameters)
 {
-    VER(optional_parameters.info, "*** columngeneration"
-            << " --linear-programming-solver " << parameters.linear_programming_solver
-            << " ***" << std::endl);
+    VER(optional_parameters.info, "*** columngeneration ***" << std::endl);
+    VER(optional_parameters.info, "---" << std::endl);
+    VER(optional_parameters.info, "Linear programming solver:                " << parameters.linear_programming_solver << std::endl);
+    VER(optional_parameters.info, "Static Wentges smoothing parameter:       " << optional_parameters.static_wentges_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Static directional smoothing parameter:   " << optional_parameters.static_directional_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:         " << optional_parameters.self_adjusting_wentges_smoothing << std::endl);
+    VER(optional_parameters.info, "Automatic directional smoothing:          " << optional_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "Column generation iteration limit:        " << optional_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "---" << std::endl);
     ColumnGenerationOutput output;
 
     RowIdx m = parameters.row_lower_bounds.size();

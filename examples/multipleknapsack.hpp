@@ -1,3 +1,5 @@
+#pragma once
+
 #include "columngenerationsolver/columngenerationsolver.hpp"
 
 #include "knapsacksolver/algorithms/minknap.hpp"
@@ -14,8 +16,8 @@
  * Objective:
  * - Maximize the overall profit of the selected items.
  *
- * The linear programming formulation of the Multiple Knapsack Problem
- * based on Dantzig–Wolfe decomposition is written as follows:
+ * The linear programming formulation of the problem based on Dantzig–Wolfe
+ * decomposition is written as follows:
  *
  * Variables:
  * - yᵢᵏ ∈ {0, 1} representing a set of items for knapsack i.
@@ -25,7 +27,7 @@
  * Program:
  *
  * max ∑ᵢ ∑ₖ (∑ⱼ cⱼ xⱼᵢᵏ) yᵢᵏ
- *                                       Note that (∑ⱼ cⱼ xⱼᵏ) is a constant.
+ *                                      Note that (∑ⱼ cⱼ xⱼᵢᵏ) is a constant.
  *
  * 0 <= ∑ₖ yᵢᵏ <= 1        for all knapsack i
  *                       (not more than 1 packing selected for each knapsack)
@@ -39,8 +41,8 @@
  * rc(yᵢᵏ) = ∑ⱼ cⱼ xⱼᵢᵏ - uᵢ - ∑ⱼ xⱼᵢᵏ vⱼ
  *         = ∑ⱼ (cⱼ - vⱼ) xⱼᵢᵏ - uᵢ
  *
- * Therefore, finding a variable of minium reduced cost reduces to solving
- * m Knapsack Problems with items with profit (vⱼ + cⱼ).
+ * Therefore, finding a variable of maximum reduced cost reduces to solving
+ * m Knapsack Problems with items with profit (cⱼ - vⱼ).
  *
  */
 
@@ -217,7 +219,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     ItemId n = instance_.item_number();
     std::vector<Column> columns;
     knapsacksolver::Profit mult = 10000;
-    for (KnapsackId i = 0; i < instance_.knapsack_number(); ++i) {
+    for (KnapsackId i = 0; i < m; ++i) {
         if (fixed_knapsacks_[i] == 1)
             continue;
         // Build knapsack instance.
