@@ -247,7 +247,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     LocationId n = instance_.location_number();
     knapsacksolver::Profit mult = 10000;
 
-    // Build knapsack instance.
+    // Build subproblem instance.
     espprc2cvrp_.clear();
     for (LocationId j = 1; j < n; ++j) {
         if (visited_customers_[j] == 1)
@@ -272,7 +272,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         }
     }
 
-    // TODO Solve RCSPP instance.
+    // TODO Solve subproblem instance.
     //auto output_kp = knapsacksolver::minknap(instance_kp);
     std::vector<LocationId> solution = {}; // Without the depot.
 

@@ -92,7 +92,7 @@ public:
             return;
         }
         if (format == "" || format == "catusse2016") {
-            read_dellamico2018(file);
+            read_catusse2016(file);
         } else {
             std::cerr << "\033[31m" << "ERROR, unknown instance format \"" << format << "\"" << "\033[0m" << std::endl;
         }
@@ -110,7 +110,7 @@ public:
 
 private:
 
-    void read_dellamico2018(std::ifstream& file)
+    void read_catusse2016(std::ifstream& file)
     {
         TargetId n;
         NightId m;
@@ -249,7 +249,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     for (NightId i = 0; i < m; ++i) {
         if (fixed_nights_[i] == 1)
             continue;
-        // Build knapsack instance.
+        // Build subproblem instance.
         singlenightstarobservationschedulingsolver::Instance instance_snsosp;
         snsosp2sosp_.clear();
         for (TargetId j_pos = 0; j_pos < instance_.observable_number(i); ++j_pos) {
@@ -269,7 +269,7 @@ std::vector<Column> PricingSolver::solve_pricing(
             snsosp2sosp_.push_back(o.j);
         }
 
-        // Solve knapsack instance.
+        // Solve subproblem instance.
         auto output_snsosp = singlenightstarobservationschedulingsolver::dynamicprogramming(instance_snsosp);
 
         // Retrieve column.

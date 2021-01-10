@@ -222,7 +222,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     for (KnapsackId i = 0; i < m; ++i) {
         if (fixed_knapsacks_[i] == 1)
             continue;
-        // Build knapsack instance.
+        // Build subproblem instance.
         knapsacksolver::Instance instance_kp;
         instance_kp.set_capacity(instance_.capacity(i));
         kp2mkp_.clear();
@@ -237,7 +237,7 @@ std::vector<Column> PricingSolver::solve_pricing(
             kp2mkp_.push_back(j);
         }
 
-        // Solve knapsack instance.
+        // Solve subproblem instance.
         auto output_kp = knapsacksolver::minknap(instance_kp);
 
         // Retrieve column.

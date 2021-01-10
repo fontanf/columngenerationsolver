@@ -215,7 +215,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     ItemTypeId n = instance_.item_type_number();
     knapsacksolver::Profit mult = 10000;
 
-    // Build knapsack instance.
+    // Build subproblem instance.
     knapsacksolver::Instance instance_kp;
     instance_kp.set_capacity(instance_.capacity());
     kp2csp_.clear();
@@ -229,7 +229,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         }
     }
 
-    // Solve knapsack instance.
+    // Solve subproblem instance.
     auto output_kp = knapsacksolver::minknap(instance_kp);
 
     // Retrieve column.

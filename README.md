@@ -45,7 +45,7 @@ Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https:
 <!--Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)-->
 <!--* Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository-->
 
-[Star Observation Scheduling Problem](examples/starobservationscheudling.hpp)
+[Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Three field classification: `R | rⱼᵢ, 2 pⱼᵢ ≥ dⱼᵢ - rⱼᵢ | ∑wⱼUⱼ`
 * Literature:
   * "A Branch-And-Price Algorithm for Scheduling Observations on a Telescope" (Catusse et al., 2016)
