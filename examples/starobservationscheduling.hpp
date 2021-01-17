@@ -1,6 +1,6 @@
 #pragma once
 
-#include "columngenerationsolver/columngenerationsolver.hpp"
+#include "columngenerationsolver/commons.hpp"
 
 #include "examples/pricingsolver/singlenightstarobservationscheduling.hpp"
 
@@ -184,9 +184,7 @@ private:
 
 };
 
-columngenerationsolver::Parameters get_parameters(
-        const Instance& instance,
-        columngenerationsolver::LinearProgrammingSolver linear_programming_solver)
+columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
     NightId m = instance.night_number();
     TargetId n = instance.target_number();
@@ -210,7 +208,6 @@ columngenerationsolver::Parameters get_parameters(
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));
-    p.linear_programming_solver = linear_programming_solver;
     return p;
 }
 
@@ -245,7 +242,7 @@ std::vector<Column> PricingSolver::solve_pricing(
 {
     NightId m = instance_.night_number();
     std::vector<Column> columns;
-    singlenightstarobservationschedulingsolver::Profit mult = 1000000;
+    singlenightstarobservationschedulingsolver::Profit mult = 10000;
     for (NightId i = 0; i < m; ++i) {
         if (fixed_nights_[i] == 1)
             continue;

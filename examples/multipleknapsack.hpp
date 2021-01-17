@@ -1,6 +1,6 @@
 #pragma once
 
-#include "columngenerationsolver/columngenerationsolver.hpp"
+#include "columngenerationsolver/commons.hpp"
 
 #include "knapsacksolver/algorithms/minknap.hpp"
 
@@ -156,9 +156,7 @@ private:
 
 };
 
-columngenerationsolver::Parameters get_parameters(
-        const Instance& instance,
-        columngenerationsolver::LinearProgrammingSolver linear_programming_solver)
+columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
     KnapsackId m = instance.knapsack_number();
     ItemId n = instance.item_number();
@@ -182,7 +180,6 @@ columngenerationsolver::Parameters get_parameters(
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));
-    p.linear_programming_solver = linear_programming_solver;
     return p;
 }
 

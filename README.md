@@ -65,10 +65,27 @@ bazel build --define cplex=true -- //...
 Then, examples can be executed as follows:
 ```shell
 ./bazel-bin/examples/main -v -p cuttingstock -a "columngeneration" -i "data/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
-./bazel-bin/examples/main -v -p multipleknapsack -a "limiteddiscrepancysearch" -i "data/multipleknapsack/FK_1/random10_100_4_1000_1_1.txt"
+./bazel-bin/examples/main -v -p multipleknapsack -a "limiteddiscrepancysearch" -i "data/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
 
 ## Usage, C++ library
 
 See examples.
+
+## Benchmarks
+
+```shell
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration" -g \"--linear-programming-solver CPLEX\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration_wentges --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_greedy_wentges_directional --main "./bazel-bin/examples/main -p cuttingstock -a greedy -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration" -g \"--linear-programming-solver CPLEX\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration_wentges --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_greedy_wentges_directional --main "./bazel-bin/examples/main -p multipleknapsack -a greedy -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration" -g \"--linear-programming-solver CPLEX\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_greedy_cplex --main "./bazel-bin/examples/main -p starobservationscheduling -a greedy -g \"--linear-programming-solver CPLEX\""
+```
 

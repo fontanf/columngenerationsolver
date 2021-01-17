@@ -1,6 +1,6 @@
 #pragma once
 
-#include "columngenerationsolver/columngenerationsolver.hpp"
+#include "columngenerationsolver/commons.hpp"
 
 #include "optimizationtools/utils.hpp"
 #include "knapsacksolver/algorithms/minknap.hpp"
@@ -194,9 +194,7 @@ private:
 
 };
 
-columngenerationsolver::Parameters get_parameters(
-        const Instance& instance,
-        columngenerationsolver::LinearProgrammingSolver linear_programming_solver)
+columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
     LocationId n = instance.location_number();
     columngenerationsolver::Parameters p(n - 1);
@@ -216,7 +214,6 @@ columngenerationsolver::Parameters get_parameters(
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));
-    p.linear_programming_solver = linear_programming_solver;
     return p;
 }
 

@@ -1,4 +1,7 @@
-#include "columngenerationsolver/columngenerationsolver.hpp"
+#include "columngenerationsolver/algorithms/column_generation.hpp"
+#include "columngenerationsolver/algorithms/greedy.hpp"
+#include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
+#include "columngenerationsolver/algorithms/heuristic_tree_search.hpp"
 
 #include <boost/program_options.hpp>
 
@@ -19,6 +22,7 @@ inline ColumnGenerationOptionalParameters read_columngeneration_args(
     ColumnGenerationOptionalParameters parameters;
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
+        ("linear-programming-solver,s", boost::program_options::value<LinearProgrammingSolver>(&parameters.linear_programming_solver), "set linear programming solver")
         ("iteration-limit,i", boost::program_options::value<Counter>(&parameters.iteration_limit), "")
         ("static-wentges-smoothing-parameter,a", boost::program_options::value<Value>(&parameters.static_wentges_smoothing_parameter), "")
         ("static-directional-smoothing-parameter,b", boost::program_options::value<Value>(&parameters.static_directional_smoothing_parameter), "")
