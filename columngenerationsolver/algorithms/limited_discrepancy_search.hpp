@@ -12,6 +12,7 @@ struct LimitedDiscrepancySearchOutput
     Value solution_discrepancy = -1;
     Value bound;
     Counter node_number = 0;
+    Counter depth_max = 0;
     double time_lpsolve = 0.0;
     double time_pricing = 0.0;
     Counter total_column_number = 0;
@@ -26,6 +27,7 @@ struct LimitedDiscrepancySearchOptionalParameters
         = [](const LimitedDiscrepancySearchOutput& o) { (void)o; };
     Counter thread_number = 3;
     Value discrepancy_limit = std::numeric_limits<Value>::infinity();
+    bool heuristictreesearch_stop = false;
     bool* end = NULL;
     ColumnGenerationOptionalParameters columngeneration_parameters;
     optimizationtools::Info info = optimizationtools::Info();
@@ -79,6 +81,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
     // Root node.
     auto root = std::make_shared<LimitedDiscrepancySearchNode>();
     nodes.insert(root);
+    bool heuristictreesearch_stop = optional_parameters.heuristictreesearch_stop;
 
     while (!nodes.empty()) {
         output.node_number++;
@@ -97,6 +100,12 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         nodes.erase(nodes.begin());
         // Check discrepancy limit.
         if (node->discrepancy > optional_parameters.discrepancy_limit)
+            break;
+        if (output.depth_max < node->depth - node->discrepancy)
+            output.depth_max = node->depth - node->discrepancy;
+        if (heuristictreesearch_stop
+                && output.node_number > 2
+                && output.node_number > 2 * output.depth_max)
             break;
 
         std::vector<std::pair<ColIdx, Value>> fixed_columns;
@@ -143,7 +152,8 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
             break;
         if (node->depth == 0) {
             Counter cg_it_limit = optional_parameters.columngeneration_parameters.iteration_limit;
-            if (cg_it_limit == -1 || (output_columngeneration.iteration_number < cg_it_limit)) {
+            if (cg_it_limit == -1 || output_columngeneration.iteration_number < cg_it_limit) {
+                heuristictreesearch_stop = false;
                 output.bound = output_columngeneration.solution_value;
                 display(output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
                 optional_parameters.new_bound_callback(output);

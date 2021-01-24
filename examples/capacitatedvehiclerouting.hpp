@@ -111,7 +111,7 @@ public:
     Distance x(LocationId j) const { return locations_[j].x; }
     Distance y(LocationId j) const { return locations_[j].y; }
     Distance distance(LocationId j1, LocationId j2) const { return distances_[j1][j2]; }
-    Demand maximum_distance() const { return distance_max_; }
+    Distance maximum_distance() const { return distance_max_; }
 
 private:
 
@@ -163,7 +163,7 @@ private:
 
     std::vector<Location> locations_;
     std::vector<std::vector<Distance>> distances_;
-    Demand distance_max_ = 0;
+    Distance distance_max_ = 0;
 
 };
 

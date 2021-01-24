@@ -2,6 +2,7 @@
 
 #include "columngenerationsolver/algorithms/column_generation.hpp"
 #include "columngenerationsolver/algorithms/greedy.hpp"
+#include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
 
 namespace columngenerationsolver
 {
@@ -11,6 +12,8 @@ struct HeuristicTreeSearchOutput
     std::vector<std::pair<Column, Value>> solution;
     Value solution_value = 0;
     Value bound;
+    Counter solution_iteration;
+    Counter solution_node;
     Counter total_column_number = 0;
     Counter added_column_number = 0;
     Counter iteration_number_max = 0;
@@ -56,29 +59,57 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         if (output.iteration_number_max == (Counter)(output.iteration_number_max * optional_parameters.growth_rate))
             output.iteration_number_max++;
 
+        if (!optional_parameters.info.check_time())
+            break;
+        if (optional_parameters.end != NULL && *optional_parameters.end == true)
+            break;
+
         // Clean column pool?
         //parameters.columns.clear();
         //for (const auto& p: output.solution)
         //    parameters.columns.push_back(p.first);
-        GreedyOptionalParameters parameters_greedy;
-        parameters_greedy.columngeneration_parameters
+        LimitedDiscrepancySearchOptionalParameters parameters_limiteddiscrepancysearch;
+        parameters_limiteddiscrepancysearch.info.set_timelimit(optional_parameters.info.remaining_time());
+        parameters_limiteddiscrepancysearch.columngeneration_parameters
             = optional_parameters.columngeneration_parameters;
-        parameters_greedy.columngeneration_parameters.iteration_limit
+        parameters_limiteddiscrepancysearch.columngeneration_parameters.iteration_limit
             = output.iteration_number_max;
-        auto output_greedy = greedy(parameters, parameters_greedy);
+        parameters_limiteddiscrepancysearch.heuristictreesearch_stop = true;
 
-        // Update solution.
-        if ((parameters.objective_sense == ObjectiveSense::Min
-                    && output.solution_value > output_greedy.solution_value)
-                || (parameters.objective_sense == ObjectiveSense::Max
-                        && output.solution_value < output_greedy.solution_value)) {
-            output.solution = output_greedy.solution;
-            output.solution_value = output_greedy.solution_value;
-            std::stringstream ss;
-            ss << "it " << output.iteration_number_max;
-            display(output.solution_value, output.bound, ss, optional_parameters.info);
-            optional_parameters.new_bound_callback(output);
-        }
+        parameters_limiteddiscrepancysearch.new_bound_callback = [&parameters, &optional_parameters, &output](
+                const columngenerationsolver::LimitedDiscrepancySearchOutput& o)
+        {
+            if ((parameters.objective_sense == ObjectiveSense::Min
+                        && output.bound < o.bound)
+                    || (parameters.objective_sense == ObjectiveSense::Max
+                        && output.bound > o.bound)) {
+                output.bound = o.bound;
+                std::stringstream ss;
+                ss << "it " << output.iteration_number_max;
+                display(output.solution_value, output.bound, ss, optional_parameters.info);
+                optional_parameters.new_bound_callback(output);
+            }
+            if (o.solution.size() > 0) {
+                // Update solution.
+                if ((parameters.objective_sense == ObjectiveSense::Min
+                            && output.solution_value > o.solution_value)
+                        || (parameters.objective_sense == ObjectiveSense::Max
+                            && output.solution_value < o.solution_value)) {
+                    output.solution = o.solution;
+                    output.solution_value = o.solution_value;
+                    output.solution_iteration = output.iteration_number_max;
+                    output.solution_node = o.node_number;
+                    std::stringstream ss;
+                    ss << "it " << output.solution_iteration << " node " << output.solution_node;
+                    display(output.solution_value, output.bound, ss, optional_parameters.info);
+                    optional_parameters.new_bound_callback(output);
+                }
+                //std::cout << "toto" << std::endl;
+                optional_parameters.new_bound_callback(output);
+            }
+        };
+
+        auto output_limiteddiscrepancysearch = limiteddiscrepancysearch(parameters, parameters_limiteddiscrepancysearch);
 
     }
 
