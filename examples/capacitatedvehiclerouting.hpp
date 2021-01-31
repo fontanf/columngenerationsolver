@@ -124,16 +124,16 @@ private:
         for (;;) {
             getline(file, tmp);
             line = optimizationtools::split(tmp, ' ');
-            if (line[0] == "DIMENSION") {
-                n = std::stol(line[2]);
+            if (line[0].rfind("DIMENSION", 0) == 0) {
+                n = std::stol(line.back());
                 locations_ = std::vector<Location>(n);
                 distances_ = std::vector<std::vector<Distance>>(n, std::vector<Distance>(n, -1));
-            } else if (line[0] == "EDGE_WEIGHT_TYPE") {
-                edge_weight_type = line[2];
-            } else if (line[0] == "CAPACITY") {
-                Demand c = std::stol(line[2]);
+            } else if (line[0].rfind("EDGE_WEIGHT_TYPE", 0) == 0) {
+                edge_weight_type = line.back();
+            } else if (line[0].rfind("CAPACITY", 0) == 0) {
+                Demand c = std::stol(line.back());
                 set_demand(0, c);
-            } else if (line[0] == "NODE_COORD_SECTION") {
+            } else if (line[0].rfind("NODE_COORD_SECTION", 0) == 0) {
                 for (LocationId j = 0; j < n; ++j) {
                     getline(file, tmp);
                     line = optimizationtools::split(tmp, ' ');
@@ -141,7 +141,7 @@ private:
                     Distance y = std::stol(line[2]);
                     set_xy(j, x, y);
                 }
-            } else if (line[0] == "EOF") {
+            } else if (line[0].rfind("EOF", 0) == 0) {
                 break;
             }
         }

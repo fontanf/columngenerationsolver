@@ -80,9 +80,9 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
                 const columngenerationsolver::LimitedDiscrepancySearchOutput& o)
         {
             if ((parameters.objective_sense == ObjectiveSense::Min
-                        && output.bound < o.bound)
+                        && output.bound + TOL < o.bound)
                     || (parameters.objective_sense == ObjectiveSense::Max
-                        && output.bound > o.bound)) {
+                        && output.bound - TOL > o.bound)) {
                 output.bound = o.bound;
                 std::stringstream ss;
                 ss << "it " << output.iteration_number_max;
@@ -92,9 +92,9 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
             if (o.solution.size() > 0) {
                 // Update solution.
                 if ((parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value > o.solution_value)
+                            && output.solution_value - TOL > o.solution_value)
                         || (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value < o.solution_value)) {
+                            && output.solution_value + TOL < o.solution_value)) {
                     output.solution = o.solution;
                     output.solution_value = o.solution_value;
                     output.solution_iteration = output.iteration_number_max;
@@ -104,8 +104,6 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
                     display(output.solution_value, output.bound, ss, optional_parameters.info);
                     optional_parameters.new_bound_callback(output);
                 }
-                //std::cout << "toto" << std::endl;
-                optional_parameters.new_bound_callback(output);
             }
         };
 

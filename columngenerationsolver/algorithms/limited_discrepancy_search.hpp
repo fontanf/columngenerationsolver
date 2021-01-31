@@ -248,7 +248,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                 } else {
                     Value solution_value = compute_value(parameters, fixed_columns);
                     if (parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value > solution_value) {
+                            && output.solution_value - TOL > solution_value) {
                         //std::cout << "New best solution value " << solution_value << std::endl;
                         output.solution = to_solution(parameters, fixed_columns);
                         output.solution_value = solution_value;
@@ -259,7 +259,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                         optional_parameters.new_bound_callback(output);
                     }
                     if (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value < solution_value) {
+                            && output.solution_value + TOL < solution_value) {
                         output.solution = to_solution(parameters, fixed_columns);
                         output.solution_value = solution_value;
                         output.solution_discrepancy = node->discrepancy;
