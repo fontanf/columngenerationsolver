@@ -33,6 +33,8 @@ Features:
 
 ## Examples
 
+### Packing
+
 [Cutting Stock Problem](examples/cuttingstock.hpp)
 * Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
@@ -42,14 +44,18 @@ Features:
 Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-<!--Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)-->
-<!--* Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository-->
+Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp)
+* Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository
+
+### Scheduling
 
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Three field classification: `R | rⱼᵢ, 2 pⱼᵢ ≥ dⱼᵢ - rⱼᵢ | ∑wⱼUⱼ`
 * Literature:
   * "A Branch-And-Price Algorithm for Scheduling Observations on a Telescope" (Catusse et al., 2016)
 * Pricing problem: Single Night Star Observation Scheduling Problem [solved by dynamic programming](examples/pricingsolver/singlenightstarobservationscheduling.hpp)
+
+### Graphs
 
 Graph Coloring Problem from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp)
 * Pricing problem: Maximum-Weight Independent Set Problem solved with the `largeneighborhoodsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver)
