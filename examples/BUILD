@@ -35,7 +35,7 @@ cc_library(
         deps = [
                 "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
-                #"@knapsacksolver//knapsacksolver/algorithms:minknap",
+                "//examples/pricingsolver:espprc",
         ],
         visibility = ["//visibility:public"],
 )

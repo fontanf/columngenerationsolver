@@ -47,6 +47,11 @@ Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https:
 Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp)
 * Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository
 
+### Routing
+
+[Capacitated Vehicle Routing Problem](examples/capacitatedvehiclerouting.hpp)
+* Pricing problem: Elementary Shortest Path Problem with Resource Constraint [solved by Heuristic Tree Search](examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
 ### Scheduling
 
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)

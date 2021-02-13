@@ -276,7 +276,8 @@ inline ColumnGenerationOutput columngeneration(
             //std::cout << "alpha_cur " << alpha_cur << std::endl;
             if (output.iteration_number == 1
                     || norm(new_rows, duals_in, duals_out) == 0 // Shouldn't happen, but happens with Cplex.
-                    || k > 1) { // No directional smoothing.
+                    || k > 1
+                    || (!optional_parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
                 for (RowIdx i: new_rows)
                     duals_sep[i]
                         = alpha_cur * duals_in[i]
@@ -379,10 +380,10 @@ inline ColumnGenerationOutput columngeneration(
             }
         }
         // Compute subgradient at separation point.
-        for (RowIdx i: new_rows)
-            subgradient[i]
-                = std::min(0.0, new_row_upper_bounds[i] - lagrangian_constraint_values[i])
-                + std::max(0.0, new_row_lower_bounds[i] - lagrangian_constraint_values[i]);
+        for (RowIdx row = 0; row < new_row_number; ++row)
+            subgradient[new_rows[row]]
+                = std::min(0.0, new_row_upper_bounds[row] - lagrangian_constraint_values[new_rows[row]])
+                + std::max(0.0, new_row_lower_bounds[row] - lagrangian_constraint_values[new_rows[row]]);
 
         // Adjust alpha.
         if (optional_parameters.self_adjusting_wentges_smoothing

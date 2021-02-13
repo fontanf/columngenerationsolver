@@ -6,3 +6,14 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_library(
+        name = "espprc",
+        hdrs = ["espprc.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:info",
+                "@optimizationtools//optimizationtools:indexed_collections",
+                "@treesearchsolver//treesearchsolver:treesearchsolver",
+        ],
+        visibility = ["//visibility:public"],
+)

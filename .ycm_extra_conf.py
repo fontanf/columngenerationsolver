@@ -19,6 +19,9 @@ def Settings(**kwargs):
                 '-I', './bazel-columngenerationsolver/external/boost/',
                 '-I', './bazel-columngenerationsolver/external/knapsacksolver/',
                 '-I', './bazel-columngenerationsolver/external/optimizationtools/',
+                # '-I', './../optimizationtools/',
+                '-I', './bazel-columngenerationsolver/external/treesearchsolver/',
+                # '-I', './../treesearchsolver/',
                 '-I', './bazel-columngenerationsolver/external/dlib/dlib-19.19/',
                 ],
             }

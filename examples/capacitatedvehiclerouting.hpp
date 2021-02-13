@@ -2,8 +2,11 @@
 
 #include "columngenerationsolver/commons.hpp"
 
+#include "examples/pricingsolver/espprc.hpp"
+#include "treesearchsolver/algorithms/iterative_beam_search.hpp"
+#include "treesearchsolver/algorithms/a_star.hpp"
+#include "treesearchsolver/algorithms/iterative_memory_bounded_a_star.hpp"
 #include "optimizationtools/utils.hpp"
-#include "knapsacksolver/algorithms/minknap.hpp"
 
 /**
  * Capacitated Vehicle Routing Problem.
@@ -61,8 +64,8 @@ typedef int64_t Distance;
 
 struct Location
 {
-    Distance x;
-    Distance y;
+    double x;
+    double y;
     Demand demand;
 };
 
@@ -75,7 +78,7 @@ public:
         locations_(n),
         distances_(n, std::vector<Distance>(n, -1)) { }
     void set_demand(LocationId j, Demand q) { locations_[j].demand = q; }
-    void set_xy(LocationId j, Distance x, Distance y)
+    void set_xy(LocationId j, double x, double y)
     {
         locations_[j].x = x;
         locations_[j].y = y;
@@ -121,28 +124,45 @@ private:
         std::vector<std::string> line;
         LocationId n = -1;
         std::string edge_weight_type;
-        for (;;) {
-            getline(file, tmp);
+        while (getline(file, tmp)) {
+            replace(begin(tmp), end(tmp), '\t', ' ');
             line = optimizationtools::split(tmp, ' ');
-            if (line[0].rfind("DIMENSION", 0) == 0) {
+            if (line.empty()) {
+            } else if (tmp.rfind("NAME", 0) == 0) {
+            } else if (tmp.rfind("COMMENT", 0) == 0) {
+            } else if (tmp.rfind("TYPE", 0) == 0) {
+            } else if (tmp.rfind("DEPOT_SECTION", 0) == 0) {
+                LocationId j_tmp;
+                file >> j_tmp >> j_tmp;
+            } else if (tmp.rfind("DIMENSION", 0) == 0) {
                 n = std::stol(line.back());
                 locations_ = std::vector<Location>(n);
                 distances_ = std::vector<std::vector<Distance>>(n, std::vector<Distance>(n, -1));
-            } else if (line[0].rfind("EDGE_WEIGHT_TYPE", 0) == 0) {
+            } else if (tmp.rfind("EDGE_WEIGHT_TYPE", 0) == 0) {
                 edge_weight_type = line.back();
-            } else if (line[0].rfind("CAPACITY", 0) == 0) {
+            } else if (tmp.rfind("CAPACITY", 0) == 0) {
                 Demand c = std::stol(line.back());
                 set_demand(0, c);
-            } else if (line[0].rfind("NODE_COORD_SECTION", 0) == 0) {
+            } else if (tmp.rfind("NODE_COORD_SECTION", 0) == 0) {
+                LocationId j_tmp;
+                double x = -1;
+                double y = -1;
                 for (LocationId j = 0; j < n; ++j) {
-                    getline(file, tmp);
-                    line = optimizationtools::split(tmp, ' ');
-                    Distance x = std::stol(line[1]);
-                    Distance y = std::stol(line[2]);
+                    file >> j_tmp >> x >> y;
                     set_xy(j, x, y);
+                }
+            } else if (tmp.rfind("DEMAND_SECTION", 0) == 0) {
+                LocationId j_tmp = -1;
+                Demand demand = -1;
+                for (LocationId j = 0; j < n; ++j) {
+                    file >> j_tmp >> demand;
+                    if (j != 0)
+                        set_demand(j, demand);
                 }
             } else if (line[0].rfind("EOF", 0) == 0) {
                 break;
+            } else {
+                std::cerr << "\033[31m" << "ERROR, ENTRY \"" << line[0] << "\" not implemented." << "\033[0m" << std::endl;
             }
         }
 
@@ -152,7 +172,7 @@ private:
                 for (LocationId j2 = j1 + 1; j2 < n; ++j2) {
                     Distance xd = x(j2) - x(j1);
                     Distance yd = y(j2) - y(j1);
-                    Distance d = (Distance)(std::sqrt(xd * xd + yd * yd));
+                    Distance d = std::round(std::sqrt(xd * xd + yd * yd));
                     set_distance(j1, j2, d);
                 }
             }
@@ -232,56 +252,96 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
             Value row_coefficient = column.row_coefficients[row_pos];
             if (row_coefficient < 0.5)
                 continue;
+            // row_index + 1 since there is not constraint for location 0 which
+            // is the depot.
             visited_customers_[row_index + 1] = 1;
         }
     }
     return {};
 }
 
+struct ColumnExtra
+{
+    std::vector<LocationId> route;
+};
+
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
     LocationId n = instance_.location_number();
-    knapsacksolver::Profit mult = 10000;
 
     // Build subproblem instance.
     espprc2cvrp_.clear();
+    espprc2cvrp_.push_back(0);
     for (LocationId j = 1; j < n; ++j) {
         if (visited_customers_[j] == 1)
-            continue;
-        knapsacksolver::Profit profit = std::floor(mult * duals[j]);
-        if (profit <= 0)
             continue;
         espprc2cvrp_.push_back(j);
     }
     LocationId n_espprc = espprc2cvrp_.size();
-    // TODO Create RCSPP instance of size n_espprc.
+    espprc::Instance instance_espprc(n_espprc);
+    instance_espprc.set_capacity(instance_.capacity());
     for (LocationId j_espprc = 0; j_espprc < n_espprc; ++j_espprc) {
         LocationId j = espprc2cvrp_[j_espprc];
-        // TODO Set x, y and demand of j_espprc to instance_.x(j),
-        // instance_.y(j) and instance.demand(j).
+        instance_espprc.set_demand(j_espprc, instance_.demand(j));
         for (LocationId j2_espprc = 0; j2_espprc < n_espprc; ++j2_espprc) {
+            if (j2_espprc == j_espprc)
+                continue;
             LocationId j2 = espprc2cvrp_[j2_espprc];
-            Distance d = mult * instance_.distance(j, j2)
-                - std::floor(mult * duals[j]);
-            (void)d;
-            // TODO Set distance d between j_espprc and j2_espprc.
+            espprc::Distance d = instance_.distance(j, j2);
+            if (j2_espprc != 0)
+                d -= duals[j2 - 1];
+            instance_espprc.set_distance(j_espprc, j2_espprc, d);
+            if (std::isnan(d))
+                exit(1);
         }
     }
 
-    // TODO Solve subproblem instance.
-    //auto output_kp = knapsacksolver::minknap(instance_kp);
-    std::vector<LocationId> solution = {}; // Without the depot.
+    // Solve subproblem instance.
+    espprc::BranchingScheme branching_scheme(instance_espprc);
+    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espprc;
+    parameters_espprc.solution_pool_size_max = 100;
+    //parameters_espprc.node_number_max = 1024 * instance_.location_number();
+    parameters_espprc.queue_size_min = 128;
+    parameters_espprc.queue_size_max = 128;
+    //parameters_espprc.info.set_verbose(true);
+    auto output_espprc = treesearchsolver::iterativebeamsearch(branching_scheme, parameters_espprc);
 
     // Retrieve column.
-    Column column;
-    column.objective_coefficient = 1;
-    std::vector<Demand> demands(instance_.location_number(), 0);
-    for (LocationId j_espprc: solution) {
-        column.row_indices.push_back(espprc2cvrp_[j_espprc]);
-        column.row_coefficients.push_back(1);
+    std::vector<Column> columns;
+    LocationId i = 0;
+    for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
+            output_espprc.solution_pool.solutions()) {
+        if (i > 2 * n_espprc)
+            break;
+        std::vector<LocationId> solution; // Without the depot.
+        Distance length = 0;
+        if (node->j != 0) {
+            auto node_tmp = node;
+            length = instance_.distance(espprc2cvrp_[node_tmp->j], 0);
+            while (node_tmp->j != 0) {
+                LocationId j = espprc2cvrp_[node_tmp->j];
+                LocationId j_prev = espprc2cvrp_[node_tmp->father->j];
+                solution.push_back(j);
+                length += instance_.distance(j_prev, j);
+                node_tmp = node_tmp->father;
+            }
+            std::reverse(solution.begin(), solution.end());
+        }
+        i += solution.size();
+
+        Column column;
+        column.objective_coefficient = length;
+        std::vector<Demand> demands(instance_.location_number(), 0);
+        for (LocationId j: solution) {
+            column.row_indices.push_back(j - 1);
+            column.row_coefficients.push_back(1);
+        }
+        ColumnExtra extra {solution};
+        column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
+        columns.push_back(column);
     }
-    return {column};
+    return columns;
 }
 
 }
