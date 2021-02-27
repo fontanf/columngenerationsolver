@@ -12,9 +12,9 @@
  * - n items with profit pⱼ and weight wⱼ (j = 1..n)
  * Problem:
  * - select m disjoint subsets of items (one per knapsack) such that the total
- *   weight of the items in a knapsack does not exceed its capacity.
+ *   weight of the items in a knapsack does not exceed its capacity
  * Objective:
- * - Maximize the overall profit of the selected items.
+ * - Maximize the overall profit of the selected items
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:

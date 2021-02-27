@@ -15,6 +15,7 @@ def Settings(**kwargs):
                 '-I', '/opt/ibm/ILOG/CPLEX_Studio129/cpoptimizer/include/',
                 '-I', '/home/florian/Programmes/gurobi811/linux64/include/',
                 '-I', './bazel-columngenerationsolver/external/json/single_include/',
+                '-I', './bazel-columngenerationsolver/external/pugixml/pugixml-1.11/src/',
                 '-I', './bazel-columngenerationsolver/external/googletest/googletest/include/',
                 '-I', './bazel-columngenerationsolver/external/boost/',
                 '-I', './bazel-columngenerationsolver/external/knapsacksolver/',

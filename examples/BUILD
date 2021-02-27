@@ -41,6 +41,18 @@ cc_library(
 )
 
 cc_library(
+        name = "vehicleroutingwithtimewindows",
+        hdrs = ["vehicleroutingwithtimewindows.hpp"],
+        deps = [
+                "@pugixml//:pugixml",
+                "@optimizationtools//optimizationtools:utils",
+                "//columngenerationsolver:columngenerationsolver",
+                "//examples/pricingsolver:espprctw",
+        ],
+        visibility = ["//visibility:public"],
+)
+
+cc_library(
         name = "starobservationscheduling",
         hdrs = ["starobservationscheduling.hpp"],
         deps = [
@@ -58,6 +70,7 @@ cc_binary(
                 ":cuttingstock",
                 ":multipleknapsack",
                 ":capacitatedvehiclerouting",
+                ":vehicleroutingwithtimewindows",
                 ":starobservationscheduling",
                 "//columngenerationsolver:read_args",
                 "@boost//:program_options",

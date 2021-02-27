@@ -17,3 +17,14 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_library(
+        name = "espprctw",
+        hdrs = ["espprctw.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:info",
+                "@optimizationtools//optimizationtools:indexed_collections",
+                "@treesearchsolver//treesearchsolver:treesearchsolver",
+        ],
+        visibility = ["//visibility:public"],
+)

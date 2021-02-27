@@ -31,6 +31,21 @@ cc_library(
     sha256 = "87b5884741427220d3a33df1363ae0e8b898099fbc59f1c451113f6732891014",
 )
 
+http_archive(
+    name = "pugixml",
+    build_file_content = """
+cc_library(
+        name = "pugixml",
+        srcs = ["pugixml-1.11/src/pugixml.cpp"],
+        hdrs = ["pugixml-1.11/src/pugixml.hpp", "pugixml-1.11/src/pugiconfig.hpp"],
+        visibility = ["//visibility:public"],
+        strip_include_prefix = "pugixml-1.11/src/"
+)
+""",
+    urls = ["https://github.com/zeux/pugixml/releases/download/v1.11/pugixml-1.11.tar.gz"],
+    sha256 = "26913d3e63b9c07431401cf826df17ed832a20d19333d043991e611d23beaa2c",
+)
+
 git_repository(
     name = "optimizationtools",
     remote = "https://github.com/fontanf/optimizationtools.git",

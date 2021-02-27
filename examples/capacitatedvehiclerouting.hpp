@@ -170,8 +170,8 @@ private:
         if (edge_weight_type == "EUC_2D") {
             for (LocationId j1 = 0; j1 < n; ++j1) {
                 for (LocationId j2 = j1 + 1; j2 < n; ++j2) {
-                    Distance xd = x(j2) - x(j1);
-                    Distance yd = y(j2) - y(j1);
+                    double xd = x(j2) - x(j1);
+                    double yd = y(j2) - y(j1);
                     Distance d = std::round(std::sqrt(xd * xd + yd * yd));
                     set_distance(j1, j2, d);
                 }
@@ -280,20 +280,17 @@ std::vector<Column> PricingSolver::solve_pricing(
     }
     LocationId n_espprc = espprc2cvrp_.size();
     espprc::Instance instance_espprc(n_espprc);
-    instance_espprc.set_capacity(instance_.capacity());
     for (LocationId j_espprc = 0; j_espprc < n_espprc; ++j_espprc) {
         LocationId j = espprc2cvrp_[j_espprc];
-        instance_espprc.set_demand(j_espprc, instance_.demand(j));
+        instance_espprc.set_location(
+                j_espprc,
+                instance_.demand(j),
+                ((j != 0)? duals[j - 1]: 0));
         for (LocationId j2_espprc = 0; j2_espprc < n_espprc; ++j2_espprc) {
             if (j2_espprc == j_espprc)
                 continue;
             LocationId j2 = espprc2cvrp_[j2_espprc];
-            espprc::Distance d = instance_.distance(j, j2);
-            if (j2_espprc != 0)
-                d -= duals[j2 - 1];
-            instance_espprc.set_distance(j_espprc, j2_espprc, d);
-            if (std::isnan(d))
-                exit(1);
+            instance_espprc.set_distance(j_espprc, j2_espprc, instance_.distance(j, j2));
         }
     }
 
@@ -301,11 +298,11 @@ std::vector<Column> PricingSolver::solve_pricing(
     espprc::BranchingScheme branching_scheme(instance_espprc);
     treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espprc;
     parameters_espprc.solution_pool_size_max = 100;
-    //parameters_espprc.node_number_max = 1024 * instance_.location_number();
-    parameters_espprc.queue_size_min = 128;
-    parameters_espprc.queue_size_max = 128;
+    parameters_espprc.queue_size_min = 512;
+    parameters_espprc.queue_size_max = 512;
     //parameters_espprc.info.set_verbose(true);
-    auto output_espprc = treesearchsolver::iterativebeamsearch(branching_scheme, parameters_espprc);
+    auto output_espprc = treesearchsolver::iterativebeamsearch(
+            branching_scheme, parameters_espprc);
 
     // Retrieve column.
     std::vector<Column> columns;
@@ -315,15 +312,11 @@ std::vector<Column> PricingSolver::solve_pricing(
         if (i > 2 * n_espprc)
             break;
         std::vector<LocationId> solution; // Without the depot.
-        Distance length = 0;
         if (node->j != 0) {
             auto node_tmp = node;
-            length = instance_.distance(espprc2cvrp_[node_tmp->j], 0);
             while (node_tmp->j != 0) {
                 LocationId j = espprc2cvrp_[node_tmp->j];
-                LocationId j_prev = espprc2cvrp_[node_tmp->father->j];
                 solution.push_back(j);
-                length += instance_.distance(j_prev, j);
                 node_tmp = node_tmp->father;
             }
             std::reverse(solution.begin(), solution.end());
@@ -331,8 +324,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         i += solution.size();
 
         Column column;
-        column.objective_coefficient = length;
-        std::vector<Demand> demands(instance_.location_number(), 0);
+        column.objective_coefficient = node->length + instance_espprc.distance(node->j, 0);
         for (LocationId j: solution) {
             column.row_indices.push_back(j - 1);
             column.row_coefficients.push_back(1);

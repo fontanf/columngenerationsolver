@@ -18,7 +18,7 @@ The currently implemented algorithms are based on the algorithms from "Primal He
 This package does not implement any exact algorithm. However, if the pricing algorithm is exact, it provides a valid dual bound.
 If the pricing algorithm is heuristic, the primal algorithms still works, but then the dual bound is not valid.
 
-This is a header-only library. Implementing a problem only requires a few hundred lines of code (see examples).
+Solving a problem only requires a couple hundred lines of code (see examples).
 
 A linear programming solver is required. Currently, CLP and CPLEX are supported.
 
@@ -51,6 +51,10 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 
 [Capacitated Vehicle Routing Problem](examples/capacitatedvehiclerouting.hpp)
 * Pricing problem: Elementary Shortest Path Problem with Resource Constraint [solved by Heuristic Tree Search](examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
+[Vehicle Routing Problem with Time Windows](examples/vehicleroutingwithtimewindows.hpp)
+* Time windows / Capacity constraint / Maximum number of vehicles
+* Pricing problem: Elementary Shortest Path Problem with Resource Constraint and Time Windows [solved by Heuristic Tree Search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Scheduling
 

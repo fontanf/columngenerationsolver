@@ -7,7 +7,7 @@
  *
  * Input:
  * - n targets with profit wⱼ, time-window [rⱼ, dⱼ] and duration pⱼ such
- *   that 2 pⱼ ≥ dⱼ - rⱼ
+ *   that 2 pⱼ ≥ dⱼ - rⱼ (j = 1..n)
  * Problem:
  * - select a list of targets and their starting dates sⱼ such that:
  *   - a target is observed at most once

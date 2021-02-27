@@ -5,44 +5,53 @@
 #include "optimizationtools/sorted_on_demand_array.hpp"
 
 /**
- * Elementary Shortest Path Problem with Resource Constraint.
+ * Elementary Shortest Path Problem with Resource Constraint and Time Windows.
  *
  * Input:
- * - n vertices with (j = 1..n)
+ * - n vertices with (j = 1..n):
  *   - a demand dⱼ
  *   - a profit pⱼ
- * - an n×n matrix containing the distances between each pair of vertices
+ *   - a service time sⱼ
+ *   - a time window [rⱼ, dⱼ]
+ * - an n×n matrix containing the times between each pair of vertices (not
+ *   necessarily symmetric, times may not be negative)
  * - a capacity c
  * Problem:
- * - find a tour from city 1 to city 1 such that:
+ * - find a tour from vertex 1 to vertex 1 such that:
  *   - each other vertex is visited at most once
+ *   - each other vertex is visited during its time window
  *   - the total demand of the visited vertices does not exceed the capacity
  * Objective:
- * - minimize the total length of the tour minus the profit a the visited
- *   vertices
+ * - minimize the total cost of the tour minus the profit of the visited
+ *   vertices. The cost of a tour is the sum of travel times between each pair
+ *   of consecutive vertices of the tour, including the departure and the
+ *   arrival to the initial node, excluding the waiting times.
  *
  * Tree search:
  * - forward branching
- * - guide: current length + distance to the closest next child
+ * - guide: cost + time to the closest next child - profit
  *
  */
 
 namespace columngenerationsolver
 {
 
-namespace espprc
+namespace espprctw
 {
 
 typedef int64_t VertexId;
 typedef int64_t VertexPos;
 typedef int64_t Demand;
-typedef double Distance;
+typedef double Time;
 typedef double Profit;
 
 struct Location
 {
-    Demand demand;
-    Profit profit;
+    Demand demand = 0;
+    Time release_date = 0;
+    Time deadline = 0;
+    Time service_time = 0;
+    Profit profit = 0;
 };
 
 class Instance
@@ -52,40 +61,39 @@ public:
 
     Instance(VertexId n):
         locations_(n),
-        distances_(n, std::vector<Distance>(n, -1))
+        times_(n, std::vector<Time>(n, -1))
     {
         for (VertexId j = 0; j < n; ++j)
-            distances_[j][j] = std::numeric_limits<Distance>::max();
+            times_[j][j] = std::numeric_limits<Time>::max();
     }
     void set_capacity(Demand demand) { locations_[0].demand = demand; }
     void set_location(
             VertexId j,
             Demand demand,
-            Profit profit)
+            Profit profit,
+            Time release_date,
+            Time deadline,
+            Time service_time)
     {
         locations_[j].demand = demand;
         locations_[j].profit = profit;
+        locations_[j].release_date = release_date;
+        locations_[j].deadline = deadline;
+        locations_[j].service_time = service_time;
     }
-    void set_distance(VertexId j1, VertexId j2, Distance d)
-    {
-        assert(j1 >= 0);
-        assert(j2 >= 0);
-        assert(j1 < vertex_number());
-        assert(j2 < vertex_number());
-        distances_[j1][j2] = d;
-    }
+    void set_time(VertexId j1, VertexId j2, Time t) { times_[j1][j2] = t; }
 
     virtual ~Instance() { }
 
     inline VertexId vertex_number() const { return locations_.size(); }
-    inline Distance distance(VertexId j1, VertexId j2) const { return distances_[j1][j2]; }
+    inline Time time(VertexId j1, VertexId j2) const { return times_[j1][j2]; }
     inline const Location& location(VertexId j) const { return locations_[j]; }
     inline Demand capacity() const { return locations_[0].demand; }
 
 private:
 
     std::vector<Location> locations_;
-    std::vector<std::vector<Distance>> distances_;
+    std::vector<std::vector<Time>> times_;
 
 };
 
@@ -98,9 +106,10 @@ public:
     {
         std::shared_ptr<Node> father = nullptr;
         std::vector<bool> available_vertices;
-        VertexId j = 0; // Last visited vertex.
+        VertexId j = 0;
         VertexId vertex_number = 1;
-        Distance length = 0;
+        Time cost = 0;
+        Time time = 0;
         Profit profit = 0;
         Demand demand = 0;
         double guide = 0;
@@ -116,7 +125,7 @@ public:
         for (VertexId j = 0; j < instance_.vertex_number(); ++j) {
             sorted_vertices_[j].reset(instance.vertex_number());
             for (VertexId j2 = 0; j2 < instance_.vertex_number(); ++j2)
-                sorted_vertices_[j].set_cost(j2, instance_.distance(j, j2) - instance_.location(j2).profit);
+                sorted_vertices_[j].set_cost(j2, instance_.time(j, j2) - instance_.location(j2).profit);
         }
     }
 
@@ -134,7 +143,7 @@ public:
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
         r->available_vertices.resize(instance_.vertex_number(), true);
         r->available_vertices[0] = false;
-        r->guide = instance_.distance(0, neighbor(0, 0));
+        r->guide = instance_.time(0, neighbor(0, 0));
         return r;
     }
 
@@ -144,18 +153,21 @@ public:
         assert(!infertile(father));
         assert(!leaf(father));
         VertexId j_next = neighbor(father->j, father->next_child_pos);
-        Distance d = instance_.distance(father->j, j_next);
         // Update father
         father->next_child_pos++;
         VertexId j_next_next = neighbor(father->j, father->next_child_pos);
-        Distance d_next = instance_.distance(father->j, j_next_next);
-        if (d_next == std::numeric_limits<Distance>::max()) {
+        Time t_next = instance_.time(father->j, j_next_next);
+        if (t_next == std::numeric_limits<Time>::max()) {
             father->guide = std::numeric_limits<double>::max();
         } else {
-            father->guide = father->length + d_next
+            father->guide = father->cost + t_next
                 - father->profit - instance_.location(j_next_next).profit;
         }
         if (father->demand + instance_.location(j_next).demand > instance_.capacity())
+            return nullptr;
+        Time t = instance_.time(father->j, j_next);
+        Time s = std::max(father->time + t, instance_.location(j_next).release_date);
+        if (s > instance_.location(j_next).deadline)
             return nullptr;
         if (!father->available_vertices[j_next])
             return nullptr;
@@ -167,15 +179,18 @@ public:
         child->available_vertices[j_next] = false;
         child->j = j_next;
         child->vertex_number = father->vertex_number + 1;
-        child->length = father->length + d;
-        child->profit = father->profit + instance_.location(j_next).profit;
         child->demand = father->demand + instance_.location(j_next).demand;
-        child->guide = child->length + instance_.distance(j_next, neighbor(j_next, 0))
+        child->time = s + instance_.location(j_next).service_time;
+        child->cost = father->cost + t;
+        child->profit = father->profit + instance_.location(j_next).profit;
+        child->guide = child->cost + instance_.time(j_next, neighbor(j_next, 0))
             - child->profit - instance_.location(neighbor(j_next, 0)).profit;
         for (VertexId j = 0; j < instance_.vertex_number(); ++j) {
             if (!child->available_vertices[j])
                 continue;
             if (child->demand + instance_.location(j).demand > instance_.capacity())
+                child->available_vertices[j] = false;
+            if (child->time + instance_.time(j_next, j) > instance_.location(j).deadline)
                 child->available_vertices[j] = false;
         }
         return child;
@@ -218,8 +233,8 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        return node_1->length + instance_.distance(node_1->j, 0) - node_1->profit
-            < node_2->length + instance_.distance(node_2->j, 0) - node_2->profit;
+        return node_1->cost + instance_.time(node_1->j, 0) - node_1->profit
+            < node_2->cost + instance_.time(node_2->j, 0) - node_2->profit;
     }
 
     bool equals(
@@ -236,9 +251,9 @@ public:
         if (node->j == 0)
             return "";
         std::stringstream ss;
-        ss << node->length + instance_.distance(node->j, 0) - node->profit
+        ss << node->cost + instance_.time(node->j, 0) - node->profit
             << " (n" << node->vertex_number
-            << " l" << node->length + instance_.distance(node->j, 0)
+            << " c" << node->cost + instance_.time(node->j, 0)
             << " p" << node->profit
             << ")";
         return ss.str();
@@ -286,7 +301,9 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        if (node_1->length - node_1->profit > node_2->length - node_2->profit)
+        if (node_1->cost - node_1->profit > node_2->cost - node_2->profit)
+            return false;
+        if (node_1->time > node_2->time)
             return false;
         if (node_1->demand > node_2->demand)
             return false;
