@@ -28,3 +28,14 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_library(
+        name = "oaschedulingwithfamilysetuptimestwct",
+        hdrs = ["oaschedulingwithfamilysetuptimestwct.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:info",
+                "@optimizationtools//optimizationtools:indexed_collections",
+                "@treesearchsolver//treesearchsolver:treesearchsolver",
+        ],
+        visibility = ["//visibility:public"],
+)

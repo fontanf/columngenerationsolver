@@ -145,6 +145,14 @@ inline ColumnGenerationOutput columngeneration(
                     new_row_lower_bounds,
                     new_row_upper_bounds));
 #endif
+#if KNITRO_FOUND
+    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::Knitro)
+        solver = std::unique_ptr<ColumnGenerationSolver>(
+                new ColumnGenerationSolverKnitro(
+                    parameters.objective_sense,
+                    new_row_lower_bounds,
+                    new_row_upper_bounds));
+#endif
     if (solver == NULL) {
         std::cerr << "\033[31m" << "ERROR, no linear programming solver found." << "\033[0m" << std::endl;
         assert(false);
@@ -420,8 +428,8 @@ inline ColumnGenerationOutput columngeneration(
             parameters.columns.push_back(column);
             output.added_column_number++;
             // Add new column to the local LP solver.
-            std::vector<RowIdx> ri(new_row_number);
-            std::vector<Value> rc(new_row_number);
+            std::vector<RowIdx> ri;
+            std::vector<Value> rc;
             for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
                 RowIdx i = column.row_indices[row_pos];
                 Value c = column.row_coefficients[row_pos];

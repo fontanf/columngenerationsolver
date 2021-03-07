@@ -48,13 +48,14 @@
  *
  * 0 <= ∑ₖ yᵏ <= m
  *                                                 (not more then m vehicles)
+ *                                                           Dual variable: u
  * 1 <= ∑ₖ xⱼᵏ yᵏ <= 1     for all customers j
  *                                    (each customer is visited exactly once)
  *                                                         Dual variables: vⱼ
  *
  * The pricing problem consists in finding a variable of negative reduced cost.
  * The reduced cost of a variable yᵏ is given by:
- * rc(yᵏ) = dᵏ - ∑ⱼ xⱼᵏ vⱼ
+ * rc(yᵏ) = dᵏ - u - ∑ⱼ xⱼᵏ vⱼ
  *
  * Therefore, finding a variable of minium reduced cost reduces to solving
  * an Elementary Shortest Path Problems with Resource Constraints and Time
@@ -401,12 +402,8 @@ std::vector<Column> PricingSolver::solve_pricing(
             break;
         std::vector<LocationId> solution; // Without the depot.
         if (node->j != 0) {
-            auto node_tmp = node;
-            while (node_tmp->j != 0) {
-                LocationId j = espprctw2cvrp_[node_tmp->j];
-                solution.push_back(j);
-                node_tmp = node_tmp->father;
-            }
+            for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+                solution.push_back(espprctw2cvrp_[node_tmp->j]);
             std::reverse(solution.begin(), solution.end());
         }
         i += solution.size();

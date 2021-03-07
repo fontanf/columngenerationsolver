@@ -227,7 +227,9 @@ std::vector<Column> PricingSolver::solve_pricing(
     }
 
     // Solve subproblem instance.
-    auto output_kp = knapsacksolver::minknap(instance_kp);
+    knapsacksolver::MinknapOptionalParameters parameters_kp;
+    //parameters_kp.info.set_verbose(true);
+    auto output_kp = knapsacksolver::minknap(instance_kp, parameters_kp);
 
     // Retrieve column.
     Column column;

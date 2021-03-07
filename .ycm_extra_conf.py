@@ -6,6 +6,7 @@ def Settings(**kwargs):
                 '-DCOINOR_FOUND',
                 '-DCPLEX_FOUND',
                 '-DGUROBI_FOUND',
+                '-DKNITRO_FOUND',
                 '-DGECODE_FOUND',
                 '-DIL_STD',  # Cplex
                 '-I', '.',
@@ -14,6 +15,7 @@ def Settings(**kwargs):
                 '-I', '/opt/ibm/ILOG/CPLEX_Studio129/cplex/include/',
                 '-I', '/opt/ibm/ILOG/CPLEX_Studio129/cpoptimizer/include/',
                 '-I', '/home/florian/Programmes/gurobi811/linux64/include/',
+                '-I', '/home/florian/Programmes/knitro-13.0.0-z-Linux-Intel17-64/include/',
                 '-I', './bazel-columngenerationsolver/external/json/single_include/',
                 '-I', './bazel-columngenerationsolver/external/pugixml/pugixml-1.11/src/',
                 '-I', './bazel-columngenerationsolver/external/googletest/googletest/include/',

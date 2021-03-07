@@ -313,12 +313,8 @@ std::vector<Column> PricingSolver::solve_pricing(
             break;
         std::vector<LocationId> solution; // Without the depot.
         if (node->j != 0) {
-            auto node_tmp = node;
-            while (node_tmp->j != 0) {
-                LocationId j = espprc2cvrp_[node_tmp->j];
-                solution.push_back(j);
-                node_tmp = node_tmp->father;
-            }
+            for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+                solution.push_back(espprc2cvrp_[node_tmp->j]);
             std::reverse(solution.begin(), solution.end());
         }
         i += solution.size();

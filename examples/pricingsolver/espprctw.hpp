@@ -241,9 +241,15 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        (void)node_1;
-        (void)node_2;
-        return false;
+        if (node_1->vertex_number != node_2->vertex_number)
+            return false;
+        std::vector<bool> v(instance_.vertex_number(), false);
+        for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+            v[node_tmp->j] = true;
+        for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+            if (!v[node_tmp->j])
+                return false;
+        return true;
     }
 
     std::string display(const std::shared_ptr<Node>& node) const
@@ -301,13 +307,11 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        if (node_1->cost - node_1->profit > node_2->cost - node_2->profit)
-            return false;
-        if (node_1->time > node_2->time)
-            return false;
-        if (node_1->demand > node_2->demand)
-            return false;
-        return true;
+        if (node_1->cost - node_1->profit <= node_2->cost - node_2->profit
+                && node_1->time <= node_2->time
+                && node_1->demand <= node_2->demand)
+            return true;
+        return false;
     }
 
 private:

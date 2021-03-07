@@ -58,6 +58,14 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 
 ### Scheduling
 
+[Identical parallel machine scheduling problem with family setup times, Total weighted completion time](examples/parallelschedulingwithfamilysetuptimestwct.hpp)
+* Three field classification: `P | sᵢ | ∑wⱼCⱼ`
+* Literature:
+  * "Heuristic methods for the identical parallel machine flowtime problem with set-up times" (Dunstall et Wirth, 2005)
+  * "An improved heuristic for parallel machine weighted flowtime scheduling with family set-up times" (Liao et al., 2012)
+  * "Mathematical formulations for scheduling jobs on identical parallel machines with family setup times and total weighted completion time minimization" (Kramer et al., 2021)
+* Pricing problem: Single machine order acceptance and scheduling problem with family setup times, Total weighted completion time [solved by Heuristic Tree Search](examples/pricingsolver/oaschedulingwithfamilysetuptimestwct.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Three field classification: `R | rⱼᵢ, 2 pⱼᵢ ≥ dⱼᵢ - rⱼᵢ | ∑wⱼUⱼ`
 * Literature:
@@ -102,5 +110,6 @@ python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobser
 python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
 python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
 python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_greedy_cplex --main "./bazel-bin/examples/main -p starobservationscheduling -a greedy -g \"--linear-programming-solver CPLEX\""
+python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct --main "./bazel-bin/examples/main -p parallelschedulingwithfamilysetuptimestwct -g \"-s cplex \"" -a "columngeneration" -f "row['Dataset'] == 'liao2012_small'"
 ```
 

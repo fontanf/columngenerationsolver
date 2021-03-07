@@ -17,6 +17,9 @@ GUROBI_COPTS = select({
 XPRESS_COPTS = select({
             "//examples:xpress_build": ["-DXPRESS_FOUND"],
             "//conditions:default": []})
+KNITRO_COPTS = select({
+            "//examples:knitro_build": ["-DKNITRO_FOUND"],
+            "//conditions:default": []})
 
 COINOR_DEP = select({
             "//examples:coinor_build": ["@coinor//:coinor"],
@@ -29,5 +32,8 @@ GUROBI_DEP = select({
             "//conditions:default": []})
 XPRESS_DEP = select({
             "//examples:xpress_build": ["@xpress//:xpress"],
+            "//conditions:default": []})
+KNITRO_DEP = select({
+            "//examples:knitro_build": ["@knitro//:knitro"],
             "//conditions:default": []})
 

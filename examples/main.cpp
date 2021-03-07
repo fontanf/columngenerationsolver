@@ -2,6 +2,7 @@
 #include "examples/multipleknapsack.hpp"
 #include "examples/capacitatedvehiclerouting.hpp"
 #include "examples/vehicleroutingwithtimewindows.hpp"
+#include "examples/parallelschedulingwithfamilysetuptimestwct.hpp"
 #include "examples/starobservationscheduling.hpp"
 
 #include "columngenerationsolver/read_args.hpp"
@@ -113,6 +114,11 @@ int main(int argc, char *argv[])
     } else if (problem == "vehicleroutingwithtimewindows") {
         vehicleroutingwithtimewindowssolver::Instance instance(instance_path, format);
         Parameters p = vehicleroutingwithtimewindowssolver::get_parameters(instance);
+        run(algorithm, columngeneration_args_string, info, p);
+    } else if (problem == "parallelschedulingwithfamilysetuptimestwct") {
+        parallelschedulingwithfamilysetuptimestwctsolver::Instance instance(instance_path, format);
+        std::cout << instance << std::endl;
+        Parameters p = parallelschedulingwithfamilysetuptimestwctsolver::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
     } else if (problem == "starobservationscheduling") {
         starobservationschedulingsolver::Instance instance(instance_path, format);
