@@ -121,7 +121,7 @@ static std::ostream& operator<<(
             << " s " << instance.family(k).setup_time
             << " j";
         for (JobId j: instance.family(k).jobs)
-            std::cout << " " << j;
+            os << " " << j;
         os << std::endl;
     }
     return os;

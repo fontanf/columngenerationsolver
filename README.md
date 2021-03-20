@@ -56,6 +56,12 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 * Time windows / Capacity constraint / Maximum number of vehicles
 * Pricing problem: Elementary Shortest Path Problem with Resource Constraint and Time Windows [solved by Heuristic Tree Search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
+[Capacitated Open Vehicle Routing Problem](examples/capacitatedopenvehiclerouting.hpp)
+* No need to return to the depot / Capacity constraint / Maximum route length / Maximum number of vehicles
+* Literature:
+  * "A hybrid evolution strategy for the open vehicle routing problem" (Repoussis et al., 2010)
+* Pricing problem: Elementary Open Shortest Path Problem with Resource Constraints [solved by Heuristic Tree Search](examples/pricingsolver/eospprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
 ### Scheduling
 
 [Identical parallel machine scheduling problem with family setup times, Total weighted completion time](examples/parallelschedulingwithfamilysetuptimestwct.hpp)
@@ -78,6 +84,8 @@ Graph Coloring Problem from [fontanf/coloringsolver](https://github.com/fontanf/
 * Pricing problem: Maximum-Weight Independent Set Problem solved with the `largeneighborhoodsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver)
 
 ## Usage, running examples from command line
+
+[Download data](https://github.com/fontanf/columngenerationsolver/releases/download/data/columngenerationdata.zip)
 
 You need to have a linear programming solver already installed. Then update the corresponding entry in the `WORKSPACE` file. You may only need to update the `path` attribute of the solver you are using. Then, compile with one of the following command:
 ```shell

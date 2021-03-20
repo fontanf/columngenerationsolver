@@ -168,8 +168,7 @@ private:
 
 };
 
-static std::ostream& operator<<(
-        std::ostream &os, const Instance& instance)
+static std::ostream& operator<<(std::ostream &os, const Instance& instance)
 {
     os << "machine number " << instance.machine_number() << std::endl;
     os << "job number " << instance.job_number() << std::endl;

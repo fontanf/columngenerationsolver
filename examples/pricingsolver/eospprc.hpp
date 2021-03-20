@@ -5,18 +5,20 @@
 #include "optimizationtools/sorted_on_demand_array.hpp"
 
 /**
- * Elementary Shortest Path Problem with Resource Constraint.
+ * Elementary Open Shortest Path Problem with Resource Constraint.
  *
  * Input:
  * - n vertices with (j = 1..n)
  *   - a demand dⱼ
  *   - a profit pⱼ
  * - an n×n matrix containing the distances between each pair of vertices
- * - a capacity c
+ * - A capacity Q
+ * - A maximum route length L
  * Problem:
- * - find a tour from city 1 to city 1 such that:
+ * - find a path from city 1 to any city such that:
  *   - each other vertex is visited at most once
  *   - the total demand of the visited vertices does not exceed the capacity
+ *   - the total length of the path does not exceed the maximum route length
  * Objective:
  * - minimize the total length of the tour minus the profit a the visited
  *   vertices
@@ -30,7 +32,7 @@
 namespace columngenerationsolver
 {
 
-namespace espprc
+namespace eospprc
 {
 
 typedef int64_t VertexId;
@@ -57,6 +59,7 @@ public:
         for (VertexId j = 0; j < n; ++j)
             distances_[j][j] = std::numeric_limits<Distance>::max();
     }
+    void set_maximum_route_length(Distance maximum_route_length) { maximum_route_length_ = maximum_route_length; }
     void set_capacity(Demand demand) { locations_[0].demand = demand; }
     void set_location(
             VertexId j,
@@ -78,14 +81,16 @@ public:
     virtual ~Instance() { }
 
     inline VertexId vertex_number() const { return locations_.size(); }
-    inline Distance distance(VertexId j1, VertexId j2) const { return distances_[j1][j2]; }
-    inline const Location& location(VertexId j) const { return locations_[j]; }
+    Distance maximum_route_length() const { return maximum_route_length_; }
     inline Demand capacity() const { return locations_[0].demand; }
+    inline const Location& location(VertexId j) const { return locations_[j]; }
+    inline Distance distance(VertexId j1, VertexId j2) const { return distances_[j1][j2]; }
 
 private:
 
     std::vector<Location> locations_;
     std::vector<std::vector<Distance>> distances_;
+    Distance maximum_route_length_ = std::numeric_limits<Distance>::infinity();;
 
 };
 
@@ -157,6 +162,8 @@ public:
         }
         if (father->demand + instance_.location(j_next).demand > instance_.capacity())
             return nullptr;
+        if (father->length + d > instance_.maximum_route_length())
+            return nullptr;
         if (!father->available_vertices[j_next])
             return nullptr;
 
@@ -218,8 +225,8 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        return node_1->length + instance_.distance(node_1->j, 0) - node_1->profit
-            < node_2->length + instance_.distance(node_2->j, 0) - node_2->profit;
+        return node_1->length - node_1->profit
+            < node_2->length - node_2->profit;
     }
 
     bool equals(
@@ -242,9 +249,9 @@ public:
         if (node->j == 0)
             return "";
         std::stringstream ss;
-        ss << node->length + instance_.distance(node->j, 0) - node->profit
+        ss << node->length - node->profit
             << " (n" << node->vertex_number
-            << " l" << node->length + instance_.distance(node->j, 0)
+            << " l" << node->length
             << " p" << node->profit
             << ")";
         return ss.str();
@@ -293,6 +300,7 @@ public:
             const std::shared_ptr<Node>& node_2) const
     {
         if (node_1->length - node_1->profit <= node_2->length - node_2->profit
+                && node_1->length <= node_2->length
                 && node_1->demand <= node_2->demand)
             return true;
         return false;

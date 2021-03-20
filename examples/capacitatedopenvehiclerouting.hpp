@@ -2,25 +2,29 @@
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "examples/pricingsolver/espprc.hpp"
+#include "examples/pricingsolver/eospprc.hpp"
 #include "treesearchsolver/algorithms/iterative_beam_search.hpp"
 #include "treesearchsolver/algorithms/a_star.hpp"
 #include "treesearchsolver/algorithms/iterative_memory_bounded_a_star.hpp"
 #include "optimizationtools/utils.hpp"
 
 /**
- * Capacitated Vehicle Routing Problem.
+ * Capacitated Open Vehicle Routing Problem.
  *
  * Input:
- * - vehicles of capacity Q
+ * - m vehicles of capacity Q
+ * - A maximum route length L
  * - 1 depot
  * - n - 1 customer with demand qⱼ (j = 2..n)
  * - A n×n symmetric matrix d specifying the distances to travel between each
  *   pair of locations
  * Problem:
- * - find a set of routes that begin and end at the depot, such that each
- *   customer is visited on exactly one route and the total demand by the
- *   customers assigned to a route does not exceed the vehicle capacity Q.
+ * - find a set of at most m paths that begin (but does not end) at the depot,
+ *   such that
+ *   - each customer is visited on exactly one path
+ *   - the total demand by the customers assigned to a path does not exceed
+ *     the vehicle capacity Q
+ *   - the total length of each route does not exceed the maximum route length
  * Objective:
  * - minimize the total combined distance of the routes.
  *
@@ -37,6 +41,9 @@
  *
  * min ∑ₖ dᵏ yᵏ
  *
+ * 0 <= ∑ₖ yᵏ <= m
+ *                                                 (not more then m vehicles)
+ *                                                           Dual variable: u
  * 1 <= ∑ₖ xⱼᵏ yᵏ <= 1     for all customers j
  *                                    (each customer is visited exactly once)
  *                                                         Dual variables: vⱼ
@@ -46,7 +53,7 @@
  * rc(yᵏ) = dᵏ - ∑ⱼ xⱼᵏ vⱼ
  *
  * Therefore, finding a variable of minium reduced cost reduces to solving
- * an Elementary Shortest Path Problems with Resource Constraints.
+ * an Elementary Open Shortest Path Problems with Resource Constraints.
  *
  */
 
@@ -54,13 +61,14 @@
 namespace columngenerationsolver
 {
 
-namespace capacitatedvehicleroutingsolver
+namespace capacitatedopenvehicleroutingsolver
 {
 
 typedef int64_t LocationId;
+typedef int64_t VehicleId;
 typedef int64_t RouteId;
 typedef int64_t Demand;
-typedef int64_t Distance;
+typedef double Distance;
 
 struct Location
 {
@@ -76,7 +84,10 @@ public:
 
     Instance(LocationId n):
         locations_(n),
-        distances_(n, std::vector<Distance>(n, -1)) { }
+        distances_(n, std::vector<Distance>(n, -1)),
+        vehicle_number_(n) { }
+    void set_vehicle_number(VehicleId m) { vehicle_number_ = m; }
+    void set_maximum_route_length(Distance maximum_route_length) { maximum_route_length_ = maximum_route_length; }
     void set_demand(LocationId j, Demand q) { locations_[j].demand = q; }
     void set_xy(LocationId j, double x, double y)
     {
@@ -108,13 +119,16 @@ public:
 
     virtual ~Instance() { }
 
+    VehicleId vehicle_number() const { return vehicle_number_; }
     LocationId location_number() const { return locations_.size(); }
+    Distance maximum_route_length() const { return maximum_route_length_; }
     Demand capacity() const { return locations_[0].demand; }
     Demand demand(LocationId j) const { return locations_[j].demand; }
     Distance x(LocationId j) const { return locations_[j].x; }
     Distance y(LocationId j) const { return locations_[j].y; }
     Distance distance(LocationId j1, LocationId j2) const { return distances_[j1][j2]; }
     Distance maximum_distance() const { return distance_max_; }
+    Distance bound() const { return powf(10.0f, ceil(log10f(location_number() * maximum_distance()))); }
 
 private:
 
@@ -138,8 +152,12 @@ private:
                 n = std::stol(line.back());
                 locations_ = std::vector<Location>(n);
                 distances_ = std::vector<std::vector<Distance>>(n, std::vector<Distance>(n, -1));
+                vehicle_number_ = n;
             } else if (tmp.rfind("EDGE_WEIGHT_TYPE", 0) == 0) {
                 edge_weight_type = line.back();
+            } else if (tmp.rfind("DISTANCE", 0) == 0) {
+                Distance l = std::stol(line.back());
+                set_maximum_route_length(l * 0.9);
             } else if (tmp.rfind("CAPACITY", 0) == 0) {
                 Demand c = std::stol(line.back());
                 set_demand(0, c);
@@ -172,7 +190,8 @@ private:
                 for (LocationId j2 = j1 + 1; j2 < n; ++j2) {
                     double xd = x(j2) - x(j1);
                     double yd = y(j2) - y(j1);
-                    Distance d = std::round(std::sqrt(xd * xd + yd * yd));
+                    //Distance d = std::round(std::sqrt(xd * xd + yd * yd));
+                    Distance d = std::sqrt(xd * xd + yd * yd);
                     set_distance(j1, j2, d);
                 }
             }
@@ -183,9 +202,25 @@ private:
 
     std::vector<Location> locations_;
     std::vector<std::vector<Distance>> distances_;
+    VehicleId vehicle_number_ = 0;
+    Distance maximum_route_length_ = std::numeric_limits<Distance>::infinity();;
     Distance distance_max_ = 0;
 
 };
+
+static std::ostream& operator<<(std::ostream &os, const Instance& instance)
+{
+    os << "location number " << instance.location_number() << std::endl;
+    os << "vehicle number " << instance.vehicle_number() << std::endl;
+    os << "capacity " << instance.capacity() << std::endl;
+    os << "maximum route length " << instance.maximum_route_length() << std::endl;
+    os << "bound " << instance.bound() << std::endl;
+    for (LocationId j = 0; j < instance.location_number(); ++j)
+        os << "location " << j
+            << " d " << instance.demand(j)
+            << std::endl;
+    return os;
+}
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
@@ -217,13 +252,17 @@ private:
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
     LocationId n = instance.location_number();
-    columngenerationsolver::Parameters p(n - 1);
+    columngenerationsolver::Parameters p(n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
     p.column_lower_bound = 0;
     p.column_upper_bound = 1;
     // Row bounds.
-    for (LocationId j = 0; j < n - 1; ++j) {
+    p.row_lower_bounds[0] = 0;
+    p.row_upper_bounds[0] = instance.vehicle_number();
+    p.row_coefficient_lower_bounds[0] = 1;
+    p.row_coefficient_upper_bounds[0] = 1;
+    for (LocationId j = 1; j < n; ++j) {
         p.row_lower_bounds[j] = 1;
         p.row_upper_bounds[j] = 1;
         p.row_coefficient_lower_bounds[j] = 0;
@@ -250,11 +289,11 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
         for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
             RowIdx row_index = column.row_indices[row_pos];
             Value row_coefficient = column.row_coefficients[row_pos];
+            if (row_index == 0)
+                continue;
             if (row_coefficient < 0.5)
                 continue;
-            // row_index + 1 since there is not constraint for location 0 which
-            // is the depot.
-            visited_customers_[row_index + 1] = 1;
+            visited_customers_[row_index] = 1;
         }
     }
     return {};
@@ -279,13 +318,16 @@ std::vector<Column> PricingSolver::solve_pricing(
         espp2vrp_.push_back(j);
     }
     LocationId n_espp = espp2vrp_.size();
-    espprc::Instance instance_espp(n_espp);
+    if (n_espp == 1)
+        return {};
+    eospprc::Instance instance_espp(n_espp);
+    instance_espp.set_maximum_route_length(instance_.maximum_route_length());
     for (LocationId j_espp = 0; j_espp < n_espp; ++j_espp) {
         LocationId j = espp2vrp_[j_espp];
         instance_espp.set_location(
                 j_espp,
                 instance_.demand(j),
-                ((j != 0)? duals[j - 1]: 0));
+                ((j != 0)? duals[j]: 0));
         for (LocationId j2_espp = 0; j2_espp < n_espp; ++j2_espp) {
             if (j2_espp == j_espp)
                 continue;
@@ -295,7 +337,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     }
 
     // Solve subproblem instance.
-    espprc::BranchingScheme branching_scheme(instance_espp);
+    eospprc::BranchingScheme branching_scheme(instance_espp);
     treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espp;
     parameters_espp.solution_pool_size_max = 100;
     parameters_espp.queue_size_min = 512;
@@ -307,7 +349,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     // Retrieve column.
     std::vector<Column> columns;
     LocationId i = 0;
-    for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
+    for (const std::shared_ptr<eospprc::BranchingScheme::Node>& node:
             output_espp.solution_pool.solutions()) {
         if (i > 2 * n_espp)
             break;
@@ -320,9 +362,11 @@ std::vector<Column> PricingSolver::solve_pricing(
         i += solution.size();
 
         Column column;
-        column.objective_coefficient = node->length + instance_espp.distance(node->j, 0);
+        column.objective_coefficient = node->length;
+        column.row_indices.push_back(0);
+        column.row_coefficients.push_back(1);
         for (LocationId j: solution) {
-            column.row_indices.push_back(j - 1);
+            column.row_indices.push_back(j);
             column.row_coefficients.push_back(1);
         }
         ColumnExtra extra {solution};

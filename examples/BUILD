@@ -55,6 +55,17 @@ cc_library(
 )
 
 cc_library(
+        name = "capacitatedopenvehiclerouting",
+        hdrs = ["capacitatedopenvehiclerouting.hpp"],
+        deps = [
+                "@optimizationtools//optimizationtools:utils",
+                "//columngenerationsolver:columngenerationsolver",
+                "//examples/pricingsolver:eospprc",
+        ],
+        visibility = ["//visibility:public"],
+)
+
+cc_library(
         name = "parallelschedulingwithfamilysetuptimestwct",
         hdrs = ["parallelschedulingwithfamilysetuptimestwct.hpp"],
         deps = [
@@ -84,12 +95,12 @@ cc_binary(
                 ":multipleknapsack",
                 ":capacitatedvehiclerouting",
                 ":vehicleroutingwithtimewindows",
+                ":capacitatedopenvehiclerouting",
                 ":parallelschedulingwithfamilysetuptimestwct",
                 ":starobservationscheduling",
                 "//columngenerationsolver:read_args",
                 "@boost//:program_options",
         ] + COINOR_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP + KNITRO_DEP,
         copts = COINOR_COPTS + XPRESS_COPTS + CPLEX_COPTS + GUROBI_COPTS + KNITRO_COPTS,
-        data = ["//data:data"],
 )
 

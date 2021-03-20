@@ -22,7 +22,7 @@
  * - A n×n symmetric matrix d specifying the times to travel between each pair
  *   of locations
  * Problem:
- * - find a set of routes that begin and end at the depot, such that
+ * - find a set of at most m routes that begin and end at the depot, such that
  *   - each customer is visited on exactly one route
  *   - each customer is visited during its time window
  *   - the total demand by the customers assigned to a route does not exceed
@@ -291,7 +291,7 @@ private:
 
     std::vector<Demand> visited_customers_;
 
-    std::vector<LocationId> espprctw2cvrp_;
+    std::vector<LocationId> espp2cvrp_;
 
 };
 
@@ -356,60 +356,61 @@ std::vector<Column> PricingSolver::solve_pricing(
     LocationId n = instance_.location_number();
 
     // Build subproblem instance.
-    espprctw2cvrp_.clear();
-    espprctw2cvrp_.push_back(0);
+    espp2cvrp_.clear();
+    espp2cvrp_.push_back(0);
     for (LocationId j = 1; j < n; ++j) {
         if (visited_customers_[j] == 1)
             continue;
-        espprctw2cvrp_.push_back(j);
+        espp2cvrp_.push_back(j);
     }
-    LocationId n_espprctw = espprctw2cvrp_.size();
-    if (n_espprctw == 1)
+    LocationId n_espp = espp2cvrp_.size();
+    if (n_espp == 1)
         return {};
-    espprctw::Instance instance_espprctw(n_espprctw);
-    for (LocationId j_espprctw = 0; j_espprctw < n_espprctw; ++j_espprctw) {
-        LocationId j = espprctw2cvrp_[j_espprctw];
-        instance_espprctw.set_location(
-                j_espprctw,
+    espprctw::Instance instance_espp(n_espp);
+    for (LocationId j_espp = 0; j_espp < n_espp; ++j_espp) {
+        LocationId j = espp2cvrp_[j_espp];
+        instance_espp.set_location(
+                j_espp,
                 instance_.location(j).demand,
                 ((j != 0)? duals[j]: 0),
                 instance_.location(j).release_date,
                 instance_.location(j).deadline,
                 instance_.location(j).service_time);
-        for (LocationId j2_espprctw = 0; j2_espprctw < n_espprctw; ++j2_espprctw) {
-            if (j2_espprctw == j_espprctw)
+        for (LocationId j2_espp = 0; j2_espp < n_espp; ++j2_espp) {
+            if (j2_espp == j_espp)
                 continue;
-            LocationId j2 = espprctw2cvrp_[j2_espprctw];
-            instance_espprctw.set_time(j_espprctw, j2_espprctw, instance_.time(j, j2));
+            LocationId j2 = espp2cvrp_[j2_espp];
+            instance_espp.set_time(j_espp, j2_espp, instance_.time(j, j2));
         }
     }
 
     // Solve subproblem instance.
-    espprctw::BranchingScheme branching_scheme(instance_espprctw);
-    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espprctw;
-    parameters_espprctw.solution_pool_size_max = 100;
-    parameters_espprctw.queue_size_min = 512;
-    parameters_espprctw.queue_size_max = 512;
-    auto output_espprctw = treesearchsolver::iterativebeamsearch(
-            branching_scheme, parameters_espprctw);
+    espprctw::BranchingScheme branching_scheme(instance_espp);
+    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espp;
+    parameters_espp.solution_pool_size_max = 100;
+    parameters_espp.queue_size_min = 512;
+    parameters_espp.queue_size_max = 512;
+    //parameters_espp.info.set_verbose(true);
+    auto output_espp = treesearchsolver::iterativebeamsearch(
+            branching_scheme, parameters_espp);
 
     // Retrieve column.
     std::vector<Column> columns;
     LocationId i = 0;
     for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
-            output_espprctw.solution_pool.solutions()) {
-        if (i > 2 * n_espprctw)
+            output_espp.solution_pool.solutions()) {
+        if (i > 2 * n_espp)
             break;
         std::vector<LocationId> solution; // Without the depot.
         if (node->j != 0) {
             for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father)
-                solution.push_back(espprctw2cvrp_[node_tmp->j]);
+                solution.push_back(espp2cvrp_[node_tmp->j]);
             std::reverse(solution.begin(), solution.end());
         }
         i += solution.size();
 
         Column column;
-        column.objective_coefficient = node->cost + instance_espprctw.time(node->j, 0);
+        column.objective_coefficient = node->cost + instance_espp.time(node->j, 0);
         column.row_indices.push_back(0);
         column.row_coefficients.push_back(1);
         for (LocationId j: solution) {

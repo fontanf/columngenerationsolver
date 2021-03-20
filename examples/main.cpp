@@ -2,6 +2,7 @@
 #include "examples/multipleknapsack.hpp"
 #include "examples/capacitatedvehiclerouting.hpp"
 #include "examples/vehicleroutingwithtimewindows.hpp"
+#include "examples/capacitatedopenvehiclerouting.hpp"
 #include "examples/parallelschedulingwithfamilysetuptimestwct.hpp"
 #include "examples/starobservationscheduling.hpp"
 
@@ -77,6 +78,8 @@ int main(int argc, char *argv[])
         ("column-generation-parameters,g", po::value<std::string>(&columngeneration_args_string), "set column generation parameters")
         ("time-limit,t", po::value<double>(&time_limit), "Time limit in seconds\n  ex: 3600")
         ("verbose,v", "")
+        ("print-instance", "")
+        ("print-solution", "")
         ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -115,9 +118,16 @@ int main(int argc, char *argv[])
         vehicleroutingwithtimewindowssolver::Instance instance(instance_path, format);
         Parameters p = vehicleroutingwithtimewindowssolver::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
+    } else if (problem == "capacitatedopenvehiclerouting") {
+        capacitatedopenvehicleroutingsolver::Instance instance(instance_path, format);
+        if (vm.count("print-instance"))
+            std::cout << instance << std::endl;
+        Parameters p = capacitatedopenvehicleroutingsolver::get_parameters(instance);
+        run(algorithm, columngeneration_args_string, info, p);
     } else if (problem == "parallelschedulingwithfamilysetuptimestwct") {
         parallelschedulingwithfamilysetuptimestwctsolver::Instance instance(instance_path, format);
-        std::cout << instance << std::endl;
+        if (vm.count("print-instance"))
+            std::cout << instance << std::endl;
         Parameters p = parallelschedulingwithfamilysetuptimestwctsolver::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
     } else if (problem == "starobservationscheduling") {
