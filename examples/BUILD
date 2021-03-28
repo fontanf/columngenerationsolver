@@ -32,6 +32,16 @@ cc_library(
 )
 
 cc_library(
+        name = "binpackingwithconflicts",
+        hdrs = ["binpackingwithconflicts.hpp"],
+        deps = [
+                "//columngenerationsolver:columngenerationsolver",
+                "@treesearchsolver//examples:knapsackwithconflicts",
+        ],
+        visibility = ["//visibility:public"],
+)
+
+cc_library(
         name = "capacitatedvehiclerouting",
         hdrs = ["capacitatedvehiclerouting.hpp"],
         deps = [
@@ -93,6 +103,7 @@ cc_binary(
         deps = [
                 ":cuttingstock",
                 ":multipleknapsack",
+                ":binpackingwithconflicts",
                 ":capacitatedvehiclerouting",
                 ":vehicleroutingwithtimewindows",
                 ":capacitatedopenvehiclerouting",

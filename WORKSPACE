@@ -68,8 +68,8 @@ git_repository(
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "f732bd43f0326dde3e3a1e4481d3fa593cce0aca",
-    shallow_since = "1613237903 +0100",
+    commit = "306e9b2e53176920c72e62d6fcb021125e6b528d",
+    shallow_since = "1616246687 +0100",
 )
 
 local_repository(

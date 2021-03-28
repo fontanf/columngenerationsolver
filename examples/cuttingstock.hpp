@@ -38,7 +38,7 @@
  *        = - ∑ⱼ vⱼ xⱼᵏ + 1
  *
  * Therefore, finding a variable of minium reduced cost reduces to solving
- * a Bounded Knapsack Problems with items with profit vⱼ.
+ * a Bounded Knapsack Problem with items with profit vⱼ.
  *
  */
 

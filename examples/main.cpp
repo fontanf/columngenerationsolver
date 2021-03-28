@@ -1,5 +1,6 @@
 #include "examples/cuttingstock.hpp"
 #include "examples/multipleknapsack.hpp"
+#include "examples/binpackingwithconflicts.hpp"
 #include "examples/capacitatedvehiclerouting.hpp"
 #include "examples/vehicleroutingwithtimewindows.hpp"
 #include "examples/capacitatedopenvehiclerouting.hpp"
@@ -109,6 +110,12 @@ int main(int argc, char *argv[])
     } else if (problem == "multipleknapsack") {
         multipleknapsacksolver::Instance instance(instance_path, format);
         Parameters p = multipleknapsacksolver::get_parameters(instance);
+        run(algorithm, columngeneration_args_string, info, p);
+    } else if (problem == "binpackingwithconflicts") {
+        binpackingwithconflictssolver::Instance instance(instance_path, format);
+        //if (vm.count("print-instance"))
+        //    std::cout << instance << std::endl;
+        Parameters p = binpackingwithconflictssolver::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
     } else if (problem == "capacitatedvehiclerouting") {
         capacitatedvehicleroutingsolver::Instance instance(instance_path, format);

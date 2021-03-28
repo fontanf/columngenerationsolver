@@ -47,6 +47,15 @@ Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https:
 Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp)
 * Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository
 
+[Bin Packing Problem with Conflicts](examples/binpackingwithconflicts.hpp)
+* Literature:
+  * "Algorithms for the Bin Packing Problem with Conflicts" (Muritiba et al., 2010)
+  * "A Branch-and-Price Algorithm for the Bin Packing Problem with Conflicts" (Elhedhli et al., 2010)
+  * "Bin Packing with Conflicts: A Generic Branch-and-Price Algorithm" (Sadykov et Vanderbeck, 2012)
+  * "Bin packing and related problems: General arc-flow formulation with graph compression" (Brandão et Pedroso, 2016)
+  * "A New Branch-and-Price-and-Cut Algorithm for One-Dimensional Bin-Packing Problems" (Wei et al., 2019)
+* Pricing problem: Knapsack Problem with Conflicts solved with the [Heuristic Tree Search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsackwithconflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
 ### Routing
 
 [Capacitated Vehicle Routing Problem](examples/capacitatedvehiclerouting.hpp)
