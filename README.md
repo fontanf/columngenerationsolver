@@ -49,11 +49,11 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 
 [Bin Packing Problem with Conflicts](examples/binpackingwithconflicts.hpp)
 * Literature:
-  * "Algorithms for the Bin Packing Problem with Conflicts" (Muritiba et al., 2010)
-  * "A Branch-and-Price Algorithm for the Bin Packing Problem with Conflicts" (Elhedhli et al., 2010)
-  * "Bin Packing with Conflicts: A Generic Branch-and-Price Algorithm" (Sadykov et Vanderbeck, 2012)
-  * "Bin packing and related problems: General arc-flow formulation with graph compression" (Brandão et Pedroso, 2016)
-  * "A New Branch-and-Price-and-Cut Algorithm for One-Dimensional Bin-Packing Problems" (Wei et al., 2019)
+  * "Algorithms for the Bin Packing Problem with Conflicts" (Muritiba et al., 2010) [DOI](https://doi.org/10.1287/ijoc.1090.0355)
+  * "A Branch-and-Price Algorithm for the Bin Packing Problem with Conflicts" (Elhedhli et al., 2010) [DOI](https://doi.org/10.1287/ijoc.1100.0406)
+  * "Bin Packing with Conflicts: A Generic Branch-and-Price Algorithm" (Sadykov et Vanderbeck, 2012) [DOI](https://doi.org/10.1287/ijoc.1120.0499)
+  * "Bin packing and related problems: General arc-flow formulation with graph compression" (Brandão et Pedroso, 2016) [DOI](https://doi.org/10.1016/j.cor.2015.11.009)
+  * "A New Branch-and-Price-and-Cut Algorithm for One-Dimensional Bin-Packing Problems" (Wei et al., 2019) [DOI](https://doi.org/10.1287/ijoc.2018.0867)
 * Pricing problem: Knapsack Problem with Conflicts solved with the [Heuristic Tree Search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsackwithconflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Routing
@@ -68,7 +68,7 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 [Capacitated Open Vehicle Routing Problem](examples/capacitatedopenvehiclerouting.hpp)
 * No need to return to the depot / Capacity constraint / Maximum route length / Maximum number of vehicles
 * Literature:
-  * "A hybrid evolution strategy for the open vehicle routing problem" (Repoussis et al., 2010)
+  * "A hybrid evolution strategy for the open vehicle routing problem" (Repoussis et al., 2010) [DOI](https://doi.org/10.1016/j.cor.2008.11.003)
 * Pricing problem: Elementary Open Shortest Path Problem with Resource Constraints [solved by Heuristic Tree Search](examples/pricingsolver/eospprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Scheduling
@@ -76,9 +76,9 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 [Identical parallel machine scheduling problem with family setup times, Total weighted completion time](examples/parallelschedulingwithfamilysetuptimestwct.hpp)
 * Three field classification: `P | sᵢ | ∑wⱼCⱼ`
 * Literature:
-  * "Heuristic methods for the identical parallel machine flowtime problem with set-up times" (Dunstall et Wirth, 2005)
-  * "An improved heuristic for parallel machine weighted flowtime scheduling with family set-up times" (Liao et al., 2012)
-  * "Mathematical formulations for scheduling jobs on identical parallel machines with family setup times and total weighted completion time minimization" (Kramer et al., 2021)
+  * "Heuristic methods for the identical parallel machine flowtime problem with set-up times" (Dunstall et Wirth, 2005) [DOI](https://doi.org/10.1016/j.cor.2004.03.013)
+  * "An improved heuristic for parallel machine weighted flowtime scheduling with family set-up times" (Liao et al., 2012) [DOI](https://doi.org/10.1016/j.camwa.2011.10.077)
+  * "Mathematical formulations for scheduling jobs on identical parallel machines with family setup times and total weighted completion time minimization" (Kramer et al., 2021) [DOI](https://doi.org/10.1016/j.ejor.2019.07.006)
 * Pricing problem: Single machine order acceptance and scheduling problem with family setup times, Total weighted completion time [solved by Heuristic Tree Search](examples/pricingsolver/oaschedulingwithfamilysetuptimestwct.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
