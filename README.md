@@ -37,9 +37,13 @@ Features:
 
 [Cutting Stock Problem](examples/cuttingstock.hpp)
 * Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+* Benchmarks:
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../columngenerationdata/cuttingstock/data.csv -l cuttingstock -a "heuristictreesearch" -t 60`
 
 [Multiple Knapsack Problem](examples/multipleknapsack.hpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+* Benchmarks:
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../columngenerationdata/multipleknapsack/data.csv -l multipleknapsack -a "heuristictreesearch" -t 10`
 
 Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
@@ -80,12 +84,16 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
   * "An improved heuristic for parallel machine weighted flowtime scheduling with family set-up times" (Liao et al., 2012) [DOI](https://doi.org/10.1016/j.camwa.2011.10.077)
   * "Mathematical formulations for scheduling jobs on identical parallel machines with family setup times and total weighted completion time minimization" (Kramer et al., 2021) [DOI](https://doi.org/10.1016/j.ejor.2019.07.006)
 * Pricing problem: Single machine order acceptance and scheduling problem with family setup times, Total weighted completion time [solved by Heuristic Tree Search](examples/pricingsolver/oaschedulingwithfamilysetuptimestwct.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+* Benchmarks:
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../columngenerationdata/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct -a "heuristictreesearch" -t 60`
 
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Three field classification: `R | rⱼᵢ, 2 pⱼᵢ ≥ dⱼᵢ - rⱼᵢ | ∑wⱼUⱼ`
 * Literature:
   * "A Branch-And-Price Algorithm for Scheduling Observations on a Telescope" (Catusse et al., 2016)
 * Pricing problem: Single Night Star Observation Scheduling Problem [solved by dynamic programming](examples/pricingsolver/singlenightstarobservationscheduling.hpp)
+* Benchmarks:
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../columngenerationdata/starobservationscheduling/data.csv -l starobservationscheduling -a "heuristictreesearch" -t 60`
 
 ### Graphs
 
@@ -111,22 +119,4 @@ Then, examples can be executed as follows:
 ## Usage, C++ library
 
 See examples.
-
-## Benchmarks
-
-```shell
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration" -g \"--linear-programming-solver CPLEX\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration_wentges --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p cuttingstock -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/cuttingstock/data.csv -l cuttingstock_greedy_wentges_directional --main "./bazel-bin/examples/main -p cuttingstock -a greedy -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration" -g \"--linear-programming-solver CPLEX\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration_wentges --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p multipleknapsack -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/multipleknapsack/data.csv -l multipleknapsack_greedy_wentges_directional --main "./bazel-bin/examples/main -p multipleknapsack -a greedy -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration" -g \"--linear-programming-solver CPLEX\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_columngeneration_wentges_directional --main "./bazel-bin/examples/main -p starobservationscheduling -a columngeneration -g \"--linear-programming-solver CPLEX --self-adjusting-wentges-smoothing 1 --automatic-directional-smoothing 1\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/starobservationscheduling/data.csv -l starobservationscheduling_greedy_cplex --main "./bazel-bin/examples/main -p starobservationscheduling -a greedy -g \"--linear-programming-solver CPLEX\""
-python3 ../optimizationtools/optimizationtools/bench_run.py --csv data/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct --main "./bazel-bin/examples/main -p parallelschedulingwithfamilysetuptimestwct -g \"-s cplex \"" -a "columngeneration" -f "row['Dataset'] == 'liao2012_small'"
-```
 
