@@ -104,59 +104,59 @@ int main(int argc, char *argv[])
     // Run algorithm
 
     if (problem == "cuttingstock") {
-        cuttingstocksolver::Instance instance(instance_path, format);
+        cuttingstock::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = cuttingstocksolver::get_parameters(instance);
+        Parameters p = cuttingstock::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "multipleknapsack") {
-        multipleknapsacksolver::Instance instance(instance_path, format);
+        multipleknapsack::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = multipleknapsacksolver::get_parameters(instance);
+        Parameters p = multipleknapsack::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "binpackingwithconflicts") {
-        binpackingwithconflictssolver::Instance instance(instance_path, format);
+        binpackingwithconflicts::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = binpackingwithconflictssolver::get_parameters(instance);
+        Parameters p = binpackingwithconflicts::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "capacitatedvehiclerouting") {
-        capacitatedvehicleroutingsolver::Instance instance(instance_path, format);
+        capacitatedvehiclerouting::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = capacitatedvehicleroutingsolver::get_parameters(instance);
+        Parameters p = capacitatedvehiclerouting::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "vehicleroutingwithtimewindows") {
-        vehicleroutingwithtimewindowssolver::Instance instance(instance_path, format);
+        vehicleroutingwithtimewindows::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = vehicleroutingwithtimewindowssolver::get_parameters(instance);
+        Parameters p = vehicleroutingwithtimewindows::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "capacitatedopenvehiclerouting") {
-        capacitatedopenvehicleroutingsolver::Instance instance(instance_path, format);
+        capacitatedopenvehiclerouting::Instance instance(instance_path, format);
         if (vm.count("print-instance"))
             std::cout << instance << std::endl;
-        Parameters p = capacitatedopenvehicleroutingsolver::get_parameters(instance);
+        Parameters p = capacitatedopenvehiclerouting::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "parallelschedulingwithfamilysetuptimestwct") {
-        parallelschedulingwithfamilysetuptimestwctsolver::Instance instance(instance_path, format);
+        parallelschedulingwithfamilysetuptimestwct::Instance instance(instance_path, format);
         if (vm.count("print-instance"))
             std::cout << instance << std::endl;
-        Parameters p = parallelschedulingwithfamilysetuptimestwctsolver::get_parameters(instance);
+        Parameters p = parallelschedulingwithfamilysetuptimestwct::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "starobservationscheduling") {
-        starobservationschedulingsolver::Instance instance(instance_path, format);
+        starobservationscheduling::Instance instance(instance_path, format);
         //if (vm.count("print-instance")) TODO
         //    std::cout << instance << std::endl;
-        Parameters p = starobservationschedulingsolver::get_parameters(instance);
+        Parameters p = starobservationscheduling::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else {

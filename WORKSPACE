@@ -59,6 +59,18 @@ local_repository(
 )
 
 git_repository(
+    name = "orproblems",
+    remote = "https://github.com/fontanf/orproblems.git",
+    commit = "1b9f6b40f51b67531fbdfd2761d40f450f10d3fc",
+    shallow_since = "1626518189 +0200",
+)
+
+local_repository(
+    name = "orproblems_",
+    path = "../orproblems/",
+)
+
+git_repository(
     name = "knapsacksolver",
     remote = "https://github.com/fontanf/knapsacksolver.git",
     commit = "bc4ffc72a301c9aa033b969ff54d3c3396de2b8f",

@@ -1,20 +1,10 @@
 #pragma once
 
-#include "columngenerationsolver/commons.hpp"
-
-#include "knapsacksolver/algorithms/minknap.hpp"
-
 /**
  * Cutting Stock Problem.
  *
- * Input:
- * - a capacity c
- * - n items with weight wⱼ and demand qⱼ (j = 1..n)
- * Problem:
- * - pack all items such that the total weight of the items in a bin does not
- *   exceed the capacity.
- * Objective:
- * - minimize the number of bin used.
+ * Problem description:
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/cuttingstock.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -37,105 +27,24 @@
  * rc(yᵏ) = 1 - ∑ⱼ xⱼᵏ vⱼ
  *        = - ∑ⱼ vⱼ xⱼᵏ + 1
  *
- * Therefore, finding a variable of minium reduced cost reduces to solving
+ * Therefore, finding a variable of minimum reduced cost reduces to solving
  * a Bounded Knapsack Problem with items with profit vⱼ.
  *
  */
 
+#include "columngenerationsolver/commons.hpp"
+
+#include "orproblems/cuttingstock.hpp"
+
+#include "knapsacksolver/algorithms/minknap.hpp"
 
 namespace columngenerationsolver
 {
 
-namespace cuttingstocksolver
+namespace cuttingstock
 {
 
-typedef int64_t ItemTypeId;
-typedef int64_t Weight;
-typedef int64_t Demand;
-typedef int64_t BinId;
-
-struct Item
-{
-    Weight weight;
-    Demand demand;
-};
-
-class Instance
-{
-
-public:
-
-    Instance() { }
-    void set_capacity(Weight capacity) { capacity_ = capacity; }
-    void add_item_type(Weight weight, Demand demand = 1)
-    {
-        item_types_.push_back(Item{weight, demand});
-        demand_max_ = std::max(demand_max_, demand);
-        demand_sum_ += demand;
-    }
-
-    Instance(std::string instance_path, std::string format = "")
-    {
-        std::ifstream file(instance_path);
-        if (!file.good()) {
-            std::cerr << "\033[31m" << "ERROR, unable to open file \"" << instance_path << "\"" << "\033[0m" << std::endl;
-            assert(false);
-            return;
-        }
-        if (format == "" || format == "bpplib_bpp") {
-            read_bpplib_bpp(file);
-        } else if (format == "bpplib_csp") {
-            read_bpplib_csp(file);
-        } else {
-            std::cerr << "\033[31m" << "ERROR, unknown instance format \"" << format << "\"" << "\033[0m" << std::endl;
-        }
-        file.close();
-    }
-
-    virtual ~Instance() { }
-
-    ItemTypeId item_type_number() const { return item_types_.size(); }
-    Weight capacity() const { return capacity_; }
-    Weight weight(ItemTypeId j) const { return item_types_[j].weight; }
-    Demand demand(ItemTypeId j) const { return item_types_[j].demand; }
-    Demand maximum_demand() const { return demand_max_; }
-    Demand total_demand() const { return demand_sum_; }
-
-private:
-
-    void read_bpplib_bpp(std::ifstream& file)
-    {
-        ItemTypeId n;
-        Weight c;
-        file >> n >> c;
-        set_capacity(c);
-        Weight w;
-        for (ItemTypeId j = 0; j < n; ++j) {
-            file >> w;
-            add_item_type(w);
-        }
-    }
-
-    void read_bpplib_csp(std::ifstream& file)
-    {
-        ItemTypeId n;
-        Weight c;
-        file >> n >> c;
-        set_capacity(c);
-        Weight w;
-        Demand q;
-        for (ItemTypeId j = 0; j < n; ++j) {
-            file >> w >> q;
-            add_item_type(w, q);
-        }
-    }
-
-    std::vector<Item> item_types_;
-    Weight capacity_;
-    Demand demand_max_ = 0;
-    Demand demand_sum_ = 0;
-
-};
+using namespace orproblems::cuttingstock;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {

@@ -247,7 +247,7 @@ public:
             const std::vector<Value>& row_upper_bounds)
     {
         KN_new(&kc_);
-        KN_set_param_by_name(kc_, "outlev", 0);
+        KN_set_param_by_name(kc_, "outlev", 4);
         if (objective_sense == ObjectiveSense::Min) {
             KN_set_obj_goal(kc_, KN_OBJGOAL_MINIMIZE);
         } else {

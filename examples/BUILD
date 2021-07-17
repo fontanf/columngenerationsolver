@@ -16,6 +16,7 @@ cc_library(
         hdrs = ["cuttingstock.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
+                "@orproblems//orproblems:cuttingstock",
                 "@knapsacksolver//knapsacksolver/algorithms:minknap",
         ],
         visibility = ["//visibility:public"],
@@ -26,6 +27,7 @@ cc_library(
         hdrs = ["multipleknapsack.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
+                "@orproblems//orproblems:multipleknapsack",
                 "@knapsacksolver//knapsacksolver/algorithms:minknap",
         ],
         visibility = ["//visibility:public"],
@@ -36,6 +38,7 @@ cc_library(
         hdrs = ["binpackingwithconflicts.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
+                "@orproblems//orproblems:binpackingwithconflicts",
                 "@treesearchsolver//examples:knapsackwithconflicts",
         ],
         visibility = ["//visibility:public"],
@@ -45,8 +48,9 @@ cc_library(
         name = "capacitatedvehiclerouting",
         hdrs = ["capacitatedvehiclerouting.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
+                "@optimizationtools//optimizationtools:utils",
+                "@orproblems//orproblems:capacitatedvehiclerouting",
                 "//examples/pricingsolver:espprc",
         ],
         visibility = ["//visibility:public"],
@@ -56,10 +60,11 @@ cc_library(
         name = "vehicleroutingwithtimewindows",
         hdrs = ["vehicleroutingwithtimewindows.hpp"],
         deps = [
-                "@pugixml//:pugixml",
-                "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:espprctw",
+                "@optimizationtools//optimizationtools:utils",
+                "@pugixml//:pugixml",
+                "@orproblems//orproblems:vehicleroutingwithtimewindows",
         ],
         visibility = ["//visibility:public"],
 )
@@ -68,9 +73,10 @@ cc_library(
         name = "capacitatedopenvehiclerouting",
         hdrs = ["capacitatedopenvehiclerouting.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:eospprc",
+                "@optimizationtools//optimizationtools:utils",
+                "@orproblems//orproblems:capacitatedopenvehiclerouting",
         ],
         visibility = ["//visibility:public"],
 )
@@ -79,9 +85,10 @@ cc_library(
         name = "parallelschedulingwithfamilysetuptimestwct",
         hdrs = ["parallelschedulingwithfamilysetuptimestwct.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:oaschedulingwithfamilysetuptimestwct",
+                "@optimizationtools//optimizationtools:utils",
+                "@orproblems//orproblems:parallelschedulingwithfamilysetuptimestwct",
         ],
         visibility = ["//visibility:public"],
 )
@@ -90,9 +97,10 @@ cc_library(
         name = "starobservationscheduling",
         hdrs = ["starobservationscheduling.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools:utils",
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:singlenightstarobservationscheduling",
+                "@optimizationtools//optimizationtools:utils",
+                "@orproblems//orproblems:starobservationscheduling",
         ],
         visibility = ["//visibility:public"],
 )
