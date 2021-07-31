@@ -53,11 +53,11 @@ public:
 
 struct Parameters
 {
-    Parameters(RowIdx row_number):
-        row_lower_bounds(row_number),
-        row_upper_bounds(row_number),
-        row_coefficient_lower_bounds(row_number),
-        row_coefficient_upper_bounds(row_number) { }
+    Parameters(RowIdx number_of_rows):
+        row_lower_bounds(number_of_rows),
+        row_upper_bounds(number_of_rows),
+        row_coefficient_lower_bounds(number_of_rows),
+        row_coefficient_upper_bounds(number_of_rows) { }
     ObjectiveSense objective_sense = ObjectiveSense::Min;
     Value column_lower_bound;
     Value column_upper_bound;
@@ -116,8 +116,8 @@ inline void display_end(
             << "Bound:                " << dual << std::endl
             << "Absolute gap:         " << std::abs(primal - dual) << std::endl
             << "Relative gap (%):     " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
-            << "Total column number:  " << output.total_column_number << std::endl
-            << "Added column number:  " << output.added_column_number << std::endl
+            << "Total column number:  " << output.total_number_of_columns << std::endl
+            << "Added column number:  " << output.number_of_added_columns << std::endl
             << "Total time (s):       " << time << std::endl);
 }
 

@@ -66,10 +66,10 @@ class Instance
 
 public:
 
-    Instance(FamilyId family_number):
-        families_(family_number)
+    Instance(FamilyId number_of_familiess):
+        families_(number_of_familiess)
     {
-        for (FamilyId k = 0; k < family_number; ++k)
+        for (FamilyId k = 0; k < number_of_familiess; ++k)
             families_[k].id = k;
     }
     void set_setup_time(FamilyId k, Time setup_time) { families_[k].setup_time = setup_time; }
@@ -92,8 +92,8 @@ public:
 
     virtual ~Instance() { }
 
-    FamilyId family_number() const { return families_.size(); }
-    JobId job_number() const { return jobs_.size(); }
+    FamilyId number_of_familiess() const { return families_.size(); }
+    JobId number_of_jobs() const { return jobs_.size(); }
     const Job& job(JobId j) const { return jobs_[j]; }
     const Family& family(FamilyId k) const { return families_[k]; }
 
@@ -107,16 +107,16 @@ private:
 static std::ostream& operator<<(
         std::ostream &os, const Instance& instance)
 {
-    os << "job number " << instance.job_number() << std::endl;
-    os << "family number " << instance.family_number() << std::endl;
-    for (JobId j = 0; j < instance.job_number(); ++j)
+    os << "job number " << instance.number_of_jobs() << std::endl;
+    os << "family number " << instance.number_of_familiess() << std::endl;
+    for (JobId j = 0; j < instance.number_of_jobs(); ++j)
         os << "job " << j
             << " p " << instance.job(j).processing_time
             << " w " << instance.job(j).weight
             << " p " << instance.job(j).profit
             << " f " << instance.job(j).family
             << std::endl;
-    for (FamilyId k = 0; k < instance.family_number(); ++k) {
+    for (FamilyId k = 0; k < instance.number_of_familiess(); ++k) {
         os << "family " << k
             << " s " << instance.family(k).setup_time
             << " j";
@@ -137,7 +137,7 @@ public:
         std::shared_ptr<Node> father = nullptr;
         std::vector<bool> available_jobs;
         JobId j = -1;
-        JobId job_number = 0;
+        JobId number_of_jobs = 0;
         Time time = 0;
         Weight total_weighted_completion_time = 0;
         Profit profit = 0;
@@ -147,12 +147,12 @@ public:
 
     BranchingScheme(const Instance& instance):
         instance_(instance),
-        sorted_jobs_(instance.job_number() + 1),
+        sorted_jobs_(instance.number_of_jobs() + 1),
         generator_(0)
     {
         // Initialize sorted_jobs_.
-        JobId n = instance_.job_number();
-        sorted_jobs_[n].reset(instance.job_number());
+        JobId n = instance_.number_of_jobs();
+        sorted_jobs_[n].reset(instance.number_of_jobs());
         for (JobId j = 0; j < n; ++j) {
             Time p = instance_.job(j).processing_time;
             Weight w = instance_.job(j).weight;
@@ -160,7 +160,7 @@ public:
             Time s = instance_.family(k).setup_time;
             double r = p / w;
             sorted_jobs_[n].set_cost(j, (s + p) / w);
-            sorted_jobs_[j].reset(instance.job_number());
+            sorted_jobs_[j].reset(instance.number_of_jobs());
             for (JobId j2 = 0; j2 < n; ++j2) {
                 Time p2 = instance_.job(j2).processing_time;
                 Weight w2 = instance_.job(j2).weight;
@@ -185,17 +185,17 @@ public:
     inline JobId neighbor(JobId j, JobPos pos) const
     {
         assert(j >= 0);
-        assert(j <= instance_.job_number());
+        assert(j <= instance_.number_of_jobs());
         assert(pos >= 0);
-        assert(pos < instance_.job_number());
+        assert(pos < instance_.number_of_jobs());
         return sorted_jobs_[j].get(pos, generator_);
     }
 
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
-        r->j = instance_.job_number();
-        r->available_jobs.resize(instance_.job_number(), true);
+        r->j = instance_.number_of_jobs();
+        r->available_jobs.resize(instance_.number_of_jobs(), true);
         return r;
     }
 
@@ -214,7 +214,7 @@ public:
         Weight w_next = instance_.job(j_next).weight;
         Profit v_next = instance_.job(j_next).profit;
         Time t = father->time + p_next;
-        if (father->j == instance_.job_number()
+        if (father->j == instance_.number_of_jobs()
                 || k_next != instance_.job(father->j).family)
             t += instance_.family(k_next).setup_time;
         if (w_next * t >= v_next)
@@ -226,7 +226,7 @@ public:
         child->available_jobs = father->available_jobs;
         child->available_jobs[j_next] = false;
         child->j = j_next;
-        child->job_number = father->job_number + 1;
+        child->number_of_jobs = father->number_of_jobs + 1;
         child->time = t;
         child->total_weighted_completion_time = father->total_weighted_completion_time + w_next * t;
         child->profit = father->profit + v_next;
@@ -249,7 +249,7 @@ public:
             const std::shared_ptr<Node>& node) const
     {
         assert(node != nullptr);
-        return (node->next_child_pos == instance_.job_number());
+        return (node->next_child_pos == instance_.number_of_jobs());
     }
 
     inline bool operator()(
@@ -266,7 +266,7 @@ public:
     inline bool leaf(
             const std::shared_ptr<Node>& node) const
     {
-        return node->job_number == instance_.job_number();
+        return node->number_of_jobs == instance_.number_of_jobs();
     }
 
     bool bound(
@@ -290,9 +290,9 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        if (node_1->job_number != node_2->job_number)
+        if (node_1->number_of_jobs != node_2->number_of_jobs)
             return false;
-        std::vector<bool> v(instance_.job_number(), false);
+        std::vector<bool> v(instance_.number_of_jobs(), false);
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
             v[node_tmp->j] = true;
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
@@ -307,7 +307,7 @@ public:
             return "";
         std::stringstream ss;
         ss << node->total_weighted_completion_time - node->profit
-            << " (n" << node->job_number
+            << " (n" << node->number_of_jobs
             << " t" << node->time
             << " twct" << node->total_weighted_completion_time
             << " v" << node->profit

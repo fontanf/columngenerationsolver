@@ -27,13 +27,13 @@ struct ColumnGenerationOutput
 {
     std::vector<std::pair<ColIdx, Value>> solution;
     Value solution_value;
-    Counter iteration_number = 0;
-    Counter added_column_number = 0;
-    Counter goodpricing_number = 0;
-    Counter pricing_number = 0;
-    Counter first_try_pricing_number = 0;
-    Counter mispricing_number = 0;
-    Counter no_stab_pricing_number = 0;
+    Counter number_of_iterations = 0;
+    Counter number_of_added_columns = 0;
+    Counter number_of_good_pricings = 0;
+    Counter number_of_pricings = 0;
+    Counter number_of_first_try_pricings = 0;
+    Counter number_of_mispricings = 0;
+    Counter number_of_no_stab_pricings = 0;
     double time_pricing = 0.0;
     double time_lpsolve = 0.0;
 };
@@ -111,16 +111,16 @@ inline ColumnGenerationOutput columngeneration(
         new_rows.push_back(row);
         row_pos++;
     }
-    RowIdx new_row_number = row_pos;
-    //std::cout << "new_row_number: " << new_row_number << std::endl;
-    if (new_row_number == 0)
+    RowIdx new_number_of_rows = row_pos;
+    //std::cout << "new_number_of_rows: " << new_number_of_rows << std::endl;
+    if (new_number_of_rows == 0)
         return output;
 
     // Compute new row bounds.
     //std::cout << "Compute new row bounds..." << std::endl;
-    std::vector<Value> new_row_lower_bounds(new_row_number);
-    std::vector<Value> new_row_upper_bounds(new_row_number);
-    for (RowIdx row = 0; row < new_row_number; ++row) {
+    std::vector<Value> new_row_lower_bounds(new_number_of_rows);
+    std::vector<Value> new_row_upper_bounds(new_number_of_rows);
+    for (RowIdx row = 0; row < new_number_of_rows; ++row) {
         new_row_lower_bounds[row] = parameters.row_lower_bounds[new_rows[row]] - row_values[new_rows[row]];
         new_row_upper_bounds[row] = parameters.row_upper_bounds[new_rows[row]] - row_values[new_rows[row]];
         //std::cout << "row " << row << " lb " << new_row_lower_bounds[row] << " ub " << new_row_upper_bounds[row] << std::endl;
@@ -163,11 +163,11 @@ inline ColumnGenerationOutput columngeneration(
 
     // Add dummy columns.
     //std::cout << "Add dumm columns..." << std::endl;
-    RowIdx dummy_column_number = 0;
-    for (RowIdx row = 0; row < new_row_number; ++row) {
+    RowIdx number_of_dummy_columns = 0;
+    for (RowIdx row = 0; row < new_number_of_rows; ++row) {
         if (new_row_lower_bounds[row] > 0) {
             solver_column_indices.push_back(-1);
-            dummy_column_number++;
+            number_of_dummy_columns++;
             solver->add_column(
                     {row},
                     {new_row_lower_bounds[row]},
@@ -177,7 +177,7 @@ inline ColumnGenerationOutput columngeneration(
         }
         if (new_row_upper_bounds[row] < 0) {
             solver_column_indices.push_back(-1);
-            dummy_column_number++;
+            number_of_dummy_columns++;
             solver->add_column(
                     {row},
                     {new_row_upper_bounds[row]},
@@ -200,8 +200,8 @@ inline ColumnGenerationOutput columngeneration(
         if (!feasible[col])
             continue;
         const Column& column = parameters.columns[col];
-        std::vector<RowIdx> ri(new_row_number);
-        std::vector<Value> rc(new_row_number);
+        std::vector<RowIdx> ri(new_number_of_rows);
+        std::vector<Value> rc(new_number_of_rows);
         bool ok = true;
         for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
             RowIdx i = column.row_indices[row_pos];
@@ -241,7 +241,7 @@ inline ColumnGenerationOutput columngeneration(
     std::vector<Value> lagrangian_constraint_values(m, 0);
     std::vector<Value> subgradient(m, 0); // g_in.
     double alpha = optional_parameters.static_wentges_smoothing_parameter;
-    for (output.iteration_number = 1;; output.iteration_number++) {
+    for (output.number_of_iterations = 1;; output.number_of_iterations++) {
         // Solve LP
         auto start_lpsolve = std::chrono::high_resolution_clock::now();
         solver->solve();
@@ -249,10 +249,10 @@ inline ColumnGenerationOutput columngeneration(
         auto time_span_lpsolve = std::chrono::duration_cast<std::chrono::duration<double>>(end_lpsolve - start_lpsolve);
         output.time_lpsolve += time_span_lpsolve.count();
         VER(optional_parameters.info,
-                "it " << std::setw(8) << output.iteration_number
+                "it " << std::setw(8) << output.number_of_iterations
                 << " | T " << std::setw(10) << optional_parameters.info.elapsed_time()
                 << " | OBJ " << std::setw(10) << c0 + solver->objective()
-                << " | COL " << std::setw(10) << output.added_column_number
+                << " | COL " << std::setw(10) << output.number_of_added_columns
                 << std::endl);
 
         // Check time.
@@ -263,7 +263,7 @@ inline ColumnGenerationOutput columngeneration(
             break;
         // Check iteration limit.
         if (optional_parameters.iteration_limit != -1
-                && output.iteration_number > optional_parameters.iteration_limit)
+                && output.number_of_iterations > optional_parameters.iteration_limit)
             break;
 
         // Search for new columns.
@@ -271,18 +271,18 @@ inline ColumnGenerationOutput columngeneration(
         std::vector<Column> new_columns;
         duals_in = duals_sep; // The last shall be the first.
         // Get duals from linear programming solver.
-        for (RowIdx row_pos = 0; row_pos < new_row_number; ++row_pos)
+        for (RowIdx row_pos = 0; row_pos < new_number_of_rows; ++row_pos)
             duals_out[new_rows[row_pos]] = solver->dual(row_pos);
         //std::cout << "alpha " << alpha << std::endl;
         for (Counter k = 1; ; ++k) { // Mispricing number.
             // Update global mispricing number.
             if (k > 1)
-                output.mispricing_number++;
+                output.number_of_mispricings++;
             // Compute separation point.
             double alpha_cur = std::max(0.0, 1 - k * (1 - alpha) - TOL);
             double beta = optional_parameters.static_directional_smoothing_parameter;
             //std::cout << "alpha_cur " << alpha_cur << std::endl;
-            if (output.iteration_number == 1
+            if (output.number_of_iterations == 1
                     || norm(new_rows, duals_in, duals_out) == 0 // Shouldn't happen, but happens with Cplex.
                     || k > 1
                     || (!optional_parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
@@ -351,9 +351,9 @@ inline ColumnGenerationOutput columngeneration(
             auto end_pricing = std::chrono::high_resolution_clock::now();
             auto time_span_pricing = std::chrono::duration_cast<std::chrono::duration<double>>(end_pricing - start_pricing);
             output.time_pricing += time_span_pricing.count();
-            output.pricing_number++;
+            output.number_of_pricings++;
             if (alpha_cur == 0 && beta == 0)
-                output.no_stab_pricing_number++;
+                output.number_of_no_stab_pricings++;
             // Look for negative reduced cost columns.
             for (const Column& column: all_columns) {
                 Value rc = compute_reduced_cost(column, duals_out);
@@ -367,7 +367,7 @@ inline ColumnGenerationOutput columngeneration(
             }
             if (!new_columns.empty() || (alpha_cur == 0.0 && beta == 0.0)) {
                 if (k == 1)
-                    output.first_try_pricing_number++;
+                    output.number_of_first_try_pricings++;
                 break;
             }
         }
@@ -388,7 +388,7 @@ inline ColumnGenerationOutput columngeneration(
             }
         }
         // Compute subgradient at separation point.
-        for (RowIdx row = 0; row < new_row_number; ++row)
+        for (RowIdx row = 0; row < new_number_of_rows; ++row)
             subgradient[new_rows[row]]
                 = std::min(0.0, new_row_upper_bounds[row] - lagrangian_constraint_values[new_rows[row]])
                 + std::max(0.0, new_row_lower_bounds[row] - lagrangian_constraint_values[new_rows[row]]);
@@ -426,7 +426,7 @@ inline ColumnGenerationOutput columngeneration(
             //std::cout << column << std::endl;
             // Add new column to the global column pool.
             parameters.columns.push_back(column);
-            output.added_column_number++;
+            output.number_of_added_columns++;
             // Add new column to the local LP solver.
             std::vector<RowIdx> ri;
             std::vector<Value> rc;
@@ -461,13 +461,13 @@ inline ColumnGenerationOutput columngeneration(
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;
     VER(optional_parameters.info, "---" << std::endl
             << "Solution:                 " << output.solution_value << std::endl
-            << "Iteration number:         " << output.iteration_number << std::endl
+            << "Iteration number:         " << output.number_of_iterations << std::endl
             << "Total column number:      " << parameters.columns.size() << std::endl
-            << "Added column number:      " << output.added_column_number << std::endl
-            << "Pricing number:           " << output.pricing_number << std::endl
-            << "1st try pricing number:   " << output.first_try_pricing_number << std::endl
-            << "Mispricing number:        " << output.mispricing_number << std::endl
-            << "No stab. pricing number:  " << output.no_stab_pricing_number << std::endl
+            << "Added column number:      " << output.number_of_added_columns << std::endl
+            << "Pricing number:           " << output.number_of_pricings << std::endl
+            << "1st try pricing number:   " << output.number_of_first_try_pricings << std::endl
+            << "Mispricing number:        " << output.number_of_mispricings << std::endl
+            << "No stab. pricing number:  " << output.number_of_no_stab_pricings << std::endl
             << "Time LP solve (s):        " << output.time_lpsolve << std::endl
             << "Time pricing (s):         " << output.time_pricing << std::endl
             << "Time (s):                 " << time << std::endl);

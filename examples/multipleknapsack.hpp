@@ -56,8 +56,8 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        fixed_items_(instance.item_number()),
-        fixed_knapsacks_(instance.knapsack_number())
+        fixed_items_(instance.number_of_items()),
+        fixed_knapsacks_(instance.number_of_knapsacks())
     {  }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -80,8 +80,8 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    KnapsackId m = instance.knapsack_number();
-    ItemId n = instance.item_number();
+    KnapsackId m = instance.number_of_knapsacks();
+    ItemId n = instance.number_of_items();
     columngenerationsolver::Parameters p(m + n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Max;
@@ -121,10 +121,10 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
             Value row_coefficient = column.row_coefficients[row_pos];
             if (row_coefficient < 0.5)
                 continue;
-            if (row_index < instance_.knapsack_number()) {
+            if (row_index < instance_.number_of_knapsacks()) {
                 fixed_knapsacks_[row_index] = 1;
             } else {
-                fixed_items_[row_index - instance_.knapsack_number()] = 1;
+                fixed_items_[row_index - instance_.number_of_knapsacks()] = 1;
             }
         }
     }
@@ -134,8 +134,8 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    KnapsackId m = instance_.knapsack_number();
-    ItemId n = instance_.item_number();
+    KnapsackId m = instance_.number_of_knapsacks();
+    ItemId n = instance_.number_of_items();
     std::vector<Column> columns;
     knapsacksolver::Profit mult = 10000;
     for (KnapsackId i = 0; i < m; ++i) {
@@ -163,7 +163,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         Column column;
         column.row_indices.push_back(i);
         column.row_coefficients.push_back(1);
-        for (knapsacksolver::ItemIdx j = 0; j < instance_kp.item_number(); ++j) {
+        for (knapsacksolver::ItemIdx j = 0; j < instance_kp.number_of_items(); ++j) {
             if (output_kp.solution.contains_idx(j)) {
                 column.row_indices.push_back(m + kp2mkp_[j]);
                 column.row_coefficients.push_back(1);

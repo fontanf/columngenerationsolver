@@ -19,8 +19,8 @@ struct GreedyOutput
     Value bound;
     double time_lpsolve = 0.0;
     double time_pricing = 0.0;
-    Counter total_column_number = 0;
-    Counter added_column_number = 0;
+    Counter total_number_of_columns = 0;
+    Counter number_of_added_columns = 0;
 };
 
 inline GreedyOutput greedy(
@@ -63,7 +63,7 @@ inline GreedyOutput greedy(
                 columngeneration_parameters);
         output.time_lpsolve += output_columngeneration.time_lpsolve;
         output.time_pricing += output_columngeneration.time_pricing;
-        output.added_column_number += output_columngeneration.added_column_number;
+        output.number_of_added_columns += output_columngeneration.number_of_added_columns;
         if (!optional_parameters.info.check_time())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
@@ -106,7 +106,7 @@ inline GreedyOutput greedy(
         // Update bound.
         if (fixed_columns.size() == 0) {
             Counter cg_it_limit = optional_parameters.columngeneration_parameters.iteration_limit;
-            if (cg_it_limit == -1 || (output_columngeneration.iteration_number < cg_it_limit))
+            if (cg_it_limit == -1 || (output_columngeneration.number_of_iterations < cg_it_limit))
                 output.bound = output_columngeneration.solution_value;
         }
         // Update fixed columns.
@@ -132,7 +132,7 @@ inline GreedyOutput greedy(
         }
     }
 
-    output.total_column_number = parameters.columns.size();
+    output.total_number_of_columns = parameters.columns.size();
     display_end(output, optional_parameters.info);
     return output;
 }

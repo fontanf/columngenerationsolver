@@ -14,9 +14,9 @@ struct HeuristicTreeSearchOutput
     Value bound;
     Counter solution_iteration;
     Counter solution_node;
-    Counter total_column_number = 0;
-    Counter added_column_number = 0;
-    Counter iteration_number_max = 0;
+    Counter total_number_of_columns = 0;
+    Counter number_of_added_columns = 0;
+    Counter maximum_number_of_iterations = 0;
 };
 
 typedef std::function<void(const HeuristicTreeSearchOutput&)> HeuristicTreeSearchCallback;
@@ -25,7 +25,7 @@ struct HeuristicTreeSearchOptionalParameters
 {
     HeuristicTreeSearchCallback new_bound_callback
         = [](const HeuristicTreeSearchOutput& o) { (void)o; };
-    Counter thread_number = 3;
+    Counter number_of_threads = 3;
     double growth_rate = 1.5;
     bool* end = NULL;
     ColumnGenerationOptionalParameters columngeneration_parameters;
@@ -54,10 +54,10 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         std::numeric_limits<Value>::infinity();
     display_initialize(parameters, optional_parameters.info);
 
-    for (output.iteration_number_max = 0;;
-            output.iteration_number_max *= optional_parameters.growth_rate) {
-        if (output.iteration_number_max == (Counter)(output.iteration_number_max * optional_parameters.growth_rate))
-            output.iteration_number_max++;
+    for (output.maximum_number_of_iterations = 0;;
+            output.maximum_number_of_iterations *= optional_parameters.growth_rate) {
+        if (output.maximum_number_of_iterations == (Counter)(output.maximum_number_of_iterations * optional_parameters.growth_rate))
+            output.maximum_number_of_iterations++;
 
         if (!optional_parameters.info.check_time())
             break;
@@ -73,7 +73,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         parameters_limiteddiscrepancysearch.columngeneration_parameters
             = optional_parameters.columngeneration_parameters;
         parameters_limiteddiscrepancysearch.columngeneration_parameters.iteration_limit
-            = output.iteration_number_max;
+            = output.maximum_number_of_iterations;
         parameters_limiteddiscrepancysearch.heuristictreesearch_stop = true;
 
         parameters_limiteddiscrepancysearch.new_bound_callback = [&parameters, &optional_parameters, &output](
@@ -85,7 +85,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
                         && output.bound - TOL > o.bound)) {
                 output.bound = o.bound;
                 std::stringstream ss;
-                ss << "it " << output.iteration_number_max;
+                ss << "it " << output.maximum_number_of_iterations;
                 display(output.solution_value, output.bound, ss, optional_parameters.info);
                 optional_parameters.new_bound_callback(output);
             }
@@ -97,8 +97,8 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
                             && output.solution_value + TOL < o.solution_value)) {
                     output.solution = o.solution;
                     output.solution_value = o.solution_value;
-                    output.solution_iteration = output.iteration_number_max;
-                    output.solution_node = o.node_number;
+                    output.solution_iteration = output.maximum_number_of_iterations;
+                    output.solution_node = o.number_of_nodes;
                     std::stringstream ss;
                     ss << "it " << output.solution_iteration << " node " << output.solution_node;
                     display(output.solution_value, output.bound, ss, optional_parameters.info);
@@ -111,7 +111,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
 
     }
 
-    output.total_column_number = parameters.columns.size();
+    output.total_number_of_columns = parameters.columns.size();
     display_end(output, optional_parameters.info);
     return output;
 }

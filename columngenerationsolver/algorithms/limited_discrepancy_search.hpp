@@ -11,12 +11,12 @@ struct LimitedDiscrepancySearchOutput
     Value solution_value = 0;
     Value solution_discrepancy = -1;
     Value bound;
-    Counter node_number = 0;
-    Counter depth_max = 0;
+    Counter number_of_nodes = 0;
+    Counter maximum_depth = 0;
     double time_lpsolve = 0.0;
     double time_pricing = 0.0;
-    Counter total_column_number = 0;
-    Counter added_column_number = 0;
+    Counter total_number_of_columns = 0;
+    Counter number_of_added_columns = 0;
 };
 
 typedef std::function<void(const LimitedDiscrepancySearchOutput&)> LimitedDiscrepancySearchCallback;
@@ -25,7 +25,7 @@ struct LimitedDiscrepancySearchOptionalParameters
 {
     LimitedDiscrepancySearchCallback new_bound_callback
         = [](const LimitedDiscrepancySearchOutput& o) { (void)o; };
-    Counter thread_number = 3;
+    Counter number_of_threads = 3;
     Value discrepancy_limit = std::numeric_limits<Value>::infinity();
     bool heuristictreesearch_stop = false;
     bool* end = NULL;
@@ -84,7 +84,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
     bool heuristictreesearch_stop = optional_parameters.heuristictreesearch_stop;
 
     while (!nodes.empty()) {
-        output.node_number++;
+        output.number_of_nodes++;
         //std::cout << "nodes.size() " << nodes.size() << std::endl;
 
         // Check time.
@@ -101,11 +101,11 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         // Check discrepancy limit.
         if (node->discrepancy > optional_parameters.discrepancy_limit)
             break;
-        if (output.depth_max < node->depth - node->discrepancy)
-            output.depth_max = node->depth - node->discrepancy;
+        if (output.maximum_depth < node->depth - node->discrepancy)
+            output.maximum_depth = node->depth - node->discrepancy;
         if (heuristictreesearch_stop
-                && output.node_number > 2
-                && output.node_number > 2 * output.depth_max)
+                && output.number_of_nodes > 2
+                && output.number_of_nodes > 2 * output.maximum_depth)
             break;
 
         std::vector<std::pair<ColIdx, Value>> fixed_columns;
@@ -119,7 +119,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         }
         //std::cout
         //    << "t " << optional_parameters.info.elapsed_time()
-        //    << " node " << output.node_number
+        //    << " node " << output.number_of_nodes
         //    << " / " << nodes.size()
         //    << " diff " << node->discrepancy
         //    << " depth " << node->depth
@@ -144,7 +144,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                 columngeneration_parameters);
         output.time_lpsolve += output_columngeneration.time_lpsolve;
         output.time_pricing += output_columngeneration.time_pricing;
-        output.added_column_number += output_columngeneration.added_column_number;
+        output.number_of_added_columns += output_columngeneration.number_of_added_columns;
         //std::cout << "bound " << output_columngeneration.solution_value << std::endl;
         if (!optional_parameters.info.check_time())
             break;
@@ -152,7 +152,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
             break;
         if (node->depth == 0) {
             Counter cg_it_limit = optional_parameters.columngeneration_parameters.iteration_limit;
-            if (cg_it_limit == -1 || output_columngeneration.iteration_number < cg_it_limit) {
+            if (cg_it_limit == -1 || output_columngeneration.number_of_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
                 output.bound = output_columngeneration.solution_value;
                 display(output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
@@ -242,7 +242,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                     output.solution_discrepancy = node->discrepancy;
                     //std::cout << "New best solution value " << output.solution_value << std::endl;
                     std::stringstream ss;
-                    ss << "node " << output.node_number << " discrepancy " << output.solution_discrepancy;
+                    ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
                     display(output.solution_value, output.bound, ss, optional_parameters.info);
                     optional_parameters.new_bound_callback(output);
                 } else {
@@ -254,7 +254,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                         output.solution_value = solution_value;
                         output.solution_discrepancy = node->discrepancy;
                         std::stringstream ss;
-                        ss << "node " << output.node_number << " discrepancy " << output.solution_discrepancy;
+                        ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
                         display(output.solution_value, output.bound, ss, optional_parameters.info);
                         optional_parameters.new_bound_callback(output);
                     }
@@ -264,7 +264,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                         output.solution_value = solution_value;
                         output.solution_discrepancy = node->discrepancy;
                         std::stringstream ss;
-                        ss << "node " << output.node_number << " discrepancy " << output.solution_discrepancy;
+                        ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
                         display(output.solution_value, output.bound, ss, optional_parameters.info);
                         optional_parameters.new_bound_callback(output);
                     }
@@ -275,9 +275,9 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
 
     }
 
-    output.total_column_number = parameters.columns.size();
+    output.total_number_of_columns = parameters.columns.size();
     display_end(output, optional_parameters.info);
-    VER(optional_parameters.info, "Node number:          " << output.node_number << std::endl);
+    VER(optional_parameters.info, "Node number:          " << output.number_of_nodes << std::endl);
     return output;
 }
 

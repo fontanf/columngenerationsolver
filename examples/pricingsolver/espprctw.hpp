@@ -85,7 +85,7 @@ public:
 
     virtual ~Instance() { }
 
-    inline VertexId vertex_number() const { return locations_.size(); }
+    inline VertexId number_of_vertices() const { return locations_.size(); }
     inline Time time(VertexId j1, VertexId j2) const { return times_[j1][j2]; }
     inline const Location& location(VertexId j) const { return locations_[j]; }
     inline Demand capacity() const { return locations_[0].demand; }
@@ -107,7 +107,7 @@ public:
         std::shared_ptr<Node> father = nullptr;
         std::vector<bool> available_vertices;
         VertexId j = 0;
-        VertexId vertex_number = 1;
+        VertexId number_of_vertices = 1;
         Time cost = 0;
         Time time = 0;
         Profit profit = 0;
@@ -118,13 +118,13 @@ public:
 
     BranchingScheme(const Instance& instance):
         instance_(instance),
-        sorted_vertices_(instance.vertex_number()),
+        sorted_vertices_(instance.number_of_vertices()),
         generator_(0)
     {
         // Initialize sorted_vertices_.
-        for (VertexId j = 0; j < instance_.vertex_number(); ++j) {
-            sorted_vertices_[j].reset(instance.vertex_number());
-            for (VertexId j2 = 0; j2 < instance_.vertex_number(); ++j2)
+        for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
+            sorted_vertices_[j].reset(instance.number_of_vertices());
+            for (VertexId j2 = 0; j2 < instance_.number_of_vertices(); ++j2)
                 sorted_vertices_[j].set_cost(j2, instance_.time(j, j2) - instance_.location(j2).profit);
         }
     }
@@ -132,16 +132,16 @@ public:
     inline VertexId neighbor(VertexId j, VertexPos pos) const
     {
         assert(j >= 0);
-        assert(j < instance_.vertex_number());
+        assert(j < instance_.number_of_vertices());
         assert(pos >= 0);
-        assert(pos < instance_.vertex_number());
+        assert(pos < instance_.number_of_vertices());
         return sorted_vertices_[j].get(pos, generator_);
     }
 
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
-        r->available_vertices.resize(instance_.vertex_number(), true);
+        r->available_vertices.resize(instance_.number_of_vertices(), true);
         r->available_vertices[0] = false;
         r->guide = instance_.time(0, neighbor(0, 0));
         return r;
@@ -178,14 +178,14 @@ public:
         child->available_vertices = father->available_vertices;
         child->available_vertices[j_next] = false;
         child->j = j_next;
-        child->vertex_number = father->vertex_number + 1;
+        child->number_of_vertices = father->number_of_vertices + 1;
         child->demand = father->demand + instance_.location(j_next).demand;
         child->time = s + instance_.location(j_next).service_time;
         child->cost = father->cost + t;
         child->profit = father->profit + instance_.location(j_next).profit;
         child->guide = child->cost + instance_.time(j_next, neighbor(j_next, 0))
             - child->profit - instance_.location(neighbor(j_next, 0)).profit;
-        for (VertexId j = 0; j < instance_.vertex_number(); ++j) {
+        for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
             if (!child->available_vertices[j])
                 continue;
             if (child->demand + instance_.location(j).demand > instance_.capacity())
@@ -217,7 +217,7 @@ public:
     inline bool leaf(
             const std::shared_ptr<Node>& node) const
     {
-        return node->vertex_number == instance_.vertex_number();
+        return node->number_of_vertices == instance_.number_of_vertices();
     }
 
     bool bound(
@@ -241,9 +241,9 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        if (node_1->vertex_number != node_2->vertex_number)
+        if (node_1->number_of_vertices != node_2->number_of_vertices)
             return false;
-        std::vector<bool> v(instance_.vertex_number(), false);
+        std::vector<bool> v(instance_.number_of_vertices(), false);
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
             v[node_tmp->j] = true;
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
@@ -258,7 +258,7 @@ public:
             return "";
         std::stringstream ss;
         ss << node->cost + instance_.time(node->j, 0) - node->profit
-            << " (n" << node->vertex_number
+            << " (n" << node->number_of_vertices
             << " c" << node->cost + instance_.time(node->j, 0)
             << " p" << node->profit
             << ")";

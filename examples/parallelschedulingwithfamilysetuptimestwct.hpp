@@ -62,7 +62,7 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        scheduled_jobs_(instance.job_number(), 0)
+        scheduled_jobs_(instance.number_of_jobs(), 0)
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -84,8 +84,8 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    JobId n = instance.job_number();
-    MachineId m = instance.machine_number();
+    JobId n = instance.number_of_jobs();
+    MachineId m = instance.number_of_machines();
     columngenerationsolver::Parameters p(n + 1);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
@@ -148,7 +148,7 @@ struct ColumnExtra
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    JobId n = instance_.job_number();
+    JobId n = instance_.number_of_jobs();
 
     // Build subproblem instance.
     smoas2pms_.clear();
@@ -160,8 +160,8 @@ std::vector<Column> PricingSolver::solve_pricing(
     JobId n_smoas = smoas2pms_.size();
     if (n_smoas == 0)
         return {};
-    oaschedulingwithfamilysetuptimestwct::Instance instance_smoas(instance_.family_number());
-    for (FamilyId k = 0; k < instance_.family_number(); ++k)
+    oaschedulingwithfamilysetuptimestwct::Instance instance_smoas(instance_.number_of_familiess());
+    for (FamilyId k = 0; k < instance_.number_of_familiess(); ++k)
         instance_smoas.set_setup_time(k, instance_.family(k).setup_time);
     for (JobId j_smoas = 0; j_smoas < n_smoas; ++j_smoas) {
         JobId j = smoas2pms_[j_smoas];

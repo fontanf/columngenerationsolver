@@ -53,8 +53,8 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        packed_items_(instance.item_number()),
-        bpp2kp_(instance.item_number())
+        packed_items_(instance.number_of_items()),
+        bpp2kp_(instance.number_of_items())
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -77,7 +77,7 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    ItemId n = instance.item_number();
+    ItemId n = instance.number_of_items();
     columngenerationsolver::Parameters p(n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
@@ -120,7 +120,7 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    ItemId n = instance_.item_number();
+    ItemId n = instance_.number_of_items();
 
     // Build subproblem instance.
     treesearchsolver::knapsackwithconflicts::Instance instance_kp;

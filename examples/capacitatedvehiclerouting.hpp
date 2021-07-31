@@ -37,9 +37,11 @@
 #include "examples/pricingsolver/espprc.hpp"
 
 #include "orproblems/capacitatedvehiclerouting.hpp"
+
 #include "treesearchsolver/algorithms/iterative_beam_search.hpp"
 #include "treesearchsolver/algorithms/a_star.hpp"
 #include "treesearchsolver/algorithms/iterative_memory_bounded_a_star.hpp"
+
 #include "optimizationtools/utils.hpp"
 
 namespace columngenerationsolver
@@ -57,7 +59,7 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        visited_customers_(instance.location_number(), 0)
+        visited_customers_(instance.number_of_locations(), 0)
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -79,7 +81,7 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    LocationId n = instance.location_number();
+    LocationId n = instance.number_of_locations();
     columngenerationsolver::Parameters p(n - 1);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
@@ -131,7 +133,7 @@ struct ColumnExtra
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    LocationId n = instance_.location_number();
+    LocationId n = instance_.number_of_locations();
 
     // Build subproblem instance.
     espp2vrp_.clear();

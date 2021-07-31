@@ -62,7 +62,7 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        visited_customers_(instance.location_number(), 0)
+        visited_customers_(instance.number_of_locations(), 0)
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -84,7 +84,7 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    LocationId n = instance.location_number();
+    LocationId n = instance.number_of_locations();
     columngenerationsolver::Parameters p(n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
@@ -92,7 +92,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     p.column_upper_bound = 1;
     // Row bounds.
     p.row_lower_bounds[0] = 0;
-    p.row_upper_bounds[0] = instance.vehicle_number();
+    p.row_upper_bounds[0] = instance.number_of_vehicles();
     p.row_coefficient_lower_bounds[0] = 1;
     p.row_coefficient_upper_bounds[0] = 1;
     for (LocationId j = 1; j < n; ++j) {
@@ -140,7 +140,7 @@ struct ColumnExtra
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    LocationId n = instance_.location_number();
+    LocationId n = instance_.number_of_locations();
 
     // Build subproblem instance.
     espp2vrp_.clear();

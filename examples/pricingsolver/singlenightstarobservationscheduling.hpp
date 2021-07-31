@@ -55,7 +55,7 @@ public:
 
     virtual ~Instance() { }
 
-    TargetId target_number() const { return targets_.size(); }
+    TargetId number_of_targets() const { return targets_.size(); }
     const Target& target(TargetId j) const { return targets_[j]; }
 
 private:
@@ -133,7 +133,7 @@ inline Solution dynamicprogramming(
         DynamicProgrammingOptionalParameters parameters = {})
 {
     (void)parameters;
-    TargetId n = instance.target_number();
+    TargetId n = instance.number_of_targets();
     Solution solution(instance);
     //std::cout << "n " << n << std::endl;
     //for (TargetId j = 0; j < n; ++j)

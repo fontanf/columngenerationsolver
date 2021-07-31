@@ -58,8 +58,8 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        fixed_targets_(instance.target_number()),
-        fixed_nights_(instance.night_number())
+        fixed_targets_(instance.number_of_targets()),
+        fixed_nights_(instance.number_of_nights())
     {  }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -82,8 +82,8 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    NightId m = instance.night_number();
-    TargetId n = instance.target_number();
+    NightId m = instance.number_of_nights();
+    TargetId n = instance.number_of_targets();
     columngenerationsolver::Parameters p(m + n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Max;
@@ -123,10 +123,10 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
             Value row_coefficient = column.row_coefficients[row_pos];
             if (row_coefficient < 0.5)
                 continue;
-            if (row_index < instance_.night_number()) {
+            if (row_index < instance_.number_of_nights()) {
                 fixed_nights_[row_index] = 1;
             } else {
-                fixed_targets_[row_index - instance_.night_number()] = 1;
+                fixed_targets_[row_index - instance_.number_of_nights()] = 1;
             }
         }
     }
@@ -136,7 +136,7 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    NightId m = instance_.night_number();
+    NightId m = instance_.number_of_nights();
     std::vector<Column> columns;
     singlenightstarobservationschedulingsolver::Profit mult = 10000;
     for (NightId i = 0; i < m; ++i) {
@@ -145,7 +145,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         // Build subproblem instance.
         singlenightstarobservationschedulingsolver::Instance instance_snsosp;
         snsosp2sosp_.clear();
-        for (TargetId j_pos = 0; j_pos < instance_.observable_number(i); ++j_pos) {
+        for (TargetId j_pos = 0; j_pos < instance_.number_of_observables(i); ++j_pos) {
             auto o = instance_.observable(i, j_pos);
             if (fixed_targets_[o.j] == 1)
                 continue;

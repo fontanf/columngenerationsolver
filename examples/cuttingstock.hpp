@@ -53,7 +53,7 @@ public:
 
     PricingSolver(const Instance& instance):
         instance_(instance),
-        filled_demands_(instance.item_type_number())
+        filled_demands_(instance.number_of_item_types())
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -75,7 +75,7 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    ItemTypeId n = instance.item_type_number();
+    ItemTypeId n = instance.number_of_item_types();
     columngenerationsolver::Parameters p(n);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
@@ -118,7 +118,7 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    ItemTypeId n = instance_.item_type_number();
+    ItemTypeId n = instance_.number_of_item_types();
     knapsacksolver::Profit mult = 10000;
 
     // Build subproblem instance.
@@ -143,8 +143,8 @@ std::vector<Column> PricingSolver::solve_pricing(
     // Retrieve column.
     Column column;
     column.objective_coefficient = 1;
-    std::vector<Demand> demands(instance_.item_type_number(), 0);
-    for (knapsacksolver::ItemIdx j = 0; j < instance_kp.item_number(); ++j)
+    std::vector<Demand> demands(instance_.number_of_item_types(), 0);
+    for (knapsacksolver::ItemIdx j = 0; j < instance_kp.number_of_items(); ++j)
         if (output_kp.solution.contains_idx(j))
             demands[kp2csp_[j]]++;
     for (ItemTypeId j = 0; j < n; ++j) {

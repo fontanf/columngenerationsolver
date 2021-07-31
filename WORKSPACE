@@ -61,8 +61,8 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "1b9f6b40f51b67531fbdfd2761d40f450f10d3fc",
-    shallow_since = "1626518189 +0200",
+    commit = "1aaa113078d94a2b0f576c279222c2738b5ce783",
+    shallow_since = "1627720382 +0200",
 )
 
 local_repository(
@@ -73,8 +73,8 @@ local_repository(
 git_repository(
     name = "knapsacksolver",
     remote = "https://github.com/fontanf/knapsacksolver.git",
-    commit = "bc4ffc72a301c9aa033b969ff54d3c3396de2b8f",
-    shallow_since = "1609063241 +0100",
+    commit = "2c91299e97b5b0e924d2108d107e3a76aafaa967",
+    shallow_since = "1627727079 +0200",
 )
 
 git_repository(
