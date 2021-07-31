@@ -69,7 +69,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         //for (const auto& p: output.solution)
         //    parameters.columns.push_back(p.first);
         LimitedDiscrepancySearchOptionalParameters parameters_limiteddiscrepancysearch;
-        parameters_limiteddiscrepancysearch.info.set_timelimit(optional_parameters.info.remaining_time());
+        parameters_limiteddiscrepancysearch.info.set_time_limit(optional_parameters.info.remaining_time());
         parameters_limiteddiscrepancysearch.columngeneration_parameters
             = optional_parameters.columngeneration_parameters;
         parameters_limiteddiscrepancysearch.columngeneration_parameters.iteration_limit

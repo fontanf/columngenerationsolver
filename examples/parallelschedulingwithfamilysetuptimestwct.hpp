@@ -176,9 +176,9 @@ std::vector<Column> PricingSolver::solve_pricing(
     // Solve subproblem instance.
     oaschedulingwithfamilysetuptimestwct::BranchingScheme branching_scheme(instance_smoas);
     treesearchsolver::IterativeBeamSearchOptionalParameters parameters_smoas;
-    parameters_smoas.solution_pool_size_max = 100;
-    parameters_smoas.queue_size_min = 512;
-    parameters_smoas.queue_size_max = 512;
+    parameters_smoas.maximum_size_of_the_solution_pool = 100;
+    parameters_smoas.minimum_size_of_the_queue = 512;
+    parameters_smoas.maximum_size_of_the_queue = 512;
     //parameters_smoas.info.set_verbose(true);
     auto output_smoas = treesearchsolver::iterativebeamsearch(
             branching_scheme, parameters_smoas);

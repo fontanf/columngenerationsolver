@@ -137,7 +137,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         columngeneration_parameters.fixed_columns = &fixed_columns;
         columngeneration_parameters.end = optional_parameters.end;
         columngeneration_parameters.info.reset_time();
-        columngeneration_parameters.info.set_timelimit(optional_parameters.info.remaining_time());
+        columngeneration_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
         //columngeneration_parameters.info.set_verbose(true);
         auto output_columngeneration = columngeneration(
                 parameters,

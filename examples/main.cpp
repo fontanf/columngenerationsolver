@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
 
     optimizationtools::Info info = optimizationtools::Info()
         .set_verbose(vm.count("verbose"))
-        .set_timelimit(time_limit)
-        .set_outputfile(output_path)
+        .set_time_limit(time_limit)
+        .set_json_output_path(output_path)
         ;
 
     // Run algorithm

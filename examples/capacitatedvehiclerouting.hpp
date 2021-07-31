@@ -162,9 +162,9 @@ std::vector<Column> PricingSolver::solve_pricing(
     // Solve subproblem instance.
     espprc::BranchingScheme branching_scheme(instance_espp);
     treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espp;
-    parameters_espp.solution_pool_size_max = 100;
-    parameters_espp.queue_size_min = 512;
-    parameters_espp.queue_size_max = 512;
+    parameters_espp.maximum_size_of_the_solution_pool = 100;
+    parameters_espp.minimum_size_of_the_queue = 512;
+    parameters_espp.maximum_size_of_the_queue = 512;
     //parameters_espp.info.set_verbose(true);
     auto output_espp = treesearchsolver::iterativebeamsearch(
             branching_scheme, parameters_espp);
