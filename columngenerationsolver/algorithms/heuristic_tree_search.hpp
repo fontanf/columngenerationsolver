@@ -59,7 +59,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         if (output.maximum_number_of_iterations == (Counter)(output.maximum_number_of_iterations * optional_parameters.growth_rate))
             output.maximum_number_of_iterations++;
 
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;

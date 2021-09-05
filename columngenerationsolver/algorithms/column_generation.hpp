@@ -256,7 +256,7 @@ inline ColumnGenerationOutput columngeneration(
                 << std::endl);
 
         // Check time.
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         // Check 'end' parameter.
         if (optional_parameters.end != NULL && *optional_parameters.end == true)

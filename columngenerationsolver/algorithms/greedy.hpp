@@ -46,7 +46,7 @@ inline GreedyOutput greedy(
 
     for (;;) {
         // Check time
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
@@ -64,7 +64,7 @@ inline GreedyOutput greedy(
         output.time_lpsolve += output_columngeneration.time_lpsolve;
         output.time_pricing += output_columngeneration.time_pricing;
         output.number_of_added_columns += output_columngeneration.number_of_added_columns;
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;

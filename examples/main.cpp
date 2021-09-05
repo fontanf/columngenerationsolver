@@ -99,6 +99,7 @@ int main(int argc, char *argv[])
         .set_verbose(vm.count("verbose"))
         .set_time_limit(time_limit)
         .set_json_output_path(output_path)
+        .set_sigint_handler()
         ;
 
     // Run algorithm

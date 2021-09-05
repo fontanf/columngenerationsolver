@@ -88,7 +88,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         //std::cout << "nodes.size() " << nodes.size() << std::endl;
 
         // Check time.
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
@@ -146,7 +146,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         output.time_pricing += output_columngeneration.time_pricing;
         output.number_of_added_columns += output_columngeneration.number_of_added_columns;
         //std::cout << "bound " << output_columngeneration.solution_value << std::endl;
-        if (!optional_parameters.info.check_time())
+        if (optional_parameters.info.needs_to_end())
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
