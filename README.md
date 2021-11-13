@@ -39,13 +39,27 @@ Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orpr
 
 [Cutting Stock Problem](examples/cuttingstock.hpp)
 * Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+
+<details><summary>Benchmarks</summary>
+<p>
+
 * Benchmarks:
   * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/cuttingstock/data.csv -l cuttingstock -a "heuristictreesearch" -t 60`
 
+</p>
+</details>
+
 [Multiple Knapsack Problem](examples/multipleknapsack.hpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+
+<details><summary>Benchmarks</summary>
+<p>
+
 * Benchmarks:
   * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/multipleknapsack/data.csv -l multipleknapsack -a "heuristictreesearch" -t 10`
+
+</p>
+</details>
 
 Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp)
 * Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
@@ -71,18 +85,32 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 
 [Identical parallel machine scheduling problem with family setup times, Total weighted completion time](examples/parallelschedulingwithfamilysetuptimestwct.hpp)
 * Pricing problem: Single machine order acceptance and scheduling problem with family setup times, Total weighted completion time [solved by Heuristic Tree Search](examples/pricingsolver/oaschedulingwithfamilysetuptimestwct.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+
+<details><summary>Benchmarks</summary>
+<p>
+
 * Benchmarks:
   * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct -a "heuristictreesearch" -t 60`
 
+</p>
+</details>
+
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Pricing problem: Single Night Star Observation Scheduling Problem [solved by dynamic programming](examples/pricingsolver/singlenightstarobservationscheduling.hpp)
+
+<details><summary>Benchmarks</summary>
+<p>
+
 * Benchmarks:
   * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/starobservationscheduling/data.csv -l starobservationscheduling -a "heuristictreesearch" -t 60`
+
+</p>
+</details>
 
 ### Graphs
 
 Graph Coloring Problem from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp)
-* Pricing problem: Maximum-Weight Independent Set Problem solved with the `largeneighborhoodsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver)
+* Pricing problem: Maximum-Weight Independent Set Problem solved with the `localsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
 
 ## Usage, running examples from command line
 
