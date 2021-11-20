@@ -24,9 +24,10 @@ A linear programming solver is required. Currently, CLP and CPLEX are supported.
 
 Features:
 * Algorithms:
-  * Column generation `columngeneration`
+  * Column generation `column_generation`
   * Greedy `greedy`
-  * Limited Discrepancy Search `limiteddiscrepancysearch`
+  * Limited Discrepancy Search `limited_discrepancy_search`
+  * Heuristic Tree Search `heuristic_tree_search`
 * Sabilization technics:
   * Static and self-adjusting Wentges smoothing
   * Static and automatic directional smoothing
@@ -44,7 +45,7 @@ Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orpr
 <p>
 
 * Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/cuttingstock/data.csv -l cuttingstock -a "heuristictreesearch" -t 60`
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/cuttingstock/data.csv -l cuttingstock -a "heuristic_tree_search" -t 60`
 
 </p>
 </details>
@@ -56,7 +57,7 @@ Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orpr
 <p>
 
 * Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/multipleknapsack/data.csv -l multipleknapsack -a "heuristictreesearch" -t 10`
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/multipleknapsack/data.csv -l multipleknapsack -a "heuristic_tree_search" -t 10`
 
 </p>
 </details>
@@ -90,7 +91,7 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 <p>
 
 * Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct -a "heuristictreesearch" -t 60`
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct -a "heuristic_tree_search" -t 60`
 
 </p>
 </details>
@@ -102,7 +103,7 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 <p>
 
 * Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/starobservationscheduling/data.csv -l starobservationscheduling -a "heuristictreesearch" -t 60`
+  * `python3 ../optimizationtools/optimizationtools/bench_run.py --csv ../ordata/starobservationscheduling/data.csv -l starobservationscheduling -a "heuristic_tree_search" -t 60`
 
 </p>
 </details>
@@ -122,8 +123,8 @@ bazel build --define cplex=true -- //...
 
 Then, examples can be executed as follows:
 ```shell
-./bazel-bin/examples/main -v -p cuttingstock -a "columngeneration" -i "../ordata/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
-./bazel-bin/examples/main -v -p multipleknapsack -a "limiteddiscrepancysearch" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
+./bazel-bin/examples/main -v -p cuttingstock -a "column_generation" -i "../ordata/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
+./bazel-bin/examples/main -v -p multipleknapsack -a "limited_discrepancy_search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
 
 ## Usage, C++ library

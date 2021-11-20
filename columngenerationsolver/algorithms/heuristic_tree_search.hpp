@@ -28,11 +28,11 @@ struct HeuristicTreeSearchOptionalParameters
     Counter number_of_threads = 3;
     double growth_rate = 1.5;
     bool* end = NULL;
-    ColumnGenerationOptionalParameters columngeneration_parameters;
+    ColumnGenerationOptionalParameters column_generation_parameters;
     optimizationtools::Info info = optimizationtools::Info();
 };
 
-inline HeuristicTreeSearchOutput heuristictreesearch(
+inline HeuristicTreeSearchOutput heuristic_tree_search(
         Parameters& parameters,
         HeuristicTreeSearchOptionalParameters optional_parameters = {})
 {
@@ -48,11 +48,11 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
             << std::endl
             << "Parameters" << std::endl
             << "----------" << std::endl
-            << "Linear programming solver:               " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl
-            << "Static Wentges smoothing parameter:      " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl
-            << "Static directional smoothing parameter:  " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl
-            << "Self-adjusting Wentges smoothing:        " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl
-            << "Automatic directional smoothing:         " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl
+            << "Linear programming solver:               " << optional_parameters.column_generation_parameters.linear_programming_solver << std::endl
+            << "Static Wentges smoothing parameter:      " << optional_parameters.column_generation_parameters.static_wentges_smoothing_parameter << std::endl
+            << "Static directional smoothing parameter:  " << optional_parameters.column_generation_parameters.static_directional_smoothing_parameter << std::endl
+            << "Self-adjusting Wentges smoothing:        " << optional_parameters.column_generation_parameters.self_adjusting_wentges_smoothing << std::endl
+            << "Automatic directional smoothing:         " << optional_parameters.column_generation_parameters.automatic_directional_smoothing << std::endl
             << std::endl
        );
 
@@ -79,15 +79,15 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         //parameters.columns.clear();
         //for (const auto& p: output.solution)
         //    parameters.columns.push_back(p.first);
-        LimitedDiscrepancySearchOptionalParameters parameters_limiteddiscrepancysearch;
-        parameters_limiteddiscrepancysearch.info.set_time_limit(optional_parameters.info.remaining_time());
-        parameters_limiteddiscrepancysearch.columngeneration_parameters
-            = optional_parameters.columngeneration_parameters;
-        parameters_limiteddiscrepancysearch.columngeneration_parameters.maximum_number_of_iterations
+        LimitedDiscrepancySearchOptionalParameters parameters_limited_discrepancy_search;
+        parameters_limited_discrepancy_search.info.set_time_limit(optional_parameters.info.remaining_time());
+        parameters_limited_discrepancy_search.column_generation_parameters
+            = optional_parameters.column_generation_parameters;
+        parameters_limited_discrepancy_search.column_generation_parameters.maximum_number_of_iterations
             = output.maximum_number_of_iterations;
-        parameters_limiteddiscrepancysearch.heuristictreesearch_stop = true;
+        parameters_limited_discrepancy_search.heuristictreesearch_stop = true;
 
-        parameters_limiteddiscrepancysearch.new_bound_callback = [&parameters, &optional_parameters, &output](
+        parameters_limited_discrepancy_search.new_bound_callback = [&parameters, &optional_parameters, &output](
                 const columngenerationsolver::LimitedDiscrepancySearchOutput& o)
         {
             if ((parameters.objective_sense == ObjectiveSense::Min
@@ -118,7 +118,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
             }
         };
 
-        auto output_limiteddiscrepancysearch = limiteddiscrepancysearch(parameters, parameters_limiteddiscrepancysearch);
+        auto output_limited_discrepancy_search = limited_discrepancy_search(parameters, parameters_limited_discrepancy_search);
 
     }
 

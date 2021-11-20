@@ -8,7 +8,7 @@
 namespace columngenerationsolver
 {
 
-inline ColumnGenerationOptionalParameters read_columngeneration_args(
+inline ColumnGenerationOptionalParameters read_column_generation_args(
         std::string args_string)
 {
     std::vector<std::string> args
@@ -40,7 +40,7 @@ inline ColumnGenerationOptionalParameters read_columngeneration_args(
     return parameters;
 }
 
-inline LimitedDiscrepancySearchOptionalParameters read_limiteddiscrepancysearch_args(
+inline LimitedDiscrepancySearchOptionalParameters read_limited_discrepancy_search_args(
         const std::vector<char*> argv)
 {
     LimitedDiscrepancySearchOptionalParameters parameters;
@@ -59,7 +59,7 @@ inline LimitedDiscrepancySearchOptionalParameters read_limiteddiscrepancysearch_
     return parameters;
 }
 
-inline HeuristicTreeSearchOptionalParameters read_heuristictreesearch_args(
+inline HeuristicTreeSearchOptionalParameters read_heuristic_tree_search_args(
         const std::vector<char*> argv)
 {
     HeuristicTreeSearchOptionalParameters parameters;

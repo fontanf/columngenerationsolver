@@ -38,7 +38,7 @@ struct ColumnGenerationOutput
     double time_lpsolve = 0.0;
 };
 
-inline ColumnGenerationOutput columngeneration(
+inline ColumnGenerationOutput column_generation(
         Parameters& parameters,
         ColumnGenerationOptionalParameters optional_parameters = {})
 {

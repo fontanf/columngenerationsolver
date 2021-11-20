@@ -8,7 +8,7 @@ namespace columngenerationsolver
 struct GreedyOptionalParameters
 {
     bool* end = NULL;
-    ColumnGenerationOptionalParameters columngeneration_parameters;
+    ColumnGenerationOptionalParameters column_generation_parameters;
     optimizationtools::Info info = optimizationtools::Info();
 };
 
@@ -39,11 +39,11 @@ inline GreedyOutput greedy(
             << std::endl
             << "Parameters" << std::endl
             << "----------" << std::endl
-            << "Linear programming solver:               " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl
-            << "Static Wentges smoothing parameter:      " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl
-            << "Static directional smoothing parameter:  " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl
-            << "Self-adjusting Wentges smoothing:        " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl
-            << "Automatic directional smoothing:         " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl
+            << "Linear programming solver:               " << optional_parameters.column_generation_parameters.linear_programming_solver << std::endl
+            << "Static Wentges smoothing parameter:      " << optional_parameters.column_generation_parameters.static_wentges_smoothing_parameter << std::endl
+            << "Static directional smoothing parameter:  " << optional_parameters.column_generation_parameters.static_directional_smoothing_parameter << std::endl
+            << "Self-adjusting Wentges smoothing:        " << optional_parameters.column_generation_parameters.self_adjusting_wentges_smoothing << std::endl
+            << "Automatic directional smoothing:         " << optional_parameters.column_generation_parameters.automatic_directional_smoothing << std::endl
        );
 
     GreedyOutput output;
@@ -62,16 +62,16 @@ inline GreedyOutput greedy(
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
 
-        ColumnGenerationOptionalParameters columngeneration_parameters
-            = optional_parameters.columngeneration_parameters;
-        columngeneration_parameters.fixed_columns = &fixed_columns;
-        columngeneration_parameters.end = optional_parameters.end;
-        columngeneration_parameters.info.reset_time();
-        columngeneration_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
-        //columngeneration_parameters.info.set_verbose(true);
-        auto output_columngeneration = columngeneration(
+        ColumnGenerationOptionalParameters column_generation_parameters
+            = optional_parameters.column_generation_parameters;
+        column_generation_parameters.fixed_columns = &fixed_columns;
+        column_generation_parameters.end = optional_parameters.end;
+        column_generation_parameters.info.reset_time();
+        column_generation_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
+        //column_generation_parameters.info.set_verbose(true);
+        auto output_columngeneration = column_generation(
                 parameters,
-                columngeneration_parameters);
+                column_generation_parameters);
         output.time_lpsolve += output_columngeneration.time_lpsolve;
         output.time_pricing += output_columngeneration.time_pricing;
         output.number_of_added_columns += output_columngeneration.number_of_added_columns;
@@ -116,7 +116,7 @@ inline GreedyOutput greedy(
 
         // Update bound.
         if (fixed_columns.size() == 0) {
-            Counter cg_it_limit = optional_parameters.columngeneration_parameters.maximum_number_of_iterations;
+            Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1 || (output_columngeneration.number_of_iterations < cg_it_limit))
                 output.bound = output_columngeneration.solution_value;
         }
