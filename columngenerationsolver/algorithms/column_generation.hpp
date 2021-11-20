@@ -11,7 +11,7 @@ struct ColumnGenerationOptionalParameters
 
     const std::vector<std::pair<ColIdx, Value>>* fixed_columns = NULL;
 
-    Counter iteration_limit = -1;
+    Counter maximum_number_of_iterations = -1;
     bool* end = NULL;
 
     // Stabilization parameters.
@@ -44,12 +44,12 @@ inline ColumnGenerationOutput columngeneration(
 {
     VER(optional_parameters.info, "*** columngeneration ***" << std::endl);
     VER(optional_parameters.info, "---" << std::endl);
-    VER(optional_parameters.info, "Linear programming solver:                " << optional_parameters.linear_programming_solver << std::endl);
-    VER(optional_parameters.info, "Static Wentges smoothing parameter:       " << optional_parameters.static_wentges_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Static directional smoothing parameter:   " << optional_parameters.static_directional_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:         " << optional_parameters.self_adjusting_wentges_smoothing << std::endl);
-    VER(optional_parameters.info, "Automatic directional smoothing:          " << optional_parameters.automatic_directional_smoothing << std::endl);
-    VER(optional_parameters.info, "Column generation iteration limit:        " << optional_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "Linear programming solver:               " << optional_parameters.linear_programming_solver << std::endl);
+    VER(optional_parameters.info, "Static Wentges smoothing parameter:      " << optional_parameters.static_wentges_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Static directional smoothing parameter:  " << optional_parameters.static_directional_smoothing_parameter << std::endl);
+    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:        " << optional_parameters.self_adjusting_wentges_smoothing << std::endl);
+    VER(optional_parameters.info, "Automatic directional smoothing:         " << optional_parameters.automatic_directional_smoothing << std::endl);
+    VER(optional_parameters.info, "Maximum number of iterations:            " << optional_parameters.maximum_number_of_iterations << std::endl);
     VER(optional_parameters.info, "---" << std::endl);
     ColumnGenerationOutput output;
 
@@ -262,8 +262,8 @@ inline ColumnGenerationOutput columngeneration(
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
         // Check iteration limit.
-        if (optional_parameters.iteration_limit != -1
-                && output.number_of_iterations > optional_parameters.iteration_limit)
+        if (optional_parameters.maximum_number_of_iterations != -1
+                && output.number_of_iterations > optional_parameters.maximum_number_of_iterations)
             break;
 
         // Search for new columns.
@@ -460,17 +460,17 @@ inline ColumnGenerationOutput columngeneration(
 
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;
     VER(optional_parameters.info, "---" << std::endl
-            << "Solution:                 " << output.solution_value << std::endl
-            << "Iteration number:         " << output.number_of_iterations << std::endl
-            << "Total column number:      " << parameters.columns.size() << std::endl
-            << "Added column number:      " << output.number_of_added_columns << std::endl
-            << "Pricing number:           " << output.number_of_pricings << std::endl
-            << "1st try pricing number:   " << output.number_of_first_try_pricings << std::endl
-            << "Mispricing number:        " << output.number_of_mispricings << std::endl
-            << "No stab. pricing number:  " << output.number_of_no_stab_pricings << std::endl
-            << "Time LP solve (s):        " << output.time_lpsolve << std::endl
-            << "Time pricing (s):         " << output.time_pricing << std::endl
-            << "Time (s):                 " << time << std::endl);
+            << "Solution:                         " << output.solution_value << std::endl
+            << "Number of iterations:             " << output.number_of_iterations << std::endl
+            << "Total number of columns:          " << parameters.columns.size() << std::endl
+            << "Number of columns added:          " << output.number_of_added_columns << std::endl
+            << "Number of pricing:                " << output.number_of_pricings << std::endl
+            << "Number of 1st try pricing:        " << output.number_of_first_try_pricings << std::endl
+            << "Number of mispricing:             " << output.number_of_mispricings << std::endl
+            << "Number of pricing without stab.:  " << output.number_of_no_stab_pricings << std::endl
+            << "Time LP solve (s):                " << output.time_lpsolve << std::endl
+            << "Time pricing (s):                 " << output.time_pricing << std::endl
+            << "Total time (s):                   " << time << std::endl);
     return output;
 }
 

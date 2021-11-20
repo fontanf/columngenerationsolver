@@ -105,7 +105,7 @@ inline GreedyOutput greedy(
 
         // Update bound.
         if (fixed_columns.size() == 0) {
-            Counter cg_it_limit = optional_parameters.columngeneration_parameters.iteration_limit;
+            Counter cg_it_limit = optional_parameters.columngeneration_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1 || (output_columngeneration.number_of_iterations < cg_it_limit))
                 output.bound = output_columngeneration.solution_value;
         }

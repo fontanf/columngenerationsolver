@@ -112,13 +112,13 @@ inline void display_end(
     Value primal = output.solution_value;
     Value dual = output.bound;
     VER(info, "---" << std::endl
-            << "Solution:             " << primal << std::endl
-            << "Bound:                " << dual << std::endl
-            << "Absolute gap:         " << std::abs(primal - dual) << std::endl
-            << "Relative gap (%):     " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
-            << "Total column number:  " << output.total_number_of_columns << std::endl
-            << "Added column number:  " << output.number_of_added_columns << std::endl
-            << "Total time (s):       " << time << std::endl);
+            << "Solution:                 " << primal << std::endl
+            << "Bound:                    " << dual << std::endl
+            << "Absolute gap:             " << std::abs(primal - dual) << std::endl
+            << "Relative gap (%):         " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
+            << "Total number of columns:  " << output.total_number_of_columns << std::endl
+            << "Number of columns added:  " << output.number_of_added_columns << std::endl
+            << "Total time (s):           " << time << std::endl);
 }
 
 inline bool is_feasible(

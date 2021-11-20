@@ -23,7 +23,7 @@ inline ColumnGenerationOptionalParameters read_columngeneration_args(
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
         ("linear-programming-solver,s", boost::program_options::value<LinearProgrammingSolver>(&parameters.linear_programming_solver), "set linear programming solver")
-        ("iteration-limit,i", boost::program_options::value<Counter>(&parameters.iteration_limit), "")
+        ("maximum-number-of-iterations,i", boost::program_options::value<Counter>(&parameters.maximum_number_of_iterations), "")
         ("static-wentges-smoothing-parameter,a", boost::program_options::value<Value>(&parameters.static_wentges_smoothing_parameter), "")
         ("static-directional-smoothing-parameter,b", boost::program_options::value<Value>(&parameters.static_directional_smoothing_parameter), "")
         ("self-adjusting-wentges-smoothing,A", boost::program_options::value<bool>(&parameters.self_adjusting_wentges_smoothing), "")

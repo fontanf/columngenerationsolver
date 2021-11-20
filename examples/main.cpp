@@ -106,15 +106,15 @@ int main(int argc, char *argv[])
 
     if (problem == "cuttingstock") {
         cuttingstock::Instance instance(instance_path, format);
-        //if (vm.count("print-instance")) TODO
-        //    std::cout << instance << std::endl;
+        if (vm.count("print-instance"))
+            std::cout << instance << std::endl;
         Parameters p = cuttingstock::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 
     } else if (problem == "multipleknapsack") {
         multipleknapsack::Instance instance(instance_path, format);
-        //if (vm.count("print-instance")) TODO
-        //    std::cout << instance << std::endl;
+        if (vm.count("print-instance"))
+            std::cout << instance << std::endl;
         Parameters p = multipleknapsack::get_parameters(instance);
         run(algorithm, columngeneration_args_string, info, p);
 

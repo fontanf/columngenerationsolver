@@ -72,7 +72,7 @@ inline HeuristicTreeSearchOutput heuristictreesearch(
         parameters_limiteddiscrepancysearch.info.set_time_limit(optional_parameters.info.remaining_time());
         parameters_limiteddiscrepancysearch.columngeneration_parameters
             = optional_parameters.columngeneration_parameters;
-        parameters_limiteddiscrepancysearch.columngeneration_parameters.iteration_limit
+        parameters_limiteddiscrepancysearch.columngeneration_parameters.maximum_number_of_iterations
             = output.maximum_number_of_iterations;
         parameters_limiteddiscrepancysearch.heuristictreesearch_stop = true;
 

@@ -151,7 +151,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
         if (node->depth == 0) {
-            Counter cg_it_limit = optional_parameters.columngeneration_parameters.iteration_limit;
+            Counter cg_it_limit = optional_parameters.columngeneration_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1 || output_columngeneration.number_of_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
                 output.bound = output_columngeneration.solution_value;
@@ -277,7 +277,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
 
     output.total_number_of_columns = parameters.columns.size();
     display_end(output, optional_parameters.info);
-    VER(optional_parameters.info, "Node number:          " << output.number_of_nodes << std::endl);
+    VER(optional_parameters.info, "Number of Nodes:          " << output.number_of_nodes << std::endl);
     return output;
 }
 
