@@ -42,15 +42,29 @@ inline ColumnGenerationOutput columngeneration(
         Parameters& parameters,
         ColumnGenerationOptionalParameters optional_parameters = {})
 {
-    VER(optional_parameters.info, "*** columngeneration ***" << std::endl);
-    VER(optional_parameters.info, "---" << std::endl);
-    VER(optional_parameters.info, "Linear programming solver:               " << optional_parameters.linear_programming_solver << std::endl);
-    VER(optional_parameters.info, "Static Wentges smoothing parameter:      " << optional_parameters.static_wentges_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Static directional smoothing parameter:  " << optional_parameters.static_directional_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:        " << optional_parameters.self_adjusting_wentges_smoothing << std::endl);
-    VER(optional_parameters.info, "Automatic directional smoothing:         " << optional_parameters.automatic_directional_smoothing << std::endl);
-    VER(optional_parameters.info, "Maximum number of iterations:            " << optional_parameters.maximum_number_of_iterations << std::endl);
-    VER(optional_parameters.info, "---" << std::endl);
+    // Initial display.
+    VER(optional_parameters.info,
+               "======================================" << std::endl
+            << "       Column Generation Solver       " << std::endl
+            << "======================================" << std::endl
+            << std::endl
+            << "Algorithm" << std::endl
+            << "---------" << std::endl
+            << "Column Generation" << std::endl
+            << std::endl
+            << "Parameters" << std::endl
+            << "----------" << std::endl
+            << "Linear programming solver:               " << optional_parameters.linear_programming_solver << std::endl
+            << "Static Wentges smoothing parameter:      " << optional_parameters.static_wentges_smoothing_parameter << std::endl
+            << "Static directional smoothing parameter:  " << optional_parameters.static_directional_smoothing_parameter << std::endl
+            << "Self-adjusting Wentges smoothing:        " << optional_parameters.self_adjusting_wentges_smoothing << std::endl
+            << "Automatic directional smoothing:         " << optional_parameters.automatic_directional_smoothing << std::endl
+            << "Maximum number of iterations:            " << optional_parameters.maximum_number_of_iterations << std::endl
+            << std::endl
+            << std::setw(10) << "Time" << std::setw(10) << "It" << std::setw(20) << "Obj" << std::setw(10) << "Col" << std::endl
+            << std::setw(10) << "----" << std::setw(10) << "--" << std::setw(20) << "---" << std::setw(10) << "---" << std::endl
+       );
+
     ColumnGenerationOutput output;
 
     RowIdx m = parameters.row_lower_bounds.size();
@@ -248,11 +262,13 @@ inline ColumnGenerationOutput columngeneration(
         auto end_lpsolve = std::chrono::high_resolution_clock::now();
         auto time_span_lpsolve = std::chrono::duration_cast<std::chrono::duration<double>>(end_lpsolve - start_lpsolve);
         output.time_lpsolve += time_span_lpsolve.count();
+
+        // Display.
         VER(optional_parameters.info,
-                "it " << std::setw(8) << output.number_of_iterations
-                << " | T " << std::setw(10) << optional_parameters.info.elapsed_time()
-                << " | OBJ " << std::setw(10) << c0 + solver->objective()
-                << " | COL " << std::setw(10) << output.number_of_added_columns
+                std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
+                << std::setw(10) << output.number_of_iterations
+                << std::setw(20) << std::fixed << std::setprecision(7) << c0 + solver->objective()
+                << std::setw(10) << output.number_of_added_columns
                 << std::endl);
 
         // Check time.
@@ -458,8 +474,12 @@ inline ColumnGenerationOutput columngeneration(
                     solver_column_indices[col],
                     solver->primal(col)});
 
+    // Final display.
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;
-    VER(optional_parameters.info, "---" << std::endl
+    VER(optional_parameters.info, std::defaultfloat
+            << std::endl
+            << "Final statistics" << std::endl
+            << "----------------" << std::endl
             << "Solution:                         " << output.solution_value << std::endl
             << "Number of iterations:             " << output.number_of_iterations << std::endl
             << "Total number of columns:          " << parameters.columns.size() << std::endl

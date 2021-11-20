@@ -72,35 +72,42 @@ struct Parameters
 
 /******************************* Implementation *******************************/
 
-inline void display_initialize(Parameters& p, optimizationtools::Info& info)
+inline void display_initialize(optimizationtools::Info& info)
 {
-    VER(info, std::left << std::setw(10) << "T (s)");
-    if (p.objective_sense == ObjectiveSense::Min) {
-        VER(info, std::left << std::setw(14) << "UB");
-        VER(info, std::left << std::setw(14) << "LB");
-    } else {
-        VER(info, std::left << std::setw(14) << "LB");
-        VER(info, std::left << std::setw(14) << "UB");
-    }
-    VER(info, std::left << std::setw(14) << "GAP");
-    VER(info, std::left << std::setw(14) << "GAP (%)");
-    VER(info, "");
-    VER(info, std::endl);
+    VER(info,
+            std::setw(10) << "Time"
+            << std::setw(14) << "Solution"
+            << std::setw(14) << "Bound"
+            << std::setw(14) << "Gap"
+            << std::setw(10) << "Gap (%)"
+            << std::setw(24) << "Comment" << std::endl
+            << std::setw(10) << "----"
+            << std::setw(14) << "--------"
+            << std::setw(14) << "-----"
+            << std::setw(14) << "---"
+            << std::setw(10) << "-------"
+            << std::setw(24) << "-------" << std::endl);
 }
 
 inline void display(
+        Parameters& p,
         Value primal,
         Value dual,
         const std::stringstream& s,
         optimizationtools::Info& info)
 {
     double t = (double)std::round(info.elapsed_time() * 10000) / 10000;
-    VER(info, std::left << std::setw(10) << t);
-    VER(info, std::left << std::setw(14) << primal);
-    VER(info, std::left << std::setw(14) << dual);
-    VER(info, std::left << std::setw(14) << std::abs(primal - dual));
-    VER(info, std::left << std::setw(14) << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)));
-    VER(info, s.str() << std::endl);
+    double gap = (p.objective_sense == ObjectiveSense::Min)?
+        primal - dual:
+        dual - primal;
+    VER(info,
+            std::setw(10) << std::fixed << std::setprecision(3) << t
+            << std::setw(14) << std::fixed << std::setprecision(5) << primal
+            << std::setw(14) << std::fixed << std::setprecision(5) << dual
+            << std::setw(14) << std::fixed << std::setprecision(5) << gap
+            << std::setw(10) << std::fixed << std::setprecision(2) << 100.0 * gap / std::max(std::abs(primal), std::abs(dual))
+            << std::setw(24) << s.str()
+            << std::endl);
 }
 
 template <typename Output>
@@ -111,7 +118,10 @@ inline void display_end(
     double time = (double)std::round(info.elapsed_time() * 10000) / 10000;
     Value primal = output.solution_value;
     Value dual = output.bound;
-    VER(info, "---" << std::endl
+    VER(info, std::defaultfloat
+            << std::endl
+            << "Final statistics" << std::endl
+            << "----------------" << std::endl
             << "Solution:                 " << primal << std::endl
             << "Bound:                    " << dual << std::endl
             << "Absolute gap:             " << std::abs(primal - dual) << std::endl

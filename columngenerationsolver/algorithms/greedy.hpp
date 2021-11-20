@@ -27,14 +27,25 @@ inline GreedyOutput greedy(
         Parameters& parameters,
         GreedyOptionalParameters optional_parameters = {})
 {
-    VER(optional_parameters.info, "*** greedy ***" << std::endl);
-    VER(optional_parameters.info, "---" << std::endl);
-    VER(optional_parameters.info, "Linear programming solver:                " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl);
-    VER(optional_parameters.info, "Static Wentges smoothing parameter:       " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Static directional smoothing parameter:   " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:         " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl);
-    VER(optional_parameters.info, "Automatic directional smoothing:          " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
-    VER(optional_parameters.info, "Column generation iteration limit:        " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
+    // Initial display.
+    VER(optional_parameters.info,
+               "======================================" << std::endl
+            << "       Column Generation Solver       " << std::endl
+            << "======================================" << std::endl
+            << std::endl
+            << "Algorithm" << std::endl
+            << "---------" << std::endl
+            << "Greedy" << std::endl
+            << std::endl
+            << "Parameters" << std::endl
+            << "----------" << std::endl
+            << "Linear programming solver:               " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl
+            << "Static Wentges smoothing parameter:      " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl
+            << "Static directional smoothing parameter:  " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl
+            << "Self-adjusting Wentges smoothing:        " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl
+            << "Automatic directional smoothing:         " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl
+       );
+
     GreedyOutput output;
     output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?
         std::numeric_limits<Value>::infinity():

@@ -47,16 +47,26 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
         Parameters& parameters,
         LimitedDiscrepancySearchOptionalParameters optional_parameters = {})
 {
-    VER(optional_parameters.info, "*** limiteddiscrepancysearch ***" << std::endl);
-    VER(optional_parameters.info, "---" << std::endl);
-    VER(optional_parameters.info, "Linear programming solver:                " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl);
-    VER(optional_parameters.info, "Discrepancy limit:                        " << optional_parameters.discrepancy_limit << std::endl);
-    VER(optional_parameters.info, "Static Wentges smoothing parameter:       " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Static directional smoothing parameter:   " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl);
-    VER(optional_parameters.info, "Self-adjusting Wentges smoothing:         " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl);
-    VER(optional_parameters.info, "Automatic directional smoothing:          " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
-    VER(optional_parameters.info, "Column generation iteration limit:        " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl);
-    VER(optional_parameters.info, "---" << std::endl);
+    // Initial display.
+    VER(optional_parameters.info,
+               "======================================" << std::endl
+            << "       Column Generation Solver       " << std::endl
+            << "======================================" << std::endl
+            << std::endl
+            << "Algorithm" << std::endl
+            << "---------" << std::endl
+            << "Limited Discrepancy Search" << std::endl
+            << std::endl
+            << "Parameters" << std::endl
+            << "----------" << std::endl
+            << "Linear programming solver:               " << optional_parameters.columngeneration_parameters.linear_programming_solver << std::endl
+            << "Discrepancy limit:                       " << optional_parameters.discrepancy_limit << std::endl
+            << "Static Wentges smoothing parameter:      " << optional_parameters.columngeneration_parameters.static_wentges_smoothing_parameter << std::endl
+            << "Static directional smoothing parameter:  " << optional_parameters.columngeneration_parameters.static_directional_smoothing_parameter << std::endl
+            << "Self-adjusting Wentges smoothing:        " << optional_parameters.columngeneration_parameters.self_adjusting_wentges_smoothing << std::endl
+            << "Automatic directional smoothing:         " << optional_parameters.columngeneration_parameters.automatic_directional_smoothing << std::endl
+            << std::endl
+       );
 
     LimitedDiscrepancySearchOutput output;
     output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?
@@ -65,7 +75,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
     output.bound = (parameters.objective_sense == ObjectiveSense::Min)?
         -std::numeric_limits<Value>::infinity():
         std::numeric_limits<Value>::infinity();
-    display_initialize(parameters, optional_parameters.info);
+    display_initialize(optional_parameters.info);
 
     // Nodes
     auto comp = [](
@@ -155,7 +165,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
             if (cg_it_limit == -1 || output_columngeneration.number_of_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
                 output.bound = output_columngeneration.solution_value;
-                display(output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
+                display(parameters, output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
                 optional_parameters.new_bound_callback(output);
             }
         }
@@ -243,7 +253,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                     //std::cout << "New best solution value " << output.solution_value << std::endl;
                     std::stringstream ss;
                     ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                    display(output.solution_value, output.bound, ss, optional_parameters.info);
+                    display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
                     optional_parameters.new_bound_callback(output);
                 } else {
                     Value solution_value = compute_value(parameters, fixed_columns);
@@ -255,7 +265,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                         output.solution_discrepancy = node->discrepancy;
                         std::stringstream ss;
                         ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                        display(output.solution_value, output.bound, ss, optional_parameters.info);
+                        display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
                         optional_parameters.new_bound_callback(output);
                     }
                     if (parameters.objective_sense == ObjectiveSense::Max
@@ -265,7 +275,7 @@ inline LimitedDiscrepancySearchOutput limiteddiscrepancysearch(
                         output.solution_discrepancy = node->discrepancy;
                         std::stringstream ss;
                         ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                        display(output.solution_value, output.bound, ss, optional_parameters.info);
+                        display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
                         optional_parameters.new_bound_callback(output);
                     }
                 }
