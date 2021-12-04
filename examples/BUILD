@@ -4,12 +4,7 @@ config_setting(name = "xpress_build", values = {"define": "xpress=true"}, visibi
 config_setting(name = "gurobi_build", values = {"define": "gurobi=true"}, visibility = ["//visibility:public"])
 config_setting(name = "knitro_build", values = {"define": "knitro=true"}, visibility = ["//visibility:public"])
 
-load("//examples:variables.bzl", "STDCPP",
-         "COINOR_COPTS", "COINOR_DEP",
-         "CPLEX_COPTS", "CPLEX_DEP",
-         "XPRESS_COPTS", "XPRESS_DEP",
-         "GUROBI_COPTS", "GUROBI_DEP",
-         "KNITRO_COPTS", "KNITRO_DEP")
+load("//examples:variables.bzl", "STDCPP", "ALL_COPTS", "ALL_DEP")
 
 cc_library(
         name = "cuttingstock",
@@ -22,6 +17,17 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_binary(
+        name = "cuttingstock_main",
+        srcs = ["cuttingstock_main.cpp"],
+        deps = [
+                ":cuttingstock",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
+
 cc_library(
         name = "multipleknapsack",
         hdrs = ["multipleknapsack.hpp"],
@@ -32,6 +38,17 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_binary(
+        name = "multipleknapsack_main",
+        srcs = ["multipleknapsack_main.cpp"],
+        deps = [
+                ":multipleknapsack",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
 
 cc_library(
         name = "binpackingwithconflicts",
@@ -44,6 +61,17 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_binary(
+        name = "binpackingwithconflicts_main",
+        srcs = ["binpackingwithconflicts_main.cpp"],
+        deps = [
+                ":binpackingwithconflicts",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
+
 cc_library(
         name = "capacitatedvehiclerouting",
         hdrs = ["capacitatedvehiclerouting.hpp"],
@@ -55,6 +83,17 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_binary(
+        name = "capacitatedvehiclerouting_main",
+        srcs = ["capacitatedvehiclerouting_main.cpp"],
+        deps = [
+                ":capacitatedvehiclerouting",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
 
 cc_library(
         name = "vehicleroutingwithtimewindows",
@@ -69,6 +108,17 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_binary(
+        name = "vehicleroutingwithtimewindows_main",
+        srcs = ["vehicleroutingwithtimewindows_main.cpp"],
+        deps = [
+                ":vehicleroutingwithtimewindows",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
+
 cc_library(
         name = "capacitatedopenvehiclerouting",
         hdrs = ["capacitatedopenvehiclerouting.hpp"],
@@ -81,6 +131,17 @@ cc_library(
         visibility = ["//visibility:public"],
 )
 
+cc_binary(
+        name = "capacitatedopenvehiclerouting_main",
+        srcs = ["capacitatedopenvehiclerouting_main.cpp"],
+        deps = [
+                ":capacitatedopenvehiclerouting",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
+
 cc_library(
         name = "parallelschedulingwithfamilysetuptimestwct",
         hdrs = ["parallelschedulingwithfamilysetuptimestwct.hpp"],
@@ -92,6 +153,17 @@ cc_library(
         ],
         visibility = ["//visibility:public"],
 )
+
+cc_binary(
+        name = "parallelschedulingwithfamilysetuptimestwct_main",
+        srcs = ["parallelschedulingwithfamilysetuptimestwct_main.cpp"],
+        deps = [
+                ":parallelschedulingwithfamilysetuptimestwct",
+                "//columngenerationsolver:read_args",
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
+)
+
 
 cc_library(
         name = "starobservationscheduling",
@@ -106,20 +178,12 @@ cc_library(
 )
 
 cc_binary(
-        name = "main",
-        srcs = ["main.cpp"],
+        name = "starobservationscheduling_main",
+        srcs = ["starobservationscheduling_main.cpp"],
         deps = [
-                ":cuttingstock",
-                ":multipleknapsack",
-                ":binpackingwithconflicts",
-                ":capacitatedvehiclerouting",
-                ":vehicleroutingwithtimewindows",
-                ":capacitatedopenvehiclerouting",
-                ":parallelschedulingwithfamilysetuptimestwct",
                 ":starobservationscheduling",
                 "//columngenerationsolver:read_args",
-                "@boost//:program_options",
-        ] + COINOR_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP + KNITRO_DEP,
-        copts = COINOR_COPTS + XPRESS_COPTS + CPLEX_COPTS + GUROBI_COPTS + KNITRO_COPTS,
+        ] + ALL_DEP,
+        copts = ALL_COPTS,
 )
 

@@ -468,11 +468,14 @@ inline ColumnGenerationOutput column_generation(
     output.solution_value = c0 + solver->objective();
 
     // Compute solution
-    for (ColIdx col = 0; col < (ColIdx)solver_column_indices.size(); ++col)
-        if (solver_column_indices[col] != -1 && solver->primal(col) != 0)
+    for (ColIdx col = 0; col < (ColIdx)solver_column_indices.size(); ++col) {
+        if (solver_column_indices[col] != -1
+                && std::abs(solver->primal(col)) >= TOL) {
             output.solution.push_back({
                     solver_column_indices[col],
                     solver->primal(col)});
+        }
+    }
 
     // Final display.
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;

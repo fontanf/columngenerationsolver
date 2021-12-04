@@ -41,9 +41,9 @@
 
 #include "orproblems/capacitatedopenvehiclerouting.hpp"
 
-#include "treesearchsolver/algorithms/iterative_beam_search.hpp"
-#include "treesearchsolver/algorithms/a_star.hpp"
-#include "treesearchsolver/algorithms/iterative_memory_bounded_a_star.hpp"
+#include "treesearchsolver/iterative_beam_search.hpp"
+#include "treesearchsolver/best_first_search.hpp"
+#include "treesearchsolver/iterative_memory_bounded_best_first_search.hpp"
 
 #include "optimizationtools/utils.hpp"
 
@@ -176,7 +176,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     parameters_espp.minimum_size_of_the_queue = 512;
     parameters_espp.maximum_size_of_the_queue = 512;
     //parameters_espp.info.set_verbose(true);
-    auto output_espp = treesearchsolver::iterativebeamsearch(
+    auto output_espp = treesearchsolver::iterative_beam_search(
             branching_scheme, parameters_espp);
 
     // Retrieve column.

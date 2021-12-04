@@ -16,23 +16,23 @@
  *
  * Program:
  *
- * max ∑ᵢ ∑ₖ (∑ⱼ cⱼ xⱼᵢᵏ) yᵢᵏ
- *                                      Note that (∑ⱼ cⱼ xⱼᵢᵏ) is a constant.
+ * max ∑ᵢ ∑ₖ (∑ⱼ pⱼ xⱼᵢᵏ) yᵢᵏ
+ *                                      Note that (∑ⱼ pⱼ xⱼᵢᵏ) is a constant.
  *
- * 0 <= ∑ₖ yᵢᵏ <= 1        for all knapsack i
+ * 1 <= ∑ₖ yᵢᵏ <= 1        for all knapsack i
  *                       (not more than 1 packing selected for each knapsack)
  *                                                         Dual variables: uᵢ
- * 0 <= ∑ₖ xⱼᵢᵏ yᵢᵏ <= 1   for all items j
+ * 0 <= ∑ᵢ∑ₖ xⱼᵢᵏ yᵢᵏ <= 1   for all items j
  *                                          (each item selected at most once)
  *                                                         Dual variables: vⱼ
  *
  * The pricing problem consists in finding a variable of positive reduced cost.
  * The reduced cost of a variable yᵢᵏ is given by:
- * rc(yᵢᵏ) = ∑ⱼ cⱼ xⱼᵢᵏ - uᵢ - ∑ⱼ xⱼᵢᵏ vⱼ
- *         = ∑ⱼ (cⱼ - vⱼ) xⱼᵢᵏ - uᵢ
+ * rc(yᵢᵏ) = ∑ⱼ pⱼ xⱼᵢᵏ - uᵢ - ∑ⱼ xⱼᵢᵏ vⱼ
+ *         = ∑ⱼ (pⱼ - vⱼ) xⱼᵢᵏ - uᵢ
  *
  * Therefore, finding a variable of maximum reduced cost reduces to solving
- * m Knapsack Problems with items with profit (cⱼ - vⱼ).
+ * m Knapsack Problems with items with profit (pⱼ - vⱼ).
  *
  */
 
@@ -88,7 +88,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     p.column_lower_bound = 0;
     p.column_upper_bound = 1;
     // Row lower bounds.
-    std::fill(p.row_lower_bounds.begin(), p.row_lower_bounds.begin() + m, 0);
+    std::fill(p.row_lower_bounds.begin(), p.row_lower_bounds.begin() + m, 1);
     std::fill(p.row_lower_bounds.begin() + m, p.row_lower_bounds.end(), 0);
     // Row upper bounds.
     std::fill(p.row_upper_bounds.begin(), p.row_upper_bounds.begin() + m, 1);
@@ -98,7 +98,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     // Row coefficent upper bounds.
     std::fill(p.row_coefficient_upper_bounds.begin(), p.row_coefficient_upper_bounds.end(), 1);
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = -instance.total_profit();
+    p.dummy_column_objective_coefficient = -1;
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));

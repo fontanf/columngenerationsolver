@@ -96,7 +96,7 @@ inline void display(
         const std::stringstream& s,
         optimizationtools::Info& info)
 {
-    double t = (double)std::round(info.elapsed_time() * 10000) / 10000;
+    double t = info.elapsed_time();
     double gap = (p.objective_sense == ObjectiveSense::Min)?
         primal - dual:
         dual - primal;
@@ -115,7 +115,7 @@ inline void display_end(
         const Output& output,
         optimizationtools::Info& info)
 {
-    double time = (double)std::round(info.elapsed_time() * 10000) / 10000;
+    double t = info.elapsed_time();
     Value primal = output.solution_value;
     Value dual = output.bound;
     VER(info, std::defaultfloat
@@ -128,7 +128,7 @@ inline void display_end(
             << "Relative gap (%):         " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
             << "Total number of columns:  " << output.total_number_of_columns << std::endl
             << "Number of columns added:  " << output.number_of_added_columns << std::endl
-            << "Total time (s):           " << time << std::endl);
+            << "Total time (s):           " << t << std::endl);
 }
 
 inline bool is_feasible(

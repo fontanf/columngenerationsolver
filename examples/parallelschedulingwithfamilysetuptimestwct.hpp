@@ -43,7 +43,7 @@
 
 #include "orproblems/parallelschedulingwithfamilysetuptimestwct.hpp"
 
-#include "treesearchsolver/algorithms/iterative_beam_search.hpp"
+#include "treesearchsolver/iterative_beam_search.hpp"
 
 #include "optimizationtools/utils.hpp"
 
@@ -180,7 +180,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     parameters_smoas.minimum_size_of_the_queue = 512;
     parameters_smoas.maximum_size_of_the_queue = 512;
     //parameters_smoas.info.set_verbose(true);
-    auto output_smoas = treesearchsolver::iterativebeamsearch(
+    auto output_smoas = treesearchsolver::iterative_beam_search(
             branching_scheme, parameters_smoas);
 
     // Retrieve column.

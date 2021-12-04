@@ -20,6 +20,7 @@ XPRESS_COPTS = select({
 KNITRO_COPTS = select({
             "//examples:knitro_build": ["-DKNITRO_FOUND"],
             "//conditions:default": []})
+ALL_COPTS = COINOR_COPTS + XPRESS_COPTS + CPLEX_COPTS + GUROBI_COPTS + KNITRO_COPTS
 
 COINOR_DEP = select({
             "//examples:coinor_build": ["@coinor//:coinor"],
@@ -36,4 +37,5 @@ XPRESS_DEP = select({
 KNITRO_DEP = select({
             "//examples:knitro_build": ["@knitro//:knitro"],
             "//conditions:default": []})
+ALL_DEP = COINOR_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP + KNITRO_DEP
 

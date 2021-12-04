@@ -61,8 +61,8 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "e8aca356c1e4b8d132c1013922ea025352c43155",
-    shallow_since = "1637389652 +0100",
+    commit = "6d09cdbc30180d41b321d0ae060681ff10973a00",
+    shallow_since = "1638613761 +0100",
 )
 
 local_repository(
@@ -80,8 +80,8 @@ git_repository(
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "15722363f0c46afa954f3b1da0cd4586a43a3c43",
-    shallow_since = "1630823672 +0200",
+    commit = "fb9129f1fbdcc83260ad82877dc8973534e6d7b3",
+    shallow_since = "1638613864 +0100",
 )
 
 local_repository(

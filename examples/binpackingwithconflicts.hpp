@@ -36,7 +36,7 @@
 
 #include "orproblems/binpackingwithconflicts.hpp"
 #include "external/treesearchsolver/examples/knapsackwithconflicts.hpp"
-#include "external/treesearchsolver/treesearchsolver/algorithms/iterative_beam_search.hpp"
+#include "external/treesearchsolver/treesearchsolver/iterative_beam_search.hpp"
 
 namespace columngenerationsolver
 {
@@ -149,7 +149,7 @@ std::vector<Column> PricingSolver::solve_pricing(
     parameters_kp.minimum_size_of_the_queue = 512;
     parameters_kp.maximum_size_of_the_queue = 512;
     //parameters_espp.info.set_verbose(true);
-    auto output_kp = treesearchsolver::iterativebeamsearch(
+    auto output_kp = treesearchsolver::iterative_beam_search(
             branching_scheme, parameters_kp);
 
     // Retrieve column.

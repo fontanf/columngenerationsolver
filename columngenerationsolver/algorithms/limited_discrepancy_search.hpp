@@ -204,7 +204,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                 continue;
             Value val = p.second;
             Value bp = parameters.columns[col].branching_priority;
-            if (ceil(val) != 0) {
+            if (std::abs(ceil(val)) > TOL) {
                 if (col_best == -1
                         || bp_best < bp
                         || (bp_best == bp && diff_best > ceil(val) - val)) {
@@ -214,7 +214,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                     bp_best = bp;
                 }
             }
-            if (floor(val) != 0) {
+            if (std::abs(floor(val)) > TOL) {
                 if (col_best == -1
                         || bp_best < bp
                         || (bp_best == bp && diff_best > val - floor(val))) {
@@ -239,7 +239,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
             child->col         = col_best;
             child->value       = value;
             child->value_sum   = node->value_sum + value;
-            child->discrepancy = node->discrepancy + abs(val_best - value);
+            child->discrepancy = node->discrepancy + std::abs(val_best - value);
             child->depth       = node->depth + 1;
             nodes.insert(child);
 
