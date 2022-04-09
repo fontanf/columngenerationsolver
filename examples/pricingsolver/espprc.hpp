@@ -1,8 +1,8 @@
 #pragma once
 
-#include "optimizationtools/info.hpp"
-#include "optimizationtools/utils.hpp"
-#include "optimizationtools/sorted_on_demand_array.hpp"
+#include "optimizationtools/utils/info.hpp"
+#include "optimizationtools/utils/utils.hpp"
+#include "optimizationtools/containers/sorted_on_demand_array.hpp"
 
 /**
  * Elementary Shortest Path Problem with Resource Constraint.

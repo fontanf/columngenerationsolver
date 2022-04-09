@@ -49,8 +49,8 @@ cc_library(
 git_repository(
     name = "optimizationtools",
     remote = "https://github.com/fontanf/optimizationtools.git",
-    commit = "c2df60575bed9af3cfb8652bc3c859f98b52b58c",
-    shallow_since = "1630764843 +0200",
+    commit = "c16004605aef2182a40393ead8ec7c5ea01b08c5",
+    shallow_since = "1649491882 +0200",
 )
 
 local_repository(
@@ -61,8 +61,8 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "6d09cdbc30180d41b321d0ae060681ff10973a00",
-    shallow_since = "1638613761 +0100",
+    commit = "81dc3639853e27279381fdec304d90e6125f0714",
+    shallow_since = "1648966914 +0200",
 )
 
 local_repository(
@@ -73,15 +73,20 @@ local_repository(
 git_repository(
     name = "knapsacksolver",
     remote = "https://github.com/fontanf/knapsacksolver.git",
-    commit = "817d1f9102317f38dd1b21a0aa9908c6c2666761",
-    shallow_since = "1639211385 +0100",
+    commit = "619f8a65a9c23eaab9825dcce589408945e7ef65",
+    shallow_since = "1649492589 +0200",
+)
+
+local_repository(
+    name = "knapsacksolver_",
+    path = "../knapsacksolver/",
 )
 
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "fb9129f1fbdcc83260ad82877dc8973534e6d7b3",
-    shallow_since = "1638613864 +0100",
+    commit = "b127dbd387913137e3dd13ce8760650c28ea6ea6",
+    shallow_since = "1649492731 +0200",
 )
 
 local_repository(

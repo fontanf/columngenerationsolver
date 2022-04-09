@@ -48,7 +48,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
         LimitedDiscrepancySearchOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    VER(optional_parameters.info,
+    FFOT_VER(optional_parameters.info,
                "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl
@@ -102,7 +102,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
             break;
         if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
-        if (std::abs(output.solution_value - output.bound) < TOL)
+        if (std::abs(output.solution_value - output.bound) < FFOT_TOL)
             break;
 
         // Get node
@@ -181,10 +181,10 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
         // Check bound
         if (output.solution.size() > 0) {
             if (parameters.objective_sense == ObjectiveSense::Min
-                    && output.solution_value <= output_columngeneration.solution_value + TOL)
+                    && output.solution_value <= output_columngeneration.solution_value + FFOT_TOL)
                 continue;
             if (parameters.objective_sense == ObjectiveSense::Max
-                    && output.solution_value >= output_columngeneration.solution_value - TOL)
+                    && output.solution_value >= output_columngeneration.solution_value - FFOT_TOL)
                 continue;
         }
 
@@ -204,7 +204,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                 continue;
             Value val = p.second;
             Value bp = parameters.columns[col].branching_priority;
-            if (std::abs(ceil(val)) > TOL) {
+            if (std::abs(ceil(val)) > FFOT_TOL) {
                 if (col_best == -1
                         || bp_best < bp
                         || (bp_best == bp && diff_best > ceil(val) - val)) {
@@ -214,7 +214,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                     bp_best = bp;
                 }
             }
-            if (std::abs(floor(val)) > TOL) {
+            if (std::abs(floor(val)) > FFOT_TOL) {
                 if (col_best == -1
                         || bp_best < bp
                         || (bp_best == bp && diff_best > val - floor(val))) {
@@ -258,7 +258,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                 } else {
                     Value solution_value = compute_value(parameters, fixed_columns);
                     if (parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value - TOL > solution_value) {
+                            && output.solution_value - FFOT_TOL > solution_value) {
                         //std::cout << "New best solution value " << solution_value << std::endl;
                         output.solution = to_solution(parameters, fixed_columns);
                         output.solution_value = solution_value;
@@ -269,7 +269,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
                         optional_parameters.new_bound_callback(output);
                     }
                     if (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value + TOL < solution_value) {
+                            && output.solution_value + FFOT_TOL < solution_value) {
                         output.solution = to_solution(parameters, fixed_columns);
                         output.solution_value = solution_value;
                         output.solution_discrepancy = node->discrepancy;
@@ -287,7 +287,7 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
 
     output.total_number_of_columns = parameters.columns.size();
     display_end(output, optional_parameters.info);
-    VER(optional_parameters.info, "Number of Nodes:          " << output.number_of_nodes << std::endl);
+    FFOT_VER(optional_parameters.info, "Number of Nodes:          " << output.number_of_nodes << std::endl);
     return output;
 }
 

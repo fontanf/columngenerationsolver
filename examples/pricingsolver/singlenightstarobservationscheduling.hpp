@@ -1,6 +1,6 @@
 #pragma once
 
-#include "optimizationtools/info.hpp"
+#include "optimizationtools/utils/info.hpp"
 
 /**
  * Single Night Star Observation Scheduling Problem.

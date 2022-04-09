@@ -45,7 +45,7 @@
 
 #include "treesearchsolver/iterative_beam_search.hpp"
 
-#include "optimizationtools/utils.hpp"
+#include "optimizationtools/utils/utils.hpp"
 
 namespace columngenerationsolver
 {
@@ -175,7 +175,7 @@ std::vector<Column> PricingSolver::solve_pricing(
 
     // Solve subproblem instance.
     oaschedulingwithfamilysetuptimestwct::BranchingScheme branching_scheme(instance_smoas);
-    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_smoas;
+    treesearchsolver::IterativeBeamSearchOptionalParameters<oaschedulingwithfamilysetuptimestwct::BranchingScheme> parameters_smoas;
     parameters_smoas.maximum_size_of_the_solution_pool = 100;
     parameters_smoas.minimum_size_of_the_queue = 512;
     parameters_smoas.maximum_size_of_the_queue = 512;

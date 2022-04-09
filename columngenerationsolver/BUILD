@@ -9,7 +9,7 @@ cc_library(
                 "algorithms/heuristic_tree_search.hpp",
         ],
         deps = [
-                "@optimizationtools//optimizationtools:info",
+                "@optimizationtools//optimizationtools/utils:info",
         ],
         visibility = ["//visibility:public"],
 )

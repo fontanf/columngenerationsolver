@@ -46,7 +46,7 @@
 #include "treesearchsolver/best_first_search.hpp"
 #include "treesearchsolver/iterative_memory_bounded_best_first_search.hpp"
 
-#include "optimizationtools/utils.hpp"
+#include "optimizationtools/utils/utils.hpp"
 
 #include "pugixml.hpp"
 
@@ -176,7 +176,7 @@ std::vector<Column> PricingSolver::solve_pricing(
 
     // Solve subproblem instance.
     espprctw::BranchingScheme branching_scheme(instance_espp);
-    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espp;
+    treesearchsolver::IterativeBeamSearchOptionalParameters<espprctw::BranchingScheme> parameters_espp;
     parameters_espp.maximum_size_of_the_solution_pool = 100;
     parameters_espp.minimum_size_of_the_queue = 512;
     parameters_espp.maximum_size_of_the_queue = 512;

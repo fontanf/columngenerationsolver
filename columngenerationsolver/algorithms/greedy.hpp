@@ -28,7 +28,7 @@ inline GreedyOutput greedy(
         GreedyOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    VER(optional_parameters.info,
+    FFOT_VER(optional_parameters.info,
                "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl

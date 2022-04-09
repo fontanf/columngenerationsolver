@@ -77,7 +77,7 @@ cc_library(
         hdrs = ["capacitatedvehiclerouting.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
-                "@optimizationtools//optimizationtools:utils",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@orproblems//orproblems:capacitatedvehiclerouting",
                 "//examples/pricingsolver:espprc",
         ],
@@ -101,7 +101,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:espprctw",
-                "@optimizationtools//optimizationtools:utils",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@pugixml//:pugixml",
                 "@orproblems//orproblems:vehicleroutingwithtimewindows",
         ],
@@ -125,7 +125,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:eospprc",
-                "@optimizationtools//optimizationtools:utils",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@orproblems//orproblems:capacitatedopenvehiclerouting",
         ],
         visibility = ["//visibility:public"],
@@ -148,7 +148,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:oaschedulingwithfamilysetuptimestwct",
-                "@optimizationtools//optimizationtools:utils",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@orproblems//orproblems:parallelschedulingwithfamilysetuptimestwct",
         ],
         visibility = ["//visibility:public"],
@@ -171,7 +171,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:singlenightstarobservationscheduling",
-                "@optimizationtools//optimizationtools:utils",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@orproblems//orproblems:starobservationscheduling",
         ],
         visibility = ["//visibility:public"],

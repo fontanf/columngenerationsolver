@@ -37,7 +37,7 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
         HeuristicTreeSearchOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    VER(optional_parameters.info,
+    FFOT_VER(optional_parameters.info,
                "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl
@@ -91,9 +91,9 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
                 const columngenerationsolver::LimitedDiscrepancySearchOutput& o)
         {
             if ((parameters.objective_sense == ObjectiveSense::Min
-                        && output.bound + TOL < o.bound)
+                        && output.bound + FFOT_TOL < o.bound)
                     || (parameters.objective_sense == ObjectiveSense::Max
-                        && output.bound - TOL > o.bound)) {
+                        && output.bound - FFOT_TOL > o.bound)) {
                 output.bound = o.bound;
                 std::stringstream ss;
                 ss << "it " << output.maximum_number_of_iterations;
@@ -103,9 +103,9 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
             if (o.solution.size() > 0) {
                 // Update solution.
                 if ((parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value - TOL > o.solution_value)
+                            && output.solution_value - FFOT_TOL > o.solution_value)
                         || (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value + TOL < o.solution_value)) {
+                            && output.solution_value + FFOT_TOL < o.solution_value)) {
                     output.solution = o.solution;
                     output.solution_value = o.solution_value;
                     output.solution_iteration = output.maximum_number_of_iterations;

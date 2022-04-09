@@ -43,7 +43,7 @@ inline ColumnGenerationOutput column_generation(
         ColumnGenerationOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    VER(optional_parameters.info,
+    FFOT_VER(optional_parameters.info,
                "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl
@@ -264,7 +264,7 @@ inline ColumnGenerationOutput column_generation(
         output.time_lpsolve += time_span_lpsolve.count();
 
         // Display.
-        VER(optional_parameters.info,
+        FFOT_VER(optional_parameters.info,
                 std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
                 << std::setw(10) << output.number_of_iterations
                 << std::setw(20) << std::fixed << std::setprecision(7) << c0 + solver->objective()
@@ -295,7 +295,7 @@ inline ColumnGenerationOutput column_generation(
             if (k > 1)
                 output.number_of_mispricings++;
             // Compute separation point.
-            double alpha_cur = std::max(0.0, 1 - k * (1 - alpha) - TOL);
+            double alpha_cur = std::max(0.0, 1 - k * (1 - alpha) - FFOT_TOL);
             double beta = optional_parameters.static_directional_smoothing_parameter;
             //std::cout << "alpha_cur " << alpha_cur << std::endl;
             if (output.number_of_iterations == 1
@@ -375,10 +375,10 @@ inline ColumnGenerationOutput column_generation(
                 Value rc = compute_reduced_cost(column, duals_out);
                 //std::cout << "rc " << rc << std::endl;
                 if (parameters.objective_sense == ObjectiveSense::Min
-                        && rc <= 0 - TOL)
+                        && rc <= 0 - FFOT_TOL)
                     new_columns.push_back(column);
                 if (parameters.objective_sense == ObjectiveSense::Max
-                        && rc >= 0 + TOL)
+                        && rc >= 0 + FFOT_TOL)
                     new_columns.push_back(column);
             }
             if (!new_columns.empty() || (alpha_cur == 0.0 && beta == 0.0)) {
@@ -470,7 +470,7 @@ inline ColumnGenerationOutput column_generation(
     // Compute solution
     for (ColIdx col = 0; col < (ColIdx)solver_column_indices.size(); ++col) {
         if (solver_column_indices[col] != -1
-                && std::abs(solver->primal(col)) >= TOL) {
+                && std::abs(solver->primal(col)) >= FFOT_TOL) {
             output.solution.push_back({
                     solver_column_indices[col],
                     solver->primal(col)});
@@ -479,7 +479,7 @@ inline ColumnGenerationOutput column_generation(
 
     // Final display.
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;
-    VER(optional_parameters.info, std::defaultfloat
+    FFOT_VER(optional_parameters.info, std::defaultfloat
             << std::endl
             << "Final statistics" << std::endl
             << "----------------" << std::endl

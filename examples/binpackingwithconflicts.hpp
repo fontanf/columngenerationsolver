@@ -144,7 +144,7 @@ std::vector<Column> PricingSolver::solve_pricing(
 
     // Solve subproblem instance.
     treesearchsolver::knapsackwithconflicts::BranchingScheme branching_scheme(instance_kp, {});
-    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_kp;
+    treesearchsolver::IterativeBeamSearchOptionalParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> parameters_kp;
     parameters_kp.maximum_size_of_the_solution_pool = 100;
     parameters_kp.minimum_size_of_the_queue = 512;
     parameters_kp.maximum_size_of_the_queue = 512;

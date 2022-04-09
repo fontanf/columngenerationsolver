@@ -1,6 +1,6 @@
 #pragma once
 
-#include "optimizationtools/info.hpp"
+#include "optimizationtools/utils/info.hpp"
 
 #include <vector>
 #include <cstdint>
@@ -74,7 +74,7 @@ struct Parameters
 
 inline void display_initialize(optimizationtools::Info& info)
 {
-    VER(info,
+    FFOT_VER(info,
             std::setw(10) << "Time"
             << std::setw(14) << "Solution"
             << std::setw(14) << "Bound"
@@ -100,7 +100,7 @@ inline void display(
     double gap = (p.objective_sense == ObjectiveSense::Min)?
         primal - dual:
         dual - primal;
-    VER(info,
+    FFOT_VER(info,
             std::setw(10) << std::fixed << std::setprecision(3) << t
             << std::setw(14) << std::fixed << std::setprecision(5) << primal
             << std::setw(14) << std::fixed << std::setprecision(5) << dual
@@ -118,7 +118,7 @@ inline void display_end(
     double t = info.elapsed_time();
     Value primal = output.solution_value;
     Value dual = output.bound;
-    VER(info, std::defaultfloat
+    FFOT_VER(info, std::defaultfloat
             << std::endl
             << "Final statistics" << std::endl
             << "----------------" << std::endl

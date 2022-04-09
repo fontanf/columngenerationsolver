@@ -42,7 +42,7 @@
 #include "treesearchsolver/best_first_search.hpp"
 #include "treesearchsolver/iterative_memory_bounded_best_first_search.hpp"
 
-#include "optimizationtools/utils.hpp"
+#include "optimizationtools/utils/utils.hpp"
 
 namespace columngenerationsolver
 {
@@ -161,7 +161,7 @@ std::vector<Column> PricingSolver::solve_pricing(
 
     // Solve subproblem instance.
     espprc::BranchingScheme branching_scheme(instance_espp);
-    treesearchsolver::IterativeBeamSearchOptionalParameters parameters_espp;
+    treesearchsolver::IterativeBeamSearchOptionalParameters<espprc::BranchingScheme> parameters_espp;
     parameters_espp.maximum_size_of_the_solution_pool = 100;
     parameters_espp.minimum_size_of_the_queue = 512;
     parameters_espp.maximum_size_of_the_queue = 512;
