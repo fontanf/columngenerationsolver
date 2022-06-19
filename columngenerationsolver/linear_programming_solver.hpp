@@ -13,7 +13,6 @@
 
 #if KNITRO_FOUND
 #include <knitro.h>
-#include <ktr.h>
 #endif
 
 namespace columngenerationsolver

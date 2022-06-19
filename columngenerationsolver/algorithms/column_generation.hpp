@@ -43,8 +43,8 @@ inline ColumnGenerationOutput column_generation(
         ColumnGenerationOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    FFOT_VER(optional_parameters.info,
-               "======================================" << std::endl
+    optional_parameters.info.os()
+            << "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl
             << std::endl
@@ -62,8 +62,7 @@ inline ColumnGenerationOutput column_generation(
             << "Maximum number of iterations:            " << optional_parameters.maximum_number_of_iterations << std::endl
             << std::endl
             << std::setw(10) << "Time" << std::setw(10) << "It" << std::setw(20) << "Obj" << std::setw(10) << "Col" << std::endl
-            << std::setw(10) << "----" << std::setw(10) << "--" << std::setw(20) << "---" << std::setw(10) << "---" << std::endl
-       );
+            << std::setw(10) << "----" << std::setw(10) << "--" << std::setw(20) << "---" << std::setw(10) << "---" << std::endl;
 
     ColumnGenerationOutput output;
 
@@ -264,12 +263,12 @@ inline ColumnGenerationOutput column_generation(
         output.time_lpsolve += time_span_lpsolve.count();
 
         // Display.
-        FFOT_VER(optional_parameters.info,
-                std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
+        optional_parameters.info.os()
+                << std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
                 << std::setw(10) << output.number_of_iterations
                 << std::setw(20) << std::fixed << std::setprecision(7) << c0 + solver->objective()
                 << std::setw(10) << output.number_of_added_columns
-                << std::endl);
+                << std::endl;
 
         // Check time.
         if (optional_parameters.info.needs_to_end())
@@ -479,7 +478,7 @@ inline ColumnGenerationOutput column_generation(
 
     // Final display.
     double time = (double)std::round(optional_parameters.info.elapsed_time() * 10000) / 10000;
-    FFOT_VER(optional_parameters.info, std::defaultfloat
+    optional_parameters.info.os() << std::defaultfloat
             << std::endl
             << "Final statistics" << std::endl
             << "----------------" << std::endl
@@ -493,7 +492,7 @@ inline ColumnGenerationOutput column_generation(
             << "Number of pricing without stab.:  " << output.number_of_no_stab_pricings << std::endl
             << "Time LP solve (s):                " << output.time_lpsolve << std::endl
             << "Time pricing (s):                 " << output.time_pricing << std::endl
-            << "Total time (s):                   " << time << std::endl);
+            << "Total time (s):                   " << time << std::endl;
     return output;
 }
 

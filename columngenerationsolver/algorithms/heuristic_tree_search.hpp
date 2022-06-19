@@ -37,8 +37,8 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
         HeuristicTreeSearchOptionalParameters optional_parameters = {})
 {
     // Initial display.
-    FFOT_VER(optional_parameters.info,
-               "======================================" << std::endl
+    optional_parameters.info.os()
+            << "======================================" << std::endl
             << "       Column Generation Solver       " << std::endl
             << "======================================" << std::endl
             << std::endl
@@ -53,8 +53,7 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
             << "Static directional smoothing parameter:  " << optional_parameters.column_generation_parameters.static_directional_smoothing_parameter << std::endl
             << "Self-adjusting Wentges smoothing:        " << optional_parameters.column_generation_parameters.self_adjusting_wentges_smoothing << std::endl
             << "Automatic directional smoothing:         " << optional_parameters.column_generation_parameters.automatic_directional_smoothing << std::endl
-            << std::endl
-       );
+            << std::endl;
 
     HeuristicTreeSearchOutput output;
     output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?

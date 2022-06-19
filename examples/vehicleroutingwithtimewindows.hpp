@@ -48,8 +48,6 @@
 
 #include "optimizationtools/utils/utils.hpp"
 
-#include "pugixml.hpp"
-
 namespace columngenerationsolver
 {
 
@@ -105,7 +103,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
         p.row_coefficient_upper_bounds[j] = 1;
     }
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = 3 * instance.maximum_time() + instance.maximum_service_time();
+    p.dummy_column_objective_coefficient = 3 * instance.maximum_travel_time() + instance.maximum_service_time();
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));
@@ -170,7 +168,7 @@ std::vector<Column> PricingSolver::solve_pricing(
             if (j2_espp == j_espp)
                 continue;
             LocationId j2 = espp2cvrp_[j2_espp];
-            instance_espp.set_time(j_espp, j2_espp, instance_.time(j, j2));
+            instance_espp.set_time(j_espp, j2_espp, instance_.travel_time(j, j2));
         }
     }
 

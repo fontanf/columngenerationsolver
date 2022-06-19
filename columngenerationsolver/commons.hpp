@@ -70,12 +70,14 @@ struct Parameters
     std::vector<Column> columns;
 };
 
-/******************************* Implementation *******************************/
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// Implementation ////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 inline void display_initialize(optimizationtools::Info& info)
 {
-    FFOT_VER(info,
-            std::setw(10) << "Time"
+    info.os()
+            << std::setw(10) << "Time"
             << std::setw(14) << "Solution"
             << std::setw(14) << "Bound"
             << std::setw(14) << "Gap"
@@ -86,7 +88,7 @@ inline void display_initialize(optimizationtools::Info& info)
             << std::setw(14) << "-----"
             << std::setw(14) << "---"
             << std::setw(10) << "-------"
-            << std::setw(24) << "-------" << std::endl);
+            << std::setw(24) << "-------" << std::endl;
 }
 
 inline void display(
@@ -100,14 +102,14 @@ inline void display(
     double gap = (p.objective_sense == ObjectiveSense::Min)?
         primal - dual:
         dual - primal;
-    FFOT_VER(info,
-            std::setw(10) << std::fixed << std::setprecision(3) << t
+    info.os()
+            << std::setw(10) << std::fixed << std::setprecision(3) << t
             << std::setw(14) << std::fixed << std::setprecision(5) << primal
             << std::setw(14) << std::fixed << std::setprecision(5) << dual
             << std::setw(14) << std::fixed << std::setprecision(5) << gap
             << std::setw(10) << std::fixed << std::setprecision(2) << 100.0 * gap / std::max(std::abs(primal), std::abs(dual))
             << std::setw(24) << s.str()
-            << std::endl);
+            << std::endl;
 }
 
 template <typename Output>
@@ -118,7 +120,7 @@ inline void display_end(
     double t = info.elapsed_time();
     Value primal = output.solution_value;
     Value dual = output.bound;
-    FFOT_VER(info, std::defaultfloat
+    info.os() << std::defaultfloat
             << std::endl
             << "Final statistics" << std::endl
             << "----------------" << std::endl
@@ -128,7 +130,7 @@ inline void display_end(
             << "Relative gap (%):         " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
             << "Total number of columns:  " << output.total_number_of_columns << std::endl
             << "Number of columns added:  " << output.number_of_added_columns << std::endl
-            << "Total time (s):           " << t << std::endl);
+            << "Total time (s):           " << t << std::endl;
 }
 
 inline bool is_feasible(

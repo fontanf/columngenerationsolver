@@ -31,26 +31,11 @@ cc_library(
     sha256 = "87b5884741427220d3a33df1363ae0e8b898099fbc59f1c451113f6732891014",
 )
 
-http_archive(
-    name = "pugixml",
-    build_file_content = """
-cc_library(
-        name = "pugixml",
-        srcs = ["pugixml-1.11/src/pugixml.cpp"],
-        hdrs = ["pugixml-1.11/src/pugixml.hpp", "pugixml-1.11/src/pugiconfig.hpp"],
-        visibility = ["//visibility:public"],
-        strip_include_prefix = "pugixml-1.11/src/"
-)
-""",
-    urls = ["https://github.com/zeux/pugixml/releases/download/v1.11/pugixml-1.11.tar.gz"],
-    sha256 = "26913d3e63b9c07431401cf826df17ed832a20d19333d043991e611d23beaa2c",
-)
-
 git_repository(
     name = "optimizationtools",
     remote = "https://github.com/fontanf/optimizationtools.git",
-    commit = "c16004605aef2182a40393ead8ec7c5ea01b08c5",
-    shallow_since = "1649491882 +0200",
+    commit = "82aadd81a837b02c03d5fa025b7f253129c8f0af",
+    shallow_since = "1655661915 +0200",
 )
 
 local_repository(
@@ -61,8 +46,8 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "81dc3639853e27279381fdec304d90e6125f0714",
-    shallow_since = "1648966914 +0200",
+    commit = "c46524b181f6fbdc24efbef3386f24fee139411e",
+    shallow_since = "1654927508 +0200",
 )
 
 local_repository(
@@ -73,8 +58,8 @@ local_repository(
 git_repository(
     name = "knapsacksolver",
     remote = "https://github.com/fontanf/knapsacksolver.git",
-    commit = "619f8a65a9c23eaab9825dcce589408945e7ef65",
-    shallow_since = "1649492589 +0200",
+    commit = "9671673f1449ce571096e4cf62effd28cf67671b",
+    shallow_since = "1655640135 +0200",
 )
 
 local_repository(
@@ -85,8 +70,8 @@ local_repository(
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "b127dbd387913137e3dd13ce8760650c28ea6ea6",
-    shallow_since = "1649492731 +0200",
+    commit = "c39a99bb46ef73f4bd092460517d530f3a273569",
+    shallow_since = "1655023961 +0200",
 )
 
 local_repository(
@@ -179,13 +164,12 @@ cc_library(
 
 new_local_repository(
     name = "knitro",
-    path = "/home/florian/Programmes/knitro-13.0.0-z-Linux-Intel17-64/",
+    path = "/home/florian/Programmes/knitro-13.0.1-Linux-64//",
     build_file_content = """
 cc_library(
     name = "knitro",
     hdrs = [
             "include/knitro.h",
-            "include/ktr.h",
     ],
     strip_include_prefix = "include/",
     srcs = [

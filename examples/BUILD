@@ -102,7 +102,6 @@ cc_library(
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:espprctw",
                 "@optimizationtools//optimizationtools/utils:utils",
-                "@pugixml//:pugixml",
                 "@orproblems//orproblems:vehicleroutingwithtimewindows",
         ],
         visibility = ["//visibility:public"],
