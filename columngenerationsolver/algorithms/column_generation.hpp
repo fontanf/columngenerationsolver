@@ -7,12 +7,14 @@ namespace columngenerationsolver
 
 struct ColumnGenerationOptionalParameters
 {
+    /** Linear programming solver. */
     LinearProgrammingSolver linear_programming_solver = LinearProgrammingSolver::CLP;
 
+    /** Pointer to a vector containing the columns fixed. */
     const std::vector<std::pair<ColIdx, Value>>* fixed_columns = NULL;
 
+    /** Maximum number of iterations. */
     Counter maximum_number_of_iterations = -1;
-    bool* end = NULL;
 
     // Stabilization parameters.
     Value static_wentges_smoothing_parameter = 0; // alpha
@@ -20,6 +22,7 @@ struct ColumnGenerationOptionalParameters
     Value static_directional_smoothing_parameter = 0.0; // beta
     bool automatic_directional_smoothing = false;
 
+    /** Info structure. */
     optimizationtools::Info info = optimizationtools::Info();
 };
 
@@ -272,9 +275,6 @@ inline ColumnGenerationOutput column_generation(
 
         // Check time.
         if (optional_parameters.info.needs_to_end())
-            break;
-        // Check 'end' parameter.
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
         // Check iteration limit.
         if (optional_parameters.maximum_number_of_iterations != -1

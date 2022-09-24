@@ -23,12 +23,17 @@ typedef std::function<void(const HeuristicTreeSearchOutput&)> HeuristicTreeSearc
 
 struct HeuristicTreeSearchOptionalParameters
 {
+    /** New bound callback. */
     HeuristicTreeSearchCallback new_bound_callback
-        = [](const HeuristicTreeSearchOutput& o) { (void)o; };
-    Counter number_of_threads = 3;
+        = [](const HeuristicTreeSearchOutput&) { };
+
+    /** Growth rate. */
     double growth_rate = 1.5;
-    bool* end = NULL;
+
+    /** Parameters for the column generation sub-problem. */
     ColumnGenerationOptionalParameters column_generation_parameters;
+
+    /** Info structure. */
     optimizationtools::Info info = optimizationtools::Info();
 };
 
@@ -70,8 +75,6 @@ inline HeuristicTreeSearchOutput heuristic_tree_search(
             output.maximum_number_of_iterations++;
 
         if (optional_parameters.info.needs_to_end())
-            break;
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
 
         // Clean column pool?

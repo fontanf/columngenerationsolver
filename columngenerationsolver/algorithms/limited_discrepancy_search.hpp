@@ -23,13 +23,20 @@ typedef std::function<void(const LimitedDiscrepancySearchOutput&)> LimitedDiscre
 
 struct LimitedDiscrepancySearchOptionalParameters
 {
+    /** New bound callback. */
     LimitedDiscrepancySearchCallback new_bound_callback
-        = [](const LimitedDiscrepancySearchOutput& o) { (void)o; };
-    Counter number_of_threads = 3;
+        = [](const LimitedDiscrepancySearchOutput&) { };
+
+    /** Maximum discrepancy. */
     Value discrepancy_limit = std::numeric_limits<Value>::infinity();
+
+    /** Specific stop criteria for the Heuristic Tree Search algorithm. */
     bool heuristictreesearch_stop = false;
-    bool* end = NULL;
+
+    /** Parameters for the column generation sub-problem. */
     ColumnGenerationOptionalParameters column_generation_parameters;
+
+    /** Info structure. */
     optimizationtools::Info info = optimizationtools::Info();
 };
 
@@ -99,8 +106,6 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
         // Check time.
         if (optional_parameters.info.needs_to_end())
             break;
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
-            break;
         if (std::abs(output.solution_value - output.bound) < FFOT_TOL)
             break;
 
@@ -144,10 +149,8 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
         ColumnGenerationOptionalParameters column_generation_parameters
             = optional_parameters.column_generation_parameters;
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.end = optional_parameters.end;
-        column_generation_parameters.info.reset_time();
-        column_generation_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
-        //column_generation_parameters.info.set_verbose(true);
+        column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
+        //column_generation_parameters.info.set_verbosity_level(1);
         auto output_columngeneration = column_generation(
                 parameters,
                 column_generation_parameters);
@@ -156,8 +159,6 @@ inline LimitedDiscrepancySearchOutput limited_discrepancy_search(
         output.number_of_added_columns += output_columngeneration.number_of_added_columns;
         //std::cout << "bound " << output_columngeneration.solution_value << std::endl;
         if (optional_parameters.info.needs_to_end())
-            break;
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
         if (node->depth == 0) {
             Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;

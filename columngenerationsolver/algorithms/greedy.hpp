@@ -7,8 +7,10 @@ namespace columngenerationsolver
 
 struct GreedyOptionalParameters
 {
-    bool* end = NULL;
+    /** Parameters for the column generation sub-problem. */
     ColumnGenerationOptionalParameters column_generation_parameters;
+
+    /** Info structure. */
     optimizationtools::Info info = optimizationtools::Info();
 };
 
@@ -58,15 +60,11 @@ inline GreedyOutput greedy(
         // Check time
         if (optional_parameters.info.needs_to_end())
             break;
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
-            break;
 
         ColumnGenerationOptionalParameters column_generation_parameters
             = optional_parameters.column_generation_parameters;
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.end = optional_parameters.end;
-        column_generation_parameters.info.reset_time();
-        column_generation_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
+        column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
         //column_generation_parameters.info.set_verbose(true);
         auto output_columngeneration = column_generation(
                 parameters,
@@ -75,8 +73,6 @@ inline GreedyOutput greedy(
         output.time_pricing += output_columngeneration.time_pricing;
         output.number_of_added_columns += output_columngeneration.number_of_added_columns;
         if (optional_parameters.info.needs_to_end())
-            break;
-        if (optional_parameters.end != NULL && *optional_parameters.end == true)
             break;
         if (output_columngeneration.solution.size() == 0)
             break;
