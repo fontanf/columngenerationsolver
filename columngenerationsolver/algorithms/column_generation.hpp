@@ -374,10 +374,10 @@ inline ColumnGenerationOutput column_generation(
                 Value rc = compute_reduced_cost(column, duals_out);
                 //std::cout << "rc " << rc << std::endl;
                 if (parameters.objective_sense == ObjectiveSense::Min
-                        && rc <= 0 - FFOT_TOL)
+                        && rc <= -parameters.dummy_column_objective_coefficient * 10e-9)
                     new_columns.push_back(column);
                 if (parameters.objective_sense == ObjectiveSense::Max
-                        && rc >= 0 + FFOT_TOL)
+                        && rc >= parameters.dummy_column_objective_coefficient * 10e-9)
                     new_columns.push_back(column);
             }
             if (!new_columns.empty() || (alpha_cur == 0.0 && beta == 0.0)) {
