@@ -84,10 +84,28 @@ new_local_repository(
     path = "/home/florian/Programmes/coinbrew/",
     build_file_content = """
 cc_library(
-    name = "coinor",
-    hdrs = glob(["dist/include/**/*.h*"], exclude_directories = 0),
-    strip_include_prefix = "dist/include/",
-    srcs = glob(["dist/lib/**/*.so"], exclude_directories = 0),
+    name = "osi",
+    hdrs = glob(["dist/include/coin/Osi*.h*"], exclude_directories = 0),
+    strip_include_prefix = "dist/include/coin/",
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "coinutils",
+    hdrs = glob(["dist/include/coin/Coin*.h*"], exclude_directories = 0),
+    strip_include_prefix = "dist/include/coin/",
+    srcs = [
+        "dist/lib/libCoinUtils.so",
+    ],
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "clp",
+    hdrs = glob(["dist/include/coin/Clp*.h*"], exclude_directories = 0),
+    strip_include_prefix = "dist/include/coin",
+    srcs = [
+        "dist/lib/libClp.so",
+    ],
+    deps = [":coinutils", ":osi"],
     visibility = ["//visibility:public"],
 )
 """,

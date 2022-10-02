@@ -1,4 +1,4 @@
-config_setting(name = "coinor_build", values = {"define": "coinor=true"}, visibility = ["//visibility:public"])
+config_setting(name = "clp_build", values = {"define": "clp=true"}, visibility = ["//visibility:public"])
 config_setting(name = "cplex_build",  values = {"define": "cplex=true"},  visibility = ["//visibility:public"])
 config_setting(name = "xpress_build", values = {"define": "xpress=true"}, visibility = ["//visibility:public"])
 config_setting(name = "gurobi_build", values = {"define": "gurobi=true"}, visibility = ["//visibility:public"])

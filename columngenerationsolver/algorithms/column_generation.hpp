@@ -153,7 +153,7 @@ inline ColumnGenerationOutput column_generation(
                     new_row_lower_bounds,
                     new_row_upper_bounds));
 #endif
-#if COINOR_FOUND
+#if CLP_FOUND
     if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::CLP)
         solver = std::unique_ptr<ColumnGenerationSolver>(
                 new ColumnGenerationSolverClp(
