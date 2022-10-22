@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Bin Packing Problem with Conflicts.
  *
@@ -31,6 +29,8 @@
  * a Knapsack Problem with Conflicts with items with profit vⱼ.
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

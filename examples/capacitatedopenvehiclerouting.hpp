@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Capacitated Open Vehicle Routing Problem.
  *
@@ -34,6 +32,8 @@
  * an Elementary Open Shortest Path Problems with Resource Constraints.
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

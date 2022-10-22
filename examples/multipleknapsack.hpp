@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Multiple Knapsack Problem.
  *
@@ -35,6 +33,8 @@
  * m Knapsack Problems with items with profit (pⱼ - vⱼ).
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 
@@ -98,7 +98,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     // Row coefficent upper bounds.
     std::fill(p.row_coefficient_upper_bounds.begin(), p.row_coefficient_upper_bounds.end(), 1);
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = -1;
+    p.dummy_column_objective_coefficient = 10 * instance.item(0).profit;
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));

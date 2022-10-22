@@ -4,7 +4,7 @@ config_setting(name = "xpress_build", values = {"define": "xpress=true"}, visibi
 config_setting(name = "gurobi_build", values = {"define": "gurobi=true"}, visibility = ["//visibility:public"])
 config_setting(name = "knitro_build", values = {"define": "knitro=true"}, visibility = ["//visibility:public"])
 
-load("//examples:variables.bzl", "STDCPP", "ALL_COPTS", "ALL_DEP")
+load("//columngenerationsolver:variables.bzl", "STDCPP", "ALL_COPTS", "ALL_DEP")
 
 cc_library(
         name = "cuttingstock",

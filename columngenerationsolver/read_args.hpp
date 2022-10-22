@@ -91,6 +91,7 @@ MainArgs read_args(int argc, char *argv[])
     std::string algorithm = "iterative_beam_search";
     std::string column_generation_parameters = "";
     double time_limit = std::numeric_limits<double>::infinity();
+    int verbosity_level = 1;
 
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
@@ -103,7 +104,7 @@ MainArgs read_args(int argc, char *argv[])
         ("column-generation-parameters,g", boost::program_options::value<std::string>(&column_generation_parameters), "set column generation parameters")
         ("time-limit,t", boost::program_options::value<double>(&time_limit), "Time limit in seconds\n  ex: 3600")
         ("only-write-at-the-end,e", "Only write output and certificate files at the end")
-        ("verbose,v", "")
+        ("verbose,v", boost::program_options::value<int>(&verbosity_level), "")
         ("print-instance", "")
         ("print-solution", "")
         ;
@@ -134,7 +135,7 @@ MainArgs read_args(int argc, char *argv[])
         main_args.column_generation_argv.push_back(const_cast<char*>(s.c_str()));
 
     main_args.info = optimizationtools::Info()
-        .set_verbose(vm.count("verbose"))
+        .set_verbosity_level(verbosity_level)
         .set_time_limit(time_limit)
         .set_certificate_path(certificate_path)
         .set_json_output_path(output_path)

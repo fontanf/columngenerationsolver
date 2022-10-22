@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Identical parallel machine scheduling problem with family setup times, Total
  * weighted completion time.
@@ -36,6 +34,8 @@
  * times, Total weighted completion time.
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

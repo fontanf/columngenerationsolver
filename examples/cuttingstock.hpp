@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Cutting Stock Problem.
  *
@@ -31,6 +29,8 @@
  * a Bounded Knapsack Problem with items with profit vⱼ.
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

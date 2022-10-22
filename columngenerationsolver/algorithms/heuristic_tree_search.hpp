@@ -37,7 +37,7 @@ struct HeuristicTreeSearchOptionalParameters
     optimizationtools::Info info = optimizationtools::Info();
 };
 
-inline HeuristicTreeSearchOutput heuristic_tree_search(
+HeuristicTreeSearchOutput heuristic_tree_search(
         Parameters& parameters,
         HeuristicTreeSearchOptionalParameters optional_parameters = {})
 {

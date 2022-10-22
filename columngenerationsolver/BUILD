@@ -1,3 +1,9 @@
+load("//columngenerationsolver:variables.bzl", "STDCPP")
+load("//columngenerationsolver:variables.bzl", "CLP_DEP", "CLP_COPTS")
+load("//columngenerationsolver:variables.bzl", "CPLEX_DEP", "CPLEX_COPTS")
+load("//columngenerationsolver:variables.bzl", "XPRESS_DEP", "XPRESS_COPTS")
+load("//columngenerationsolver:variables.bzl", "GUROBI_DEP", "GUROBI_COPTS")
+
 cc_library(
         name = "columngenerationsolver",
         hdrs = [
@@ -8,9 +14,16 @@ cc_library(
                 "algorithms/limited_discrepancy_search.hpp",
                 "algorithms/heuristic_tree_search.hpp",
         ],
+        srcs = [
+                "commons.cpp",
+                "algorithms/column_generation.cpp",
+                "algorithms/greedy.cpp",
+                "algorithms/limited_discrepancy_search.cpp",
+        ],
         deps = [
                 "@optimizationtools//optimizationtools/utils:info",
-        ],
+        ] + CLP_DEP + CPLEX_DEP + GUROBI_DEP + XPRESS_DEP,
+        copts = STDCPP + CLP_COPTS + CPLEX_COPTS + GUROBI_COPTS + XPRESS_COPTS,
         visibility = ["//visibility:public"],
 )
 

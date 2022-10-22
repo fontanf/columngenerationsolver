@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Vehicle Routing Problem with Time Windows.
  *
@@ -35,6 +33,8 @@
  * Windows.
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

@@ -1,5 +1,3 @@
-#pragma once
-
 /**
  * Star Observation Scheduling Problem.
  *
@@ -36,6 +34,8 @@
  * (wⱼ - vⱼ).
  *
  */
+
+#pragma once
 
 #include "columngenerationsolver/commons.hpp"
 

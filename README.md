@@ -123,8 +123,8 @@ bazel build --define cplex=true -- //...
 
 Then, examples can be executed as follows:
 ```shell
-./bazel-bin/examples/cuttingstock_main -v -a "column_generation" -i "../ordata/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
-./bazel-bin/examples/multipleknapsack_main -v -a "limited_discrepancy_search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
+./bazel-bin/examples/cuttingstock_main -v 1 -a "column_generation" -i "../ordata/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
+./bazel-bin/examples/multipleknapsack_main -v 1 -a "limited_discrepancy_search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
 
 ## Usage, C++ library
