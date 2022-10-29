@@ -19,6 +19,7 @@ cc_library(
                 "algorithms/column_generation.cpp",
                 "algorithms/greedy.cpp",
                 "algorithms/limited_discrepancy_search.cpp",
+                "algorithms/heuristic_tree_search.cpp",
         ],
         deps = [
                 "@optimizationtools//optimizationtools/utils:info",
