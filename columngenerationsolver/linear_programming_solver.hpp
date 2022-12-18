@@ -11,6 +11,10 @@
 #include <ilcplex/ilocplex.h>
 #endif
 
+#if XPRESS_FOUND
+#include <xprs.h>
+#endif
+
 #if KNITRO_FOUND
 #include <knitro.h>
 #endif
@@ -228,6 +232,127 @@ private:
     IloRangeArray ranges_;
     std::vector<IloNumVar> vars_;
     IloCplex cplex_;
+
+};
+
+#endif
+
+#if XPRESS_FOUND
+
+class ColumnGenerationSolverXpress: public ColumnGenerationSolver
+{
+
+public:
+
+    ColumnGenerationSolverXpress(
+            ObjectiveSense objective_sense,
+            const std::vector<Value>& row_lower_bounds,
+            const std::vector<Value>& row_upper_bounds)
+    {
+        //std::cout << "ColumnGenerationSolverXpress::ColumnGenerationSolverXpress" << std::endl;
+        XPRScreateprob(&problem_);
+        XPRSsetintcontrol(problem_, XPRS_THREADS, 1);
+        //XPRSsetlogfile(problem_, "xpress.log");
+        // Objective.
+        if (objective_sense == ObjectiveSense::Min) {
+            XPRSchgobjsense(problem_, XPRS_OBJ_MINIMIZE);
+        } else {
+            XPRSchgobjsense(problem_, XPRS_OBJ_MAXIMIZE);
+        }
+        // Constraints.
+        duals_ = std::vector<double>(row_lower_bounds.size(), 0.0);
+        basis_rows_ = std::vector<int>(row_lower_bounds.size(), 0.0);
+        ri_ = std::vector<int>(row_lower_bounds.size());
+        std::vector<double> rhs(row_lower_bounds.size(), 0.0);
+        std::vector<double> rng(row_lower_bounds.size(), 0.0);
+        std::vector<char> row_types(row_lower_bounds.size());
+        for (RowIdx i = 0; i < (RowIdx)row_lower_bounds.size(); ++i) {
+            rhs[i] = row_upper_bounds[i];
+            rng[i] = row_upper_bounds[i] - row_lower_bounds[i];
+            row_types[i] = 'R';
+            if (row_lower_bounds[i] == row_upper_bounds[i])
+                row_types[i] = 'E';
+        }
+        XPRSaddrows(
+                problem_,
+                row_lower_bounds.size(),
+                0,
+                row_types.data(),
+                rhs.data(),
+                rng.data(),
+                NULL,
+                NULL,
+                NULL);
+    }
+
+    virtual ~ColumnGenerationSolverXpress()
+    {
+        XPRSdestroyprob(problem_);
+    }
+
+    void add_column(
+            const std::vector<RowIdx>& row_indices,
+            const std::vector<Value>& row_coefficients,
+            Value objective_coefficient,
+            Value lower_bound,
+            Value upper_bound)
+    {
+        //std::cout << "ColumnGenerationSolverXpress::add_column" << std::endl;
+        primals_.push_back(0.0);
+        basis_cols_.push_back(0);
+        int start[] = {0};
+        for (int i = 0; i < (int)row_indices.size(); ++i)
+            ri_[i] = row_indices[i];
+        XPRSaddcols(
+                problem_,
+                1,
+                row_indices.size(),
+                &objective_coefficient,
+                start,
+                ri_.data(),
+                row_coefficients.data(),
+                &lower_bound,
+                &upper_bound);
+    }
+
+    void solve()
+    {
+        //std::cout << "ColumnGenerationSolverXpress::solve" << std::endl;
+        if (primals_.empty())
+            return;
+        if (has_basis_)
+            XPRSloadbasis(problem_, basis_rows_.data(), basis_cols_.data());
+        XPRSlpoptimize(problem_, "");
+        XPRSgetlpsol(problem_, primals_.data(), NULL, duals_.data(), NULL);
+        XPRSgetbasis(problem_, basis_rows_.data(), basis_cols_.data());
+        has_basis_ = true;
+    }
+
+    Value objective() const
+    {
+        if (primals_.empty())
+            return 0.0;
+        double objective_value = 0.0;
+        XPRSgetdblattrib(problem_, XPRS_LPOBJVAL, &objective_value);
+        return objective_value;
+    }
+
+    Value dual(RowIdx row) const
+    {
+        return duals_[row];
+    }
+
+    Value primal(ColIdx col) const { return primals_[col]; }
+
+private:
+
+    XPRSprob problem_;
+    bool has_basis_ = false;
+    std::vector<int> ri_;
+    std::vector<int> basis_rows_;
+    std::vector<int> basis_cols_;
+    std::vector<double> primals_;
+    std::vector<double> duals_;
 
 };
 

@@ -171,10 +171,13 @@ cc_library(
 
 new_local_repository(
     name = "xpress",
-    path = "",
+    path = "/opt/xpressmp/",
     build_file_content = """
 cc_library(
     name = "xpress",
+    hdrs = glob(["include/*.h"], exclude_directories = 0),
+    strip_include_prefix = "include/",
+    srcs = ["lib/libxprs.so"],
     visibility = ["//visibility:public"],
 )
 """,

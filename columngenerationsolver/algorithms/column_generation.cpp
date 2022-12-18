@@ -123,6 +123,15 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                     new_row_upper_bounds));
     }
 #endif
+#if XPRESS_FOUND
+    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::Xpress) {
+        solver = std::unique_ptr<ColumnGenerationSolver>(
+                new ColumnGenerationSolverXpress(
+                    parameters.objective_sense,
+                    new_row_lower_bounds,
+                    new_row_upper_bounds));
+    }
+#endif
 #if KNITRO_FOUND
     if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::Knitro)
         solver = std::unique_ptr<ColumnGenerationSolver>(

@@ -20,7 +20,7 @@ If the pricing algorithm is heuristic, the primal algorithms still works, but th
 
 Solving a problem only requires a couple hundred lines of code (see examples).
 
-A linear programming solver is required. Currently, CLP and CPLEX are supported.
+A linear programming solver is required. Currently, CLP, Xpress and CPLEX are supported.
 
 Features:
 * Algorithms:

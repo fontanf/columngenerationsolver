@@ -154,6 +154,12 @@ void run(
     ColumnGenerationOptionalParameters column_generation_parameters
         = read_column_generation_args(main_args.column_generation_argv);
 
+#if XPRESS_FOUND
+    if (column_generation_parameters.linear_programming_solver
+            == LinearProgrammingSolver::Xpress)
+        XPRSinit(NULL);
+#endif
+
     if (strcmp(main_args.algorithm_argv[0], "column_generation") == 0) {
         column_generation_parameters.info = main_args.info;
         column_generation(p, column_generation_parameters);
@@ -175,5 +181,11 @@ void run(
     } else {
         std::cerr << "\033[31m" << "ERROR, unknown algorithm: '" << main_args.algorithm_argv[0] << "'.\033[0m" << std::endl;
     }
+
+#if XPRESS_FOUND
+    if (column_generation_parameters.linear_programming_solver
+            == LinearProgrammingSolver::Xpress)
+        XPRSfree();
+#endif
 }
 }
