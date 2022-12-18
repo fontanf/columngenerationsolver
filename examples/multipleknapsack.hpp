@@ -39,7 +39,7 @@
 #include "columngenerationsolver/commons.hpp"
 
 #include "orproblems/multipleknapsack.hpp"
-#include "knapsacksolver/algorithms/minknap.hpp"
+#include "knapsacksolver/algorithms/dynamic_programming_primal_dual.hpp"
 
 namespace columngenerationsolver
 {
@@ -157,7 +157,7 @@ std::vector<Column> PricingSolver::solve_pricing(
         }
 
         // Solve subproblem instance.
-        auto output_kp = knapsacksolver::minknap(instance_kp);
+        auto output_kp = knapsacksolver::dynamic_programming_primal_dual(instance_kp);
 
         // Retrieve column.
         Column column;

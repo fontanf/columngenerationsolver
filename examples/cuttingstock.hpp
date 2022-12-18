@@ -36,7 +36,7 @@
 
 #include "orproblems/cuttingstock.hpp"
 
-#include "knapsacksolver/algorithms/minknap.hpp"
+#include "knapsacksolver/algorithms/dynamic_programming_primal_dual.hpp"
 
 namespace columngenerationsolver
 {
@@ -136,9 +136,9 @@ std::vector<Column> PricingSolver::solve_pricing(
     }
 
     // Solve subproblem instance.
-    knapsacksolver::MinknapOptionalParameters parameters_kp;
+    knapsacksolver::DynamicProgrammingPrimalDualOptionalParameters parameters_kp;
     //parameters_kp.info.set_verbose(true);
-    auto output_kp = knapsacksolver::minknap(instance_kp, parameters_kp);
+    auto output_kp = knapsacksolver::dynamic_programming_primal_dual(instance_kp, parameters_kp);
 
     // Retrieve column.
     Column column;
