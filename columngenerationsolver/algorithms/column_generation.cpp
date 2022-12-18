@@ -178,8 +178,8 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         if (!feasible[col])
             continue;
         const Column& column = parameters.columns[col];
-        std::vector<RowIdx> ri(new_number_of_rows);
-        std::vector<Value> rc(new_number_of_rows);
+        std::vector<RowIdx> ri;
+        std::vector<Value> rc;
         bool ok = true;
         for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
             RowIdx i = column.row_indices[row_pos];
