@@ -35,22 +35,22 @@ def Settings(**kwargs):
 
                 # Knapsack solver
                 # '-I', '../'
-                '-I', './bazel-roadef2022/external/'
+                '-I', './bazel-columngenerationsolver/external/'
                 'knapsacksolver/',
 
                 # Optimization tools
                 # '-I', '../'
-                '-I', './bazel-roadef2022/external/'
+                '-I', './bazel-columngenerationsolver/external/'
                 'optimizationtools/',
 
                 # OR Problems
                 # '-I', '../'
-                '-I', './bazel-roadef2022/external/'
+                '-I', './bazel-columngenerationsolver/external/'
                 'orproblems/',
 
                 # Tree Search Solver
                 # '-I', '../'
-                '-I', './bazel-roadef2022/external/'
+                '-I', './bazel-columngenerationsolver/external/'
                 'treesearchsolver/',
                 ],
             }
