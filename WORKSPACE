@@ -70,8 +70,8 @@ local_repository(
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "c39a99bb46ef73f4bd092460517d530f3a273569",
-    shallow_since = "1655023961 +0200",
+    commit = "89eef57594b0d5de0f4ff006cc744cff4660dfdc",
+    shallow_since = "1672482126 +0100",
 )
 
 local_repository(
@@ -80,13 +80,14 @@ local_repository(
 )
 
 git_repository(
-    name = "localsearchsolver_",
+    name = "localsearchsolver",
     remote = "https://github.com/fontanf/localsearchsolver.git",
-    commit = "077f3565fae1ea52f4ba7f07347b33925c54f380",
+    commit = "4faf6f81bfacf9882e3fbd87101e77f8bf29028f",
+    shallow_since = "1672482299 +0100",
 )
 
 local_repository(
-    name = "localsearchsolver",
+    name = "localsearchsolver_",
     path = "../localsearchsolver/",
 )
 
