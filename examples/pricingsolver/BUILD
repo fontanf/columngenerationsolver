@@ -16,29 +16,10 @@ cc_library(
                 "@optimizationtools//optimizationtools/utils:info",
                 "@optimizationtools//optimizationtools/containers:containers",
                 "@treesearchsolver//treesearchsolver:treesearchsolver",
+                "@localsearchsolver//localsearchsolver:localsearchsolver",
+                "@boost//:dynamic_bitset",
         ],
-        visibility = ["//visibility:public"],
-)
-
-cc_library(
-        name = "eospprc",
-        hdrs = ["eospprc.hpp"],
-        deps = [
-                "@optimizationtools//optimizationtools/utils:info",
-                "@optimizationtools//optimizationtools/containers:containers",
-                "@treesearchsolver//treesearchsolver:treesearchsolver",
-        ],
-        visibility = ["//visibility:public"],
-)
-
-cc_library(
-        name = "oaschedulingwithfamilysetuptimestwct",
-        hdrs = ["oaschedulingwithfamilysetuptimestwct.hpp"],
-        deps = [
-                "@optimizationtools//optimizationtools/utils:info",
-                "@optimizationtools//optimizationtools/containers:containers",
-                "@treesearchsolver//treesearchsolver:treesearchsolver",
-        ],
+        linkopts = ["-pthread"],
         visibility = ["//visibility:public"],
 )
 

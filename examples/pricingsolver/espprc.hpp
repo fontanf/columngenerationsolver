@@ -1,9 +1,3 @@
-#pragma once
-
-#include "optimizationtools/utils/info.hpp"
-#include "optimizationtools/utils/utils.hpp"
-#include "optimizationtools/containers/sorted_on_demand_array.hpp"
-
 /**
  * Elementary Shortest Path Problem with Resource Constraint.
  *
@@ -26,6 +20,12 @@
  * - guide: current length + distance to the closest next child
  *
  */
+
+#pragma once
+
+#include "optimizationtools/utils/info.hpp"
+#include "optimizationtools/utils/utils.hpp"
+#include "optimizationtools/containers/sorted_on_demand_array.hpp"
 
 namespace columngenerationsolver
 {
@@ -172,12 +172,6 @@ public:
         child->demand = father->demand + instance_.location(j_next).demand;
         child->guide = child->length + instance_.distance(j_next, neighbor(j_next, 0))
             - child->profit - instance_.location(neighbor(j_next, 0)).profit;
-        //for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
-        //    if (!child->available_vertices[j])
-        //        continue;
-        //    if (child->demand + instance_.location(j).demand > instance_.capacity())
-        //        child->available_vertices[j] = false;
-        //}
         return child;
     }
 
@@ -255,9 +249,8 @@ public:
      */
 
     inline bool comparable(
-            const std::shared_ptr<Node>& node) const
+            const std::shared_ptr<Node>&) const
     {
-        (void)node;
         return true;
     }
 

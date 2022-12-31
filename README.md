@@ -36,6 +36,10 @@ Features:
 
 Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orproblems)
 
+When the sub-problems can be solved with a very efficient algorithm - typically a pseudo-polynomial dynamic programming algorithm - then the bottleneck is the resolution of the linear problems. This is the case for the examples Cutting Stock, Multiple Knapsack, Generalized Assignment and Star Observation Scheduling.
+
+When the sub-problems are more difficult to solve, their resolution become the bottleneck of the algorithm. This is the case for the examples Geometrical Variable-sized Bin Packing, Bin Packing with Conflicts, Capacitated Vehicle Routing, Vehicle Routing Problem with Time Windows and Graph Coloring. Here, these sub-problems are solved using generic approaches based on Heuristic Tree Search or Local Search. During the first column generation iterations, these heuristic algorithms are stopped early to avoid spending a lot of time to find trivial columns.
+
 ### Packing
 
 [Cutting Stock Problem](examples/cuttingstock.hpp)
@@ -79,22 +83,18 @@ Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/
 [Vehicle Routing Problem with Time Windows](examples/vehicleroutingwithtimewindows.hpp)
 * Pricing problem: Elementary Shortest Path Problem with Resource Constraint and Time Windows [solved by Heuristic Tree Search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
-[Capacitated Open Vehicle Routing Problem](examples/capacitatedopenvehiclerouting.hpp)
-* Pricing problem: Elementary Open Shortest Path Problem with Resource Constraints [solved by Heuristic Tree Search](examples/pricingsolver/eospprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
-
-### Scheduling
-
-[Identical parallel machine scheduling problem with family setup times, Total weighted completion time](examples/parallelschedulingwithfamilysetuptimestwct.hpp)
-* Pricing problem: Single machine order acceptance and scheduling problem with family setup times, Total weighted completion time [solved by Heuristic Tree Search](examples/pricingsolver/oaschedulingwithfamilysetuptimestwct.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
-
 <details><summary>Benchmarks</summary>
 <p>
 
-* Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --main ./bazel-bin/examples/parallelschedulingwithfamilysetuptimestwct_main --csv ../ordata/parallelschedulingwithfamilysetuptimestwct/data.csv -l parallelschedulingwithfamilysetuptimestwct -a "heuristic_tree_search" -t 60`
+```shell
+DATE=$(date '+%Y-%m-%d--%H-%M-%S') && python3 ../optimizationtools/scripts/bench_run.py --main ./bazel-bin/examples/vehicleroutingwithtimewindows_main --csv ../ordata/vehicleroutingwithtimewindows/data.csv -f "row['Dataset'] == 'solomon1987'" -l "${DATE}_vehicleroutingwithtimewindows"" -a "limited_discrepancy_search" -t 120
+python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehicleroutingwithtimewindows/data.csv -f "row['Dataset'] == 'solomon1987'" -l "${DATE}_vehicleroutingwithtimewindows" -b heuristiclong -t 62
+```
 
 </p>
 </details>
+
+### Scheduling
 
 [Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
 * Pricing problem: Single Night Star Observation Scheduling Problem [solved by dynamic programming](examples/pricingsolver/singlenightstarobservationscheduling.hpp)

@@ -119,52 +119,6 @@ cc_binary(
 
 
 cc_library(
-        name = "capacitatedopenvehiclerouting",
-        hdrs = ["capacitatedopenvehiclerouting.hpp"],
-        deps = [
-                "//columngenerationsolver:columngenerationsolver",
-                "//examples/pricingsolver:eospprc",
-                "@optimizationtools//optimizationtools/utils:utils",
-                "@orproblems//orproblems:capacitatedopenvehiclerouting",
-        ],
-        visibility = ["//visibility:public"],
-)
-
-cc_binary(
-        name = "capacitatedopenvehiclerouting_main",
-        srcs = ["capacitatedopenvehiclerouting_main.cpp"],
-        deps = [
-                ":capacitatedopenvehiclerouting",
-                "//columngenerationsolver:read_args",
-        ] + ALL_DEP,
-        copts = ALL_COPTS,
-)
-
-
-cc_library(
-        name = "parallelschedulingwithfamilysetuptimestwct",
-        hdrs = ["parallelschedulingwithfamilysetuptimestwct.hpp"],
-        deps = [
-                "//columngenerationsolver:columngenerationsolver",
-                "//examples/pricingsolver:oaschedulingwithfamilysetuptimestwct",
-                "@optimizationtools//optimizationtools/utils:utils",
-                "@orproblems//orproblems:parallelschedulingwithfamilysetuptimestwct",
-        ],
-        visibility = ["//visibility:public"],
-)
-
-cc_binary(
-        name = "parallelschedulingwithfamilysetuptimestwct_main",
-        srcs = ["parallelschedulingwithfamilysetuptimestwct_main.cpp"],
-        deps = [
-                ":parallelschedulingwithfamilysetuptimestwct",
-                "//columngenerationsolver:read_args",
-        ] + ALL_DEP,
-        copts = ALL_COPTS,
-)
-
-
-cc_library(
         name = "starobservationscheduling",
         hdrs = ["starobservationscheduling.hpp"],
         deps = [

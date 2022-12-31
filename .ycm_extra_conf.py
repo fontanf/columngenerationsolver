@@ -52,5 +52,10 @@ def Settings(**kwargs):
                 # '-I', '../'
                 '-I', './bazel-columngenerationsolver/external/'
                 'treesearchsolver/',
+
+                # Local Search Solver
+                # '-I', '../'
+                '-I', './bazel-columngenerationsolver/external/'
+                'localsearchsolver/',
                 ],
             }

@@ -51,10 +51,13 @@ class PricingSolver: public columngenerationsolver::PricingSolver
 
 public:
 
-    PricingSolver(const Instance& instance):
+    PricingSolver(
+            const Instance& instance,
+            double dummy_column_objective_coefficient):
         instance_(instance),
         packed_items_(instance.number_of_items()),
-        bpp2kp_(instance.number_of_items())
+        bpp2kp_(instance.number_of_items()),
+        dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -71,7 +74,12 @@ private:
     std::vector<int8_t> packed_items_;
 
     std::vector<ItemId> kp2bpp_;
+
     std::vector<treesearchsolver::knapsackwithconflicts::ItemId> bpp2kp_;
+
+    treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
+
+    double dummy_column_objective_coefficient_;
 
 };
 
@@ -94,7 +102,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     p.dummy_column_objective_coefficient = 2 * n;
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance));
+            new PricingSolver(instance, p.dummy_column_objective_coefficient));
     return p;
 }
 
@@ -140,33 +148,52 @@ std::vector<Column> PricingSolver::solve_pricing(
             if (j2 < j && bpp2kp_[j2] != -1)
                 instance_kp.add_conflict(bpp2kp_[j], bpp2kp_[j2]);
     }
-    ItemId n_kp = kp2bpp_.size();
+    ItemId kp_n = kp2bpp_.size();
+
+    std::vector<Column> columns;
 
     // Solve subproblem instance.
     treesearchsolver::knapsackwithconflicts::BranchingScheme branching_scheme(instance_kp, {});
-    treesearchsolver::IterativeBeamSearchOptionalParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> parameters_kp;
-    parameters_kp.maximum_size_of_the_solution_pool = 100;
-    parameters_kp.minimum_size_of_the_queue = 512;
-    parameters_kp.maximum_size_of_the_queue = 512;
-    //parameters_espp.info.set_verbose(true);
-    auto output_kp = treesearchsolver::iterative_beam_search(
-            branching_scheme, parameters_kp);
+    for (;;) {
+        bool ok = false;
 
-    // Retrieve column.
-    std::vector<Column> columns;
-    ItemId i = 0;
-    for (const std::shared_ptr<treesearchsolver::knapsackwithconflicts::BranchingScheme::Node>& node:
-            output_kp.solution_pool.solutions()) {
-        if (i > 2 * n_kp)
-            break;
-        Column column;
-        column.objective_coefficient = 1;
-        for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father) {
-            i++;
-            column.row_indices.push_back(kp2bpp_[node_tmp->j]);
-            column.row_coefficients.push_back(1);
+        treesearchsolver::IterativeBeamSearchOptionalParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> kp_parameters;
+        kp_parameters.maximum_size_of_the_solution_pool = 100;
+        kp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
+        kp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
+        //parameters_espp.info.set_verbose(true);
+        auto kp_output = treesearchsolver::iterative_beam_search(
+                branching_scheme, kp_parameters);
+
+        // Retrieve column.
+        ItemId i = 0;
+        for (const std::shared_ptr<treesearchsolver::knapsackwithconflicts::BranchingScheme::Node>& node:
+                kp_output.solution_pool.solutions()) {
+            if (i > 2 * kp_n)
+                break;
+            Column column;
+            column.objective_coefficient = 1;
+            for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father) {
+                i++;
+                column.row_indices.push_back(kp2bpp_[node_tmp->j]);
+                column.row_coefficients.push_back(1);
+            }
+            columns.push_back(column);
+
+            if (columngenerationsolver::compute_reduced_cost(column, duals)
+                    <= -dummy_column_objective_coefficient_ * 10e-9) {
+                ok = true;
+            }
         }
-        columns.push_back(column);
+        if (ok) {
+            break;
+        } else {
+            if (bs_size_of_the_queue_ < 1024) {
+                bs_size_of_the_queue_ *= 2;
+            } else {
+                break;
+            }
+        }
     }
     return columns;
 }

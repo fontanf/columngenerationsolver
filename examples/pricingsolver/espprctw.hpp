@@ -1,9 +1,3 @@
-#pragma once
-
-#include "optimizationtools/utils/info.hpp"
-#include "optimizationtools/utils/utils.hpp"
-#include "optimizationtools/containers/sorted_on_demand_array.hpp"
-
 /**
  * Elementary Shortest Path Problem with Resource Constraint and Time Windows.
  *
@@ -33,14 +27,24 @@
  *
  */
 
+#pragma once
+
+#include "optimizationtools/utils/info.hpp"
+#include "optimizationtools/utils/utils.hpp"
+#include "optimizationtools/containers/sorted_on_demand_array.hpp"
+
+#include "localsearchsolver/sequencing.hpp"
+
+#include "boost/dynamic_bitset.hpp"
+
 namespace columngenerationsolver
 {
 
 namespace espprctw
 {
 
-typedef int64_t VertexId;
-typedef int64_t VertexPos;
+typedef int64_t LocationId;
+typedef int64_t LocationPos;
 typedef int64_t Demand;
 typedef double Time;
 typedef double Profit;
@@ -59,16 +63,16 @@ class Instance
 
 public:
 
-    Instance(VertexId n):
+    Instance(LocationId n):
         locations_(n),
-        times_(n, std::vector<Time>(n, -1))
+        travel_times_(n, std::vector<Time>(n, -1))
     {
-        for (VertexId j = 0; j < n; ++j)
-            times_[j][j] = std::numeric_limits<Time>::max();
+        for (LocationId j = 0; j < n; ++j)
+            travel_times_[j][j] = std::numeric_limits<Time>::max();
     }
     void set_capacity(Demand demand) { locations_[0].demand = demand; }
     void set_location(
-            VertexId j,
+            LocationId j,
             Demand demand,
             Profit profit,
             Time release_date,
@@ -81,19 +85,19 @@ public:
         locations_[j].deadline = deadline;
         locations_[j].service_time = service_time;
     }
-    void set_time(VertexId j1, VertexId j2, Time t) { times_[j1][j2] = t; }
+    void set_travel_time(LocationId j1, LocationId j2, Time t) { travel_times_[j1][j2] = t; }
 
     virtual ~Instance() { }
 
-    inline VertexId number_of_vertices() const { return locations_.size(); }
-    inline Time time(VertexId j1, VertexId j2) const { return times_[j1][j2]; }
-    inline const Location& location(VertexId j) const { return locations_[j]; }
+    inline LocationId number_of_vertices() const { return locations_.size(); }
+    inline Time travel_time(LocationId j1, LocationId j2) const { return travel_times_[j1][j2]; }
+    inline const Location& location(LocationId j) const { return locations_[j]; }
     inline Demand capacity() const { return locations_[0].demand; }
 
 private:
 
     std::vector<Location> locations_;
-    std::vector<std::vector<Time>> times_;
+    std::vector<std::vector<Time>> travel_times_;
 
 };
 
@@ -105,45 +109,31 @@ public:
     struct Node
     {
         std::shared_ptr<Node> father = nullptr;
-        std::vector<bool> available_vertices;
-        VertexId j = 0;
-        VertexId number_of_vertices = 1;
+        boost::dynamic_bitset<> available_vertices;
+        LocationId j = 0;
+        LocationId number_of_vertices = 1;
         Time cost = 0;
         Time time = 0;
         Profit profit = 0;
+        Profit remaining_profit = 0;
         Demand demand = 0;
+        Demand remaining_demand = 0;
         double guide = 0;
-        VertexPos next_child_pos = 0;
+        LocationPos next_child_pos = 1;
     };
 
     BranchingScheme(const Instance& instance):
-        instance_(instance),
-        sorted_vertices_(instance.number_of_vertices()),
-        generator_(0)
-    {
-        // Initialize sorted_vertices_.
-        for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
-            sorted_vertices_[j].reset(instance.number_of_vertices());
-            for (VertexId j2 = 0; j2 < instance_.number_of_vertices(); ++j2)
-                sorted_vertices_[j].set_cost(j2, instance_.time(j, j2) - instance_.location(j2).profit);
-        }
-    }
-
-    inline VertexId neighbor(VertexId j, VertexPos pos) const
-    {
-        assert(j >= 0);
-        assert(j < instance_.number_of_vertices());
-        assert(pos >= 0);
-        assert(pos < instance_.number_of_vertices());
-        return sorted_vertices_[j].get(pos, generator_);
-    }
+        instance_(instance) { }
 
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
         r->available_vertices.resize(instance_.number_of_vertices(), true);
         r->available_vertices[0] = false;
-        r->guide = instance_.time(0, neighbor(0, 0));
+        for (LocationId j = 0; j < instance_.number_of_vertices(); ++j) {
+            r->remaining_demand += instance_.location(j).demand;
+            r->remaining_profit += instance_.location(j).profit;
+        }
         return r;
     }
 
@@ -152,24 +142,17 @@ public:
     {
         assert(!infertile(father));
         assert(!leaf(father));
-        VertexId j_next = neighbor(father->j, father->next_child_pos);
+        LocationId j_next = father->next_child_pos;
+        const Location& location = instance_.location(j_next);
         // Update father
         father->next_child_pos++;
-        VertexId j_next_next = neighbor(father->j, father->next_child_pos);
-        Time t_next = instance_.time(father->j, j_next_next);
-        if (t_next == std::numeric_limits<Time>::max()) {
-            father->guide = std::numeric_limits<double>::max();
-        } else {
-            father->guide = father->cost + t_next
-                - father->profit - instance_.location(j_next_next).profit;
-        }
-        if (father->demand + instance_.location(j_next).demand > instance_.capacity())
-            return nullptr;
-        Time t = instance_.time(father->j, j_next);
-        Time s = std::max(father->time + t, instance_.location(j_next).release_date);
-        if (s > instance_.location(j_next).deadline)
-            return nullptr;
         if (!father->available_vertices[j_next])
+            return nullptr;
+        if (father->demand + location.demand > instance_.capacity())
+            return nullptr;
+        Time t = instance_.travel_time(father->j, j_next);
+        Time s = std::max(father->time + t, location.release_date);
+        if (s > location.deadline)
             return nullptr;
 
         // Compute new child.
@@ -179,20 +162,27 @@ public:
         child->available_vertices[j_next] = false;
         child->j = j_next;
         child->number_of_vertices = father->number_of_vertices + 1;
-        child->demand = father->demand + instance_.location(j_next).demand;
-        child->time = s + instance_.location(j_next).service_time;
+        child->demand = father->demand + location.demand;
+        child->remaining_demand = father->remaining_demand - location.demand;
+        child->time = s + location.service_time;
         child->cost = father->cost + t;
-        child->profit = father->profit + instance_.location(j_next).profit;
-        child->guide = child->cost + instance_.time(j_next, neighbor(j_next, 0))
-            - child->profit - instance_.location(neighbor(j_next, 0)).profit;
-        for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
+        child->profit = father->profit + location.profit;
+        child->remaining_profit = father->remaining_profit - location.profit;
+        for (LocationId j = 0; j < instance_.number_of_vertices(); ++j) {
             if (!child->available_vertices[j])
                 continue;
-            if (child->demand + instance_.location(j).demand > instance_.capacity())
+            if (child->demand + instance_.location(j).demand > instance_.capacity()) {
                 child->available_vertices[j] = false;
-            if (child->time + instance_.time(j_next, j) > instance_.location(j).deadline)
+                child->remaining_demand -= instance_.location(j).demand;
+                child->remaining_profit -= instance_.location(j).profit;
+            } else if (child->time + instance_.travel_time(j_next, j) > instance_.location(j).deadline) {
                 child->available_vertices[j] = false;
+                child->remaining_demand -= instance_.location(j).demand;
+                child->remaining_profit -= instance_.location(j).profit;
+            }
         }
+        // Guide.
+        child->guide = child->cost - child->profit;
         return child;
     }
 
@@ -200,7 +190,7 @@ public:
             const std::shared_ptr<Node>& node) const
     {
         assert(node != nullptr);
-        return (node->guide == std::numeric_limits<double>::max());
+        return node->next_child_pos == instance_.number_of_vertices();
     }
 
     inline bool operator()(
@@ -209,6 +199,8 @@ public:
     {
         assert(!infertile(node_1));
         assert(!infertile(node_2));
+        if (node_1->number_of_vertices != node_2->number_of_vertices)
+            return node_1->number_of_vertices < node_2->number_of_vertices;
         if (node_1->guide != node_2->guide)
             return node_1->guide < node_2->guide;
         return node_1.get() < node_2.get();
@@ -224,17 +216,18 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        (void)node_1;
-        (void)node_2;
-        return false;
+        if (node_1->number_of_vertices == 1)
+            return false;
+        return node_1->cost + instance_.travel_time(node_1->j, 0) - node_1->profit - node_1->remaining_profit
+            >= node_2->cost + instance_.travel_time(node_2->j, 0) - node_2->profit;
     }
 
     bool better(
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        return node_1->cost + instance_.time(node_1->j, 0) - node_1->profit
-            < node_2->cost + instance_.time(node_2->j, 0) - node_2->profit;
+        return node_1->cost + instance_.travel_time(node_1->j, 0) - node_1->profit
+            < node_2->cost + instance_.travel_time(node_2->j, 0) - node_2->profit;
     }
 
     bool equals(
@@ -257,9 +250,9 @@ public:
         if (node->j == 0)
             return "";
         std::stringstream ss;
-        ss << node->cost + instance_.time(node->j, 0) - node->profit
+        ss << node->cost + instance_.travel_time(node->j, 0) - node->profit
             << " (n" << node->number_of_vertices
-            << " c" << node->cost + instance_.time(node->j, 0)
+            << " c" << node->cost + instance_.travel_time(node->j, 0)
             << " p" << node->profit
             << ")";
         return ss.str();
@@ -270,24 +263,21 @@ public:
      */
 
     inline bool comparable(
-            const std::shared_ptr<Node>& node) const
+            const std::shared_ptr<Node>&) const
     {
-        (void)node;
         return true;
     }
 
     struct NodeHasher
     {
-        std::hash<VertexId> hasher_1;
-        std::hash<std::vector<bool>> hasher_2;
+        std::hash<LocationId> hasher_1;
+        std::hash<boost::dynamic_bitset<>> hasher_2;
 
         inline bool operator()(
                 const std::shared_ptr<Node>& node_1,
                 const std::shared_ptr<Node>& node_2) const
         {
             if (node_1->j != node_2->j)
-                return false;
-            if (node_1->available_vertices != node_2->available_vertices)
                 return false;
             return true;
         }
@@ -296,7 +286,6 @@ public:
                 const std::shared_ptr<Node>& node) const
         {
             size_t hash = hasher_1(node->j);
-            optimizationtools::hash_combine(hash, hasher_2(node->available_vertices));
             return hash;
         }
     };
@@ -309,7 +298,11 @@ public:
     {
         if (node_1->cost - node_1->profit <= node_2->cost - node_2->profit
                 && node_1->time <= node_2->time
-                && node_1->demand <= node_2->demand)
+                && (node_1->demand <= node_2->demand
+                    || node_1->demand + node_1->remaining_demand
+                    <= instance_.capacity())
+                && (node_1->available_vertices | node_2->available_vertices)
+                == node_1->available_vertices)
             return true;
         return false;
     }
@@ -317,9 +310,6 @@ public:
 private:
 
     const Instance& instance_;
-
-    mutable std::vector<optimizationtools::SortedOnDemandArray> sorted_vertices_;
-    mutable std::mt19937_64 generator_;
 
 };
 

@@ -104,7 +104,7 @@ MainArgs read_args(int argc, char *argv[])
         ("column-generation-parameters,g", boost::program_options::value<std::string>(&column_generation_parameters), "set column generation parameters")
         ("time-limit,t", boost::program_options::value<double>(&time_limit), "Time limit in seconds\n  ex: 3600")
         ("only-write-at-the-end,e", "Only write output and certificate files at the end")
-        ("verbose,v", boost::program_options::value<int>(&verbosity_level), "")
+        ("verbosity-level,v", boost::program_options::value<int>(&verbosity_level), "")
         ("print-instance", "")
         ("print-solution", "")
         ;

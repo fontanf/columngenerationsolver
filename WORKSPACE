@@ -4,15 +4,15 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 git_repository(
     name = "googletest",
     remote = "https://github.com/google/googletest.git",
-    commit = "703bd9caab50b139428cea1aaff9974ebee5742e",
-    shallow_since = "1570114335 -0400",
+    commit = "58d77fa8070e8cec2dc1ed015d66b454c8d78850",
+    shallow_since = "1656350095 -0400",
 )
 
 git_repository(
     name = "com_github_nelhage_rules_boost",
-    commit = "9f9fb8b2f0213989247c9d5c0e814a8451d18d7f",
     remote = "https://github.com/nelhage/rules_boost",
-    shallow_since = "1570056263 -0700",
+    commit = "e83dfef18d91a3e35c8eac9b9aeb1444473c0efd",
+    shallow_since = "1671181466 +0000",
 )
 load("@com_github_nelhage_rules_boost//:boost/boost.bzl", "boost_deps")
 boost_deps()
@@ -46,8 +46,8 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "c46524b181f6fbdc24efbef3386f24fee139411e",
-    shallow_since = "1654927508 +0200",
+    commit = "53644e340ba65d1c880ec8d7d421a08ac6364186",
+    shallow_since = "1672482002 +0100",
 )
 
 local_repository(
@@ -77,6 +77,17 @@ git_repository(
 local_repository(
     name = "treesearchsolver_",
     path = "../treesearchsolver/",
+)
+
+git_repository(
+    name = "localsearchsolver_",
+    remote = "https://github.com/fontanf/localsearchsolver.git",
+    commit = "077f3565fae1ea52f4ba7f07347b33925c54f380",
+)
+
+local_repository(
+    name = "localsearchsolver",
+    path = "../localsearchsolver/",
 )
 
 new_local_repository(

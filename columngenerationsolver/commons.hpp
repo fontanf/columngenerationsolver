@@ -110,6 +110,14 @@ inline void display(
             << std::setw(10) << std::fixed << std::setprecision(2) << 100.0 * gap / std::max(std::abs(primal), std::abs(dual))
             << std::setw(24) << s.str()
             << std::endl;
+    info.output->number_of_solutions++;
+    std::string sol_str = "Solution" + std::to_string(info.output->number_of_solutions);
+    info.add_to_json(sol_str, "Value", std::to_string(primal));
+    info.add_to_json(sol_str, "Time", t);
+    info.add_to_json(sol_str, "Comment", s.str());
+    if (!info.output->only_write_at_the_end) {
+        info.write_json_output();
+    }
 }
 
 template <typename Output>
@@ -131,6 +139,10 @@ inline void display_end(
             << "Total number of columns:  " << output.total_number_of_columns << std::endl
             << "Number of columns added:  " << output.number_of_added_columns << std::endl
             << "Total time (s):           " << t << std::endl;
+    std::string sol_str = "Solution";
+    info.add_to_json(sol_str, "Time", t);
+    info.add_to_json(sol_str, "Value", std::to_string(primal));
+    info.write_json_output();
 }
 
 inline bool is_feasible(

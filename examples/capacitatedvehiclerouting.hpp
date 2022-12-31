@@ -57,9 +57,12 @@ class PricingSolver: public columngenerationsolver::PricingSolver
 
 public:
 
-    PricingSolver(const Instance& instance):
+    PricingSolver(
+            const Instance& instance,
+            double dummy_column_objective_coefficient):
         instance_(instance),
-        visited_customers_(instance.number_of_locations(), 0)
+        visited_customers_(instance.number_of_locations(), 0),
+        dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
     { }
 
     virtual std::vector<ColIdx> initialize_pricing(
@@ -76,6 +79,10 @@ private:
     std::vector<Demand> visited_customers_;
 
     std::vector<LocationId> espp2vrp_;
+
+    treesearchsolver::NodeId bs_size_of_the_queue_ = 128;
+
+    double dummy_column_objective_coefficient_;
 
 };
 
@@ -98,7 +105,7 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     p.dummy_column_objective_coefficient = 3 * instance.maximum_distance();
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance));
+            new PricingSolver(instance, p.dummy_column_objective_coefficient));
     return p;
 }
 
@@ -143,15 +150,15 @@ std::vector<Column> PricingSolver::solve_pricing(
             continue;
         espp2vrp_.push_back(j);
     }
-    LocationId n_espp = espp2vrp_.size();
-    espprc::Instance instance_espp(n_espp);
-    for (LocationId j_espp = 0; j_espp < n_espp; ++j_espp) {
+    LocationId espp_n = espp2vrp_.size();
+    espprc::Instance instance_espp(espp_n);
+    for (LocationId j_espp = 0; j_espp < espp_n; ++j_espp) {
         LocationId j = espp2vrp_[j_espp];
         instance_espp.set_location(
                 j_espp,
                 instance_.demand(j),
                 ((j != 0)? duals[j - 1]: 0));
-        for (LocationId j2_espp = 0; j2_espp < n_espp; ++j2_espp) {
+        for (LocationId j2_espp = 0; j2_espp < espp_n; ++j2_espp) {
             if (j2_espp == j_espp)
                 continue;
             LocationId j2 = espp2vrp_[j2_espp];
@@ -159,40 +166,64 @@ std::vector<Column> PricingSolver::solve_pricing(
         }
     }
 
+    std::vector<Column> columns;
+
     // Solve subproblem instance.
     espprc::BranchingScheme branching_scheme(instance_espp);
-    treesearchsolver::IterativeBeamSearchOptionalParameters<espprc::BranchingScheme> parameters_espp;
-    parameters_espp.maximum_size_of_the_solution_pool = 100;
-    parameters_espp.minimum_size_of_the_queue = 512;
-    parameters_espp.maximum_size_of_the_queue = 512;
-    //parameters_espp.info.set_verbose(true);
-    auto output_espp = treesearchsolver::iterative_beam_search(
-            branching_scheme, parameters_espp);
+    for (;;) {
+        bool ok = false;
 
-    // Retrieve column.
-    std::vector<Column> columns;
-    LocationId i = 0;
-    for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
-            output_espp.solution_pool.solutions()) {
-        if (i > 2 * n_espp)
-            break;
-        std::vector<LocationId> solution; // Without the depot.
-        if (node->j != 0) {
-            for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+        treesearchsolver::IterativeBeamSearchOptionalParameters<espprc::BranchingScheme> espp_parameters;
+        espp_parameters.maximum_size_of_the_solution_pool = 100;
+        espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
+        espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
+        //espp_parameters.info.set_verbose(true);
+        auto espp_output = treesearchsolver::iterative_beam_search(
+                branching_scheme, espp_parameters);
+
+        // Retrieve column.
+        LocationId i = 0;
+        for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
+                espp_output.solution_pool.solutions()) {
+            if (i > 2 * espp_n)
+                break;
+            if (node->j == 0)
+                continue;
+            std::vector<LocationId> solution; // Without the depot.
+            for (auto node_tmp = node;
+                    node_tmp->father != nullptr;
+                    node_tmp = node_tmp->father)
                 solution.push_back(espp2vrp_[node_tmp->j]);
             std::reverse(solution.begin(), solution.end());
-        }
-        i += solution.size();
+            i += solution.size();
 
-        Column column;
-        column.objective_coefficient = node->length + instance_espp.distance(node->j, 0);
-        for (LocationId j: solution) {
-            column.row_indices.push_back(j - 1);
-            column.row_coefficients.push_back(1);
+            Column column;
+            LocationId j_prev = 0;
+            for (LocationId j: solution) {
+                column.row_indices.push_back(j - 1);
+                column.row_coefficients.push_back(1);
+                column.objective_coefficient += instance_.distance(j_prev, j);
+                j_prev = j;
+            }
+            column.objective_coefficient += instance_.distance(j_prev, 0);
+            ColumnExtra extra {solution};
+            column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
+            columns.push_back(column);
+
+            if (columngenerationsolver::compute_reduced_cost(column, duals)
+                    <= -dummy_column_objective_coefficient_ * 10e-9) {
+                ok = true;
+            }
         }
-        ColumnExtra extra {solution};
-        column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-        columns.push_back(column);
+        if (ok) {
+            break;
+        } else {
+            if (bs_size_of_the_queue_ < 1024) {
+                bs_size_of_the_queue_ *= 2;
+            } else {
+                break;
+            }
+        }
     }
     return columns;
 }
