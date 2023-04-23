@@ -36,7 +36,6 @@ int main(int argc, char *argv[])
         for (const auto& colval: solution) {
             std::shared_ptr<ColumnExtra> extra
                 = std::static_pointer_cast<ColumnExtra>(colval.first.extra);
-            //Profit profit = 0;
             for (singlenightstarobservationschedulingsolver::TargetId snsosp_observation_pos = 0;
                     snsosp_observation_pos < extra->snsosp_solution.number_of_observations();
                     ++snsosp_observation_pos) {
@@ -65,7 +64,7 @@ int main(int argc, char *argv[])
 
     // Run checker.
     if (main_args.print_checker > 0
-            && main_args.info.output->certificate_path != "") {
+            && certificate_path != "") {
         os << std::endl
             << "Checker" << std::endl
             << "-------" << std::endl;

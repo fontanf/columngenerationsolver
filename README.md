@@ -126,7 +126,7 @@ Examples:
 ```shell
 ./bazel-bin/examples/cuttingstock_main -v 1 -a "column_generation" -i "../ordata/cuttingstock/falkenauer1996/T/Falkenauer_t120_00.txt"
 ```
-```shell
+```
 Instance
 --------
 Number of item_types:  120
@@ -679,7 +679,7 @@ Total time (s):                   0.2371
 ```shell
 ./bazel-bin/examples/multipleknapsack_main -v 1 -a "limited_discrepancy_search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
-```shell
+```
 Instance
 --------
 Number of knapsacks:  10
@@ -730,7 +730,7 @@ Profit:                            26797
 ```shell
 ./bazel-bin/examples/capacitatedvehiclerouting_main --verbosity-level 1 --input ../ordata/capacitatedvehiclerouting/uchoa2014/X/X-n101-k25.vrp -a greedy -c sol.txt
 ```
-```shell
+```
 Instance
 --------
 Number of locations:  101
