@@ -133,47 +133,66 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
     return {};
 }
 
+struct ColumnExtra
+{
+    NightId night_id;
+    singlenightstarobservationschedulingsolver::Solution snsosp_solution;
+    std::vector<ObservableId> snsosp2sosp;
+};
+
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    NightId m = instance_.number_of_nights();
     std::vector<Column> columns;
-    singlenightstarobservationschedulingsolver::Profit mult = 10000;
-    for (NightId i = 0; i < m; ++i) {
-        if (fixed_nights_[i] == 1)
+    for (NightId night_id = 0;
+            night_id < instance_.number_of_nights();
+            ++night_id) {
+        if (fixed_nights_[night_id] == 1)
             continue;
+
         // Build subproblem instance.
-        singlenightstarobservationschedulingsolver::Instance instance_snsosp;
+        singlenightstarobservationschedulingsolver::Instance snsosp_instance;
         snsosp2sosp_.clear();
-        for (TargetId j_pos = 0; j_pos < instance_.number_of_observables(i); ++j_pos) {
-            auto o = instance_.observable(i, j_pos);
-            if (fixed_targets_[o.j] == 1)
+        for (ObservableId observable_id = 0;
+                observable_id < instance_.number_of_observables(night_id);
+                ++observable_id) {
+            const Observable& observable = instance_.observable(night_id, observable_id);
+            if (fixed_targets_[observable.target_id] == 1)
                 continue;
-            singlenightstarobservationschedulingsolver::Target target;
-            target.profit
-                = std::floor(mult * instance_.profit(o.j))
-                - std::ceil(mult * duals[m + o.j]);
-            if (target.profit <= 0)
+            singlenightstarobservationschedulingsolver::Profit profit
+                = instance_.profit(observable.target_id)
+                - duals[instance_.number_of_nights() + observable.target_id];
+            if (profit <= 0)
                 continue;
-            target.r = o.r;
-            target.d = o.d;
-            target.p = o.p;
-            instance_snsosp.add_target(target);
-            snsosp2sosp_.push_back(o.j);
+            snsosp_instance.add_target(
+                    observable.release_date,
+                    observable.deadline,
+                    observable.observation_time,
+                    profit);
+            snsosp2sosp_.push_back(observable_id);
         }
 
         // Solve subproblem instance.
-        auto output_snsosp = singlenightstarobservationschedulingsolver::dynamicprogramming(instance_snsosp);
+        auto snsosp_output = singlenightstarobservationschedulingsolver::dynamicprogramming(snsosp_instance);
 
         // Retrieve column.
         Column column;
-        column.row_indices.push_back(i);
+        column.row_indices.push_back(night_id);
         column.row_coefficients.push_back(1);
-        for (const auto& o: output_snsosp.observations()) {
-            column.row_indices.push_back(m + snsosp2sosp_[o.j]);
+        for (singlenightstarobservationschedulingsolver::TargetId snsosp_observation_pos = 0;
+                snsosp_observation_pos < snsosp_output.number_of_observations();
+                ++snsosp_observation_pos) {
+            const auto& snsosp_observation = snsosp_output.observation(snsosp_observation_pos);
+            ObservableId observable_id = snsosp2sosp_[snsosp_observation.target_id];
+            const Observable& observable = instance_.observable(night_id, observable_id);
+            column.row_indices.push_back(
+                    instance_.number_of_nights() + observable.target_id);
             column.row_coefficients.push_back(1);
-            column.objective_coefficient += instance_.profit(snsosp2sosp_[o.j]);
+            column.objective_coefficient += instance_.profit(observable.target_id);
         }
+        // Extra.
+        ColumnExtra extra {night_id, snsosp_output, snsosp2sosp_};
+        column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
         columns.push_back(column);
     }
     return columns;

@@ -85,21 +85,20 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    ItemId n = instance.number_of_items();
-    columngenerationsolver::Parameters p(n);
+    columngenerationsolver::Parameters p(instance.number_of_items());
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
     p.column_lower_bound = 0;
     p.column_upper_bound = 1;
     // Row bounds.
-    for (ItemId j = 0; j < n; ++j) {
-        p.row_lower_bounds[j] = 1;
-        p.row_upper_bounds[j] = 1;
-        p.row_coefficient_lower_bounds[j] = 0;
-        p.row_coefficient_upper_bounds[j] = 1;
+    for (ItemId item_id = 0; item_id < instance.number_of_items(); ++item_id) {
+        p.row_lower_bounds[item_id] = 1;
+        p.row_upper_bounds[item_id] = 1;
+        p.row_coefficient_lower_bounds[item_id] = 0;
+        p.row_coefficient_upper_bounds[item_id] = 1;
     }
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = 2 * n;
+    p.dummy_column_objective_coefficient = 2 * instance.number_of_items();
     // Pricing solver.
     p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance, p.dummy_column_objective_coefficient));
@@ -128,25 +127,23 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    ItemId n = instance_.number_of_items();
-
     // Build subproblem instance.
     treesearchsolver::knapsackwithconflicts::Instance instance_kp;
     instance_kp.set_capacity(instance_.capacity());
     kp2bpp_.clear();
     std::fill(bpp2kp_.begin(), bpp2kp_.end(), -1);
-    for (ItemId j = 0; j < n; ++j) {
-        treesearchsolver::knapsackwithconflicts::Profit profit = duals[j];
+    for (ItemId item_id = 0; item_id < instance_.number_of_items(); ++item_id) {
+        treesearchsolver::knapsackwithconflicts::Profit profit = duals[item_id];
         if (profit <= 0)
             continue;
-        if (packed_items_[j] == 1)
+        if (packed_items_[item_id] == 1)
             continue;
-        bpp2kp_[j] = kp2bpp_.size();
-        kp2bpp_.push_back(j);
-        instance_kp.add_item(instance_.item(j).weight, duals[j]);
-        for (ItemId j2: instance_.item(j).neighbors)
-            if (j2 < j && bpp2kp_[j2] != -1)
-                instance_kp.add_conflict(bpp2kp_[j], bpp2kp_[j2]);
+        bpp2kp_[item_id] = kp2bpp_.size();
+        kp2bpp_.push_back(item_id);
+        instance_kp.add_item(instance_.item(item_id).weight, duals[item_id]);
+        for (ItemId item_id_2: instance_.item(item_id).neighbors)
+            if (item_id_2 < item_id && bpp2kp_[item_id_2] != -1)
+                instance_kp.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
     }
     ItemId kp_n = kp2bpp_.size();
 

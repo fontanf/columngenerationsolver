@@ -6,9 +6,12 @@ def Settings(**kwargs):
                 '-I', '.',
 
                 '-I', './bazel-columngenerationsolver/',
-                '-I', './bazel-columngenerationsolver/external/json/single_include/',
-                '-I', './bazel-columngenerationsolver/external/pugixml/pugixml-1.11/src/',
-                '-I', './bazel-columngenerationsolver/external/googletest/googletest/include/',
+                '-I', './bazel-columngenerationsolver/external/'
+                'json/single_include/',
+                '-I', './bazel-columngenerationsolver/external/'
+                'pugixml/pugixml-1.11/src/',
+                '-I', './bazel-columngenerationsolver/external/'
+                'googletest/googletest/include/',
                 '-I', './bazel-columngenerationsolver/external/boost/',
 
                 # CLP
@@ -31,7 +34,8 @@ def Settings(**kwargs):
 
                 # Knitro
                 '-DKNITRO_FOUND',
-                '-I', '/home/florian/Programmes/knitro-13.0.0-z-Linux-Intel17-64/include/',
+                '-I', '/home/florian/Programmes/'
+                'knitro-13.0.0-z-Linux-Intel17-64/include/',
 
                 # Knapsack solver
                 # '-I', '../'

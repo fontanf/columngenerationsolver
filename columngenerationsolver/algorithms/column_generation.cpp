@@ -348,7 +348,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                         && rc <= -parameters.dummy_column_objective_coefficient * 10e-9)
                     new_columns.push_back(column);
                 if (parameters.objective_sense == ObjectiveSense::Max
-                        && rc >= parameters.dummy_column_objective_coefficient * 10e-9)
+                        && rc >= -parameters.dummy_column_objective_coefficient * 10e-9)
                     new_columns.push_back(column);
             }
             if (!new_columns.empty() || (alpha_cur == 0.0 && beta == 0.0)) {

@@ -88,18 +88,19 @@ private:
 
 columngenerationsolver::Parameters get_parameters(const Instance& instance)
 {
-    LocationId n = instance.number_of_locations();
-    columngenerationsolver::Parameters p(n - 1);
+    columngenerationsolver::Parameters p(instance.number_of_locations() - 1);
 
     p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
     p.column_lower_bound = 0;
     p.column_upper_bound = 1;
     // Row bounds.
-    for (LocationId j = 0; j < n - 1; ++j) {
-        p.row_lower_bounds[j] = 1;
-        p.row_upper_bounds[j] = 1;
-        p.row_coefficient_lower_bounds[j] = 0;
-        p.row_coefficient_upper_bounds[j] = 1;
+    for (LocationId location_id = 0;
+            location_id < instance.number_of_locations() - 1;
+            ++location_id) {
+        p.row_lower_bounds[location_id] = 1;
+        p.row_upper_bounds[location_id] = 1;
+        p.row_coefficient_lower_bounds[location_id] = 0;
+        p.row_coefficient_upper_bounds[location_id] = 1;
     }
     // Dummy column objective coefficient.
     p.dummy_column_objective_coefficient = 3 * instance.maximum_distance();
@@ -140,29 +141,37 @@ struct ColumnExtra
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    LocationId n = instance_.number_of_locations();
-
     // Build subproblem instance.
     espp2vrp_.clear();
     espp2vrp_.push_back(0);
-    for (LocationId j = 1; j < n; ++j) {
-        if (visited_customers_[j] == 1)
+    for (LocationId location_id = 1;
+            location_id < instance_.number_of_locations();
+            ++location_id) {
+        if (visited_customers_[location_id] == 1)
             continue;
-        espp2vrp_.push_back(j);
+        espp2vrp_.push_back(location_id);
     }
+
     LocationId espp_n = espp2vrp_.size();
     espprc::Instance instance_espp(espp_n);
-    for (LocationId j_espp = 0; j_espp < espp_n; ++j_espp) {
-        LocationId j = espp2vrp_[j_espp];
+    for (LocationId espp_location_id = 0;
+            espp_location_id < espp_n;
+            ++espp_location_id) {
+        LocationId location_id = espp2vrp_[espp_location_id];
         instance_espp.set_location(
-                j_espp,
-                instance_.demand(j),
-                ((j != 0)? duals[j - 1]: 0));
-        for (LocationId j2_espp = 0; j2_espp < espp_n; ++j2_espp) {
-            if (j2_espp == j_espp)
+                espp_location_id,
+                instance_.demand(location_id),
+                ((location_id != 0)? duals[location_id - 1]: 0));
+        for (LocationId espp_location_id_2 = 0;
+                espp_location_id_2 < espp_n;
+                ++espp_location_id_2) {
+            if (espp_location_id_2 == espp_location_id)
                 continue;
-            LocationId j2 = espp2vrp_[j2_espp];
-            instance_espp.set_distance(j_espp, j2_espp, instance_.distance(j, j2));
+            LocationId location_id_2 = espp2vrp_[espp_location_id_2];
+            instance_espp.set_distance(
+                    espp_location_id,
+                    espp_location_id_2,
+                    instance_.distance(location_id, location_id_2));
         }
     }
 
@@ -198,14 +207,14 @@ std::vector<Column> PricingSolver::solve_pricing(
             i += solution.size();
 
             Column column;
-            LocationId j_prev = 0;
-            for (LocationId j: solution) {
-                column.row_indices.push_back(j - 1);
+            LocationId location_id_prev = 0;
+            for (LocationId location_id: solution) {
+                column.row_indices.push_back(location_id - 1);
                 column.row_coefficients.push_back(1);
-                column.objective_coefficient += instance_.distance(j_prev, j);
-                j_prev = j;
+                column.objective_coefficient += instance_.distance(location_id_prev, location_id);
+                location_id_prev = location_id;
             }
-            column.objective_coefficient += instance_.distance(j_prev, 0);
+            column.objective_coefficient += instance_.distance(location_id_prev, 0);
             ColumnExtra extra {solution};
             column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
             columns.push_back(column);

@@ -82,11 +82,14 @@ columngenerationsolver::Parameters get_parameters(const Instance& instance)
     p.column_lower_bound = 0;
     p.column_upper_bound = instance.maximum_demand();
     // Row bounds.
-    for (ItemTypeId j = 0; j < n; ++j) {
-        p.row_lower_bounds[j] = instance.demand(j);
-        p.row_upper_bounds[j] = instance.demand(j);
-        p.row_coefficient_lower_bounds[j] = 0;
-        p.row_coefficient_upper_bounds[j] = instance.demand(j);
+    for (ItemTypeId item_type_id = 0;
+            item_type_id < n;
+            ++item_type_id) {
+        const ItemType& item_type = instance.item_type(item_type_id);
+        p.row_lower_bounds[item_type_id] = item_type.demand;
+        p.row_upper_bounds[item_type_id] = item_type.demand;
+        p.row_coefficient_lower_bounds[item_type_id] = 0;
+        p.row_coefficient_upper_bounds[item_type_id] = item_type.demand;
     }
     // Dummy column objective coefficient.
     p.dummy_column_objective_coefficient = 2 * instance.maximum_demand();
@@ -118,39 +121,50 @@ std::vector<ColIdx> PricingSolver::initialize_pricing(
 std::vector<Column> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    ItemTypeId n = instance_.number_of_item_types();
     knapsacksolver::Profit mult = 10000;
 
     // Build subproblem instance.
-    knapsacksolver::Instance instance_kp;
-    instance_kp.set_capacity(instance_.capacity());
+    knapsacksolver::Instance kp_instance;
+    kp_instance.set_capacity(instance_.capacity());
     kp2csp_.clear();
-    for (ItemTypeId j = 0; j < n; ++j) {
-        knapsacksolver::Profit profit = std::floor(mult * duals[j]);
+    for (ItemTypeId item_type_id = 0;
+            item_type_id < instance_.number_of_item_types();
+            ++item_type_id) {
+        const ItemType& item_type = instance_.item_type(item_type_id);
+        knapsacksolver::Profit profit = std::floor(mult * duals[item_type_id]);
         if (profit <= 0)
             continue;
-        for (Demand q = filled_demands_[j]; q < instance_.demand(j); ++q) {
-            instance_kp.add_item(instance_.weight(j), profit);
-            kp2csp_.push_back(j);
+        for (Demand q = filled_demands_[item_type_id];
+                q < item_type.demand;
+                ++q) {
+            kp_instance.add_item(item_type.weight, profit);
+            kp2csp_.push_back(item_type_id);
         }
     }
 
     // Solve subproblem instance.
-    knapsacksolver::DynamicProgrammingPrimalDualOptionalParameters parameters_kp;
-    //parameters_kp.info.set_verbose(true);
-    auto output_kp = knapsacksolver::dynamic_programming_primal_dual(instance_kp, parameters_kp);
+    knapsacksolver::DynamicProgrammingPrimalDualOptionalParameters kp_parameters;
+    //kp_parameters.info.set_verbose(true);
+    auto kp_output = knapsacksolver::dynamic_programming_primal_dual(
+            kp_instance,
+            kp_parameters);
 
     // Retrieve column.
     Column column;
     column.objective_coefficient = 1;
     std::vector<Demand> demands(instance_.number_of_item_types(), 0);
-    for (knapsacksolver::ItemIdx j = 0; j < instance_kp.number_of_items(); ++j)
-        if (output_kp.solution.contains_idx(j))
-            demands[kp2csp_[j]]++;
-    for (ItemTypeId j = 0; j < n; ++j) {
-        if (demands[j] > 0) {
-            column.row_indices.push_back(j);
-            column.row_coefficients.push_back(demands[j]);
+    for (knapsacksolver::ItemIdx kp_item_id = 0;
+            kp_item_id < kp_instance.number_of_items();
+            ++kp_item_id) {
+        if (kp_output.solution.contains_idx(kp_item_id))
+            demands[kp2csp_[kp_item_id]]++;
+    }
+    for (ItemTypeId item_type_id = 0;
+            item_type_id < instance_.number_of_item_types();
+            ++item_type_id) {
+        if (demands[item_type_id] > 0) {
+            column.row_indices.push_back(item_type_id);
+            column.row_coefficients.push_back(demands[item_type_id]);
         }
     }
     return {column};

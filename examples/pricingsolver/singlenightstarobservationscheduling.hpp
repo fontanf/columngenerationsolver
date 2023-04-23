@@ -1,7 +1,3 @@
-#pragma once
-
-#include "optimizationtools/utils/info.hpp"
-
 /**
  * Single Night Star Observation Scheduling Problem.
  *
@@ -27,6 +23,10 @@
  *              if j != 0
  */
 
+#pragma once
+
+#include "optimizationtools/utils/info.hpp"
+
 namespace columngenerationsolver
 {
 
@@ -34,82 +34,160 @@ namespace singlenightstarobservationschedulingsolver
 {
 
 typedef int64_t TargetId;
-typedef int64_t Profit;
+typedef double Profit;
 typedef int64_t Time;
 
+/**
+ * Structure for a target.
+ */
 struct Target
 {
-    Time r;
-    Time d;
-    Time p; // Observation time.
+    /** Release date. */
+    Time release_date;
+
+    /** Deadline. */
+    Time deadline;
+
+    /** Observation time. */
+    Time observation_time;
+
+    /** Profit; */
     Profit profit;
 };
 
+/**
+ * Instance class for a 'singlenightstarobservationschedulingsolver' problem.
+ */
 class Instance
 {
 
 public:
 
+    /*
+     * Constructors and destructor
+     */
+
+    /** Constructor to build an instance manually. */
     Instance() { }
-    void add_target(const Target& target) { targets_.push_back(target); }
 
-    virtual ~Instance() { }
+    /** Add a target. */
+    void add_target(
+            Time release_date,
+            Time deadline,
+            Time observation_time,
+            Profit profit)
+    {
+        Target target;
+        target.release_date = release_date;
+        target.deadline = deadline;
+        target.observation_time = observation_time;
+        target.profit = profit;
+        targets_.push_back(target);
+    }
 
+    /*
+     * Getters
+     */
+
+    /** Get the number of targets. */
     TargetId number_of_targets() const { return targets_.size(); }
-    const Target& target(TargetId j) const { return targets_[j]; }
+
+    /** Get a target. */
+    const Target& target(TargetId target_id) const { return targets_[target_id]; }
 
 private:
 
+    /*
+     * Private attributes
+     */
+
+    /** Targets. */
     std::vector<Target> targets_;
 
 };
 
+/**
+ * Structure for an observation.
+ */
 struct Observation
 {
-    TargetId j;
-    Time s;
+    /** Target. */
+    TargetId target_id;
+
+    /** Start time. */
+    Time start_time;
 };
 
+/**
+ * Solution class for a 'singlenightstarobservationschedulingsolver' problem.
+ */
 class Solution
 {
 
 public:
 
-    Solution(const Instance& instance): instance_(instance) {  }
+    /*
+     * Constructors and destructor
+     */
 
-    void add_observation(TargetId j, Time s)
+    /** Constructor. */
+    Solution(const Instance& instance): instance_(&instance) {  }
+
+    /** Add an observation. */
+    void add_observation(
+            TargetId target_id,
+            Time start_time)
     {
-        observations_.push_back({j, s});
-        profit_ += instance_.target(j).profit;
+        const Target& target = instance().target(target_id);
+        if (target.release_date > start_time) {
+            throw std::runtime_error(
+                    "target.release_date > start_time");
+        }
+        if (target.deadline < start_time + target.observation_time) {
+            std::cout << "target_id " << target_id << std::endl;
+            std::cout << "release_date " << target.release_date << std::endl;
+            std::cout << "deadline " << target.deadline << std::endl;
+            std::cout << "observation_time " << target.observation_time << std::endl;
+            std::cout << "start_time " << start_time << std::endl;
+            throw std::runtime_error(
+                    "target.deadline < start_time + target.observation_time");
+        }
+
+        Observation observation;
+        observation.target_id = target_id;
+        observation.start_time = start_time;
+        observations_.push_back(observation);
+        profit_ += instance().target(target_id).profit;
     }
 
-    const Instance& instance() const { return instance_; }
-    const std::vector<Observation>& observations() const { return observations_; }
+    /** Get the instance. */
+    const Instance& instance() const { return *instance_; }
+
+    /** Get the number of observations. */
+    TargetId number_of_observations() const { return observations_.size(); }
+
+    /** Get an observation. */
+    const Observation& observation(TargetId observation_pos) const { return observations_[observation_pos]; }
+
+    /** Get the profit of the solution. */
     Profit profit() const { return profit_; }
 
 private:
 
-    const Instance& instance_;
+    /*
+     * Private attributes
+     */
+
+    /** Instance. */
+    const Instance* instance_;
+
+    /** Observations. */
     std::vector<Observation> observations_;
+
+    /** Profit of the solution. */
     Profit profit_ = 0;
 
 };
-
-inline std::ostream& operator<<(std::ostream &os, const Solution& solution)
-{
-    const Instance& instance = solution.instance();
-    std::cout << "profit " << solution.profit() << std::endl;
-    for (const Observation& o: solution.observations()) {
-        os << "j " << o.j
-            << " r " << instance.target(o.j).r
-            << " s " << o.s
-            << " e " << o.s + instance.target(o.j).p
-            << " d " << instance.target(o.j).d
-            << " w " << instance.target(o.j).profit
-            << std::endl;
-    }
-    return os;
-}
 
 struct DynamicProgrammingOptionalParameters
 {
@@ -118,13 +196,15 @@ struct DynamicProgrammingOptionalParameters
 
 struct DynamicProgrammingState
 {
-    Time t;
+    Time time;
     Profit profit;
+    TargetId target_id;
+    DynamicProgrammingState* prev;
 };
 
 inline std::ostream& operator<<(std::ostream &os, const DynamicProgrammingState& s)
 {
-    os << "t " << s.t << " w " << s.profit;
+    os << "time " << s.time << " profit " << s.profit;
     return os;
 }
 
@@ -148,60 +228,63 @@ inline Solution dynamicprogramming(
     std::vector<TargetId> sorted_targets(n);
     std::iota(sorted_targets.begin(), sorted_targets.end(), 0);
     sort(sorted_targets.begin(), sorted_targets.end(),
-            [&instance](TargetId j1, TargetId j2) -> bool
+            [&instance](TargetId target_id_1, TargetId target_id_2) -> bool
             {
-                return instance.target(j1).r + instance.target(j1).d
-                     < instance.target(j2).r + instance.target(j2).d;
+                return instance.target(target_id_1).release_date
+                    + instance.target(target_id_1).deadline
+                    < instance.target(target_id_2).release_date
+                    + instance.target(target_id_2).deadline;
             });
 
     // Compute states.
     std::vector<std::vector<DynamicProgrammingState>> states(n + 1);
-    states[0].push_back({0, 0});
-    for (TargetId j_pos = 0; j_pos < n; ++j_pos) {
-        TargetId j = sorted_targets[j_pos];
-        Time wj = instance.target(j).profit;
-        Time rj = instance.target(j).r;
-        Time dj = instance.target(j).d;
-        Time pj = instance.target(j).p;
-        //std::cout << "j_pos " << j_pos
+    states[0].push_back({0, 0, -1, nullptr});
+    for (TargetId target_pos = 0; target_pos < n; ++target_pos) {
+        TargetId target_id = sorted_targets[target_pos];
+        const Target& target = instance.target(target_id);
+        //std::cout << "target_pos " << target_pos
         //    << " j " << j
         //    << " m " << (double)(rj + dj) / 2
-        //    << " states[j_pos].size() " << states[j_pos].size()
+        //    << " states[target_pos].size() " << states[target_pos].size()
         //    << std::endl;
-        auto it  = states[j_pos].begin();
-        auto it1 = states[j_pos].begin();
-        while (it != states[j_pos].end() || it1 != states[j_pos].end()) {
-            if (it1 != states[j_pos].end()
-                    && (it == states[j_pos].end() || it->t > std::max(it1->t, rj) + pj)) {
+        auto it  = states[target_pos].begin();
+        auto it1 = states[target_pos].begin();
+        while (it != states[target_pos].end() || it1 != states[target_pos].end()) {
+            if (it1 != states[target_pos].end()
+                    && (it == states[target_pos].end()
+                        || it->time > std::max(it1->time, target.release_date)
+                        + target.observation_time)) {
                 DynamicProgrammingState s1 {
-                        std::max(it1->t, rj) + pj,
-                        it1->profit + wj };
+                        std::max(it1->time, target.release_date) + target.observation_time,
+                        it1->profit + target.profit,
+                        target_id,
+                        &(*it1) };
                 //std::cout << *it1 << " -> " << s1 << std::endl;
-                if (s1.t > dj) {
+                if (s1.time > target.deadline) {
                     it1++;
                     continue;
                 }
 
-                if (states[j_pos + 1].empty()
-                        || s1.profit > states[j_pos + 1].back().profit) {
-                    if (!states[j_pos + 1].empty()
-                            && s1.t == states[j_pos + 1].back().t) {
-                        states[j_pos + 1].back() = s1;
+                if (states[target_pos + 1].empty()
+                        || s1.profit > states[target_pos + 1].back().profit) {
+                    if (!states[target_pos + 1].empty()
+                            && s1.time == states[target_pos + 1].back().time) {
+                        states[target_pos + 1].back() = s1;
                     } else {
-                        states[j_pos + 1].push_back(s1);
+                        states[target_pos + 1].push_back(s1);
                     }
                 }
                 it1++;
             } else {
-                assert(it != states[j_pos].end());
+                assert(it != states[target_pos].end());
                 //std::cout << *it << std::endl;
-                if (states[j_pos + 1].empty()
-                        || it->profit > states[j_pos + 1].back().profit) {
-                    if (!states[j_pos + 1].empty()
-                            && it->t == states[j_pos + 1].back().t) {
-                        states[j_pos + 1].back() = *it;
+                if (states[target_pos + 1].empty()
+                        || it->profit > states[target_pos + 1].back().profit) {
+                    if (!states[target_pos + 1].empty()
+                            && it->time == states[target_pos + 1].back().time) {
+                        states[target_pos + 1].back() = *it;
                     } else {
-                        states[j_pos + 1].push_back(*it);
+                        states[target_pos + 1].push_back(*it);
                     }
                 }
                 ++it;
@@ -210,40 +293,19 @@ inline Solution dynamicprogramming(
     }
 
     // Find best state.
-    DynamicProgrammingState s_best { -1, -1 };
+    const DynamicProgrammingState* s_best = nullptr;
     for (const DynamicProgrammingState& s: states[n])
-        if (s_best.profit == -1 || s_best.profit < s.profit)
-            s_best = s;
-    //std::cout << "s_best t " << s_best.t << " w " << s_best.profit << std::endl;
+        if (s_best == nullptr || s_best->profit < s.profit)
+            s_best = &s;
+    //std::cout << "s_best t " << s_best.time << " profit " << s_best.profit << std::endl;
     // Retrieve solution.
-    DynamicProgrammingState s_curr = s_best;
-    for (TargetId j_pos = n - 1; j_pos >= 0; --j_pos) {
-        TargetId j = sorted_targets[j_pos];
-        Time rj = instance.target(j).r;
-        Time wj = instance.target(j).profit;
-        Time pj = instance.target(j).p;
-        if (rj > s_curr.t - pj)
-            continue;
-        for (const DynamicProgrammingState& s: states[j_pos]) {
-            if (s.profit == s_curr.profit - wj
-                    && s.t <= s_curr.t - pj) {
-                solution.add_observation(j, s_curr.t - pj);
-                //std::cout << "j_pos " << j_pos
-                //    << " add j " << j
-                //    << " s_curr " << s_curr
-                //    << " s " << s
-                //    << std::endl;
-                s_curr = s;
-                break;
-            }
-            if (s.profit == s_curr.profit && s.t <= s_curr.t) {
-                s_curr = s;
-                break;
-            }
-        }
+    const DynamicProgrammingState* s_curr = s_best;
+    while (s_curr->prev != nullptr) {
+        solution.add_observation(
+                s_curr->target_id,
+                s_curr->time - instance.target(s_curr->target_id).observation_time);
+        s_curr = s_curr->prev;
     }
-
-    //std::cout << solution << std::endl;
     return solution;
 }
 

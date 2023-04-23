@@ -79,13 +79,16 @@ struct MainArgs
     std::vector<std::string> column_generation_args;
     std::vector<char*> column_generation_argv;
     optimizationtools::Info info = optimizationtools::Info();
-    bool print_instance = false;
-    bool print_solution = false;
+    int print_instance = 1;
+    int print_solution = 1;
+    int print_checker = 1;
 };
 
-MainArgs read_args(int argc, char *argv[])
+MainArgs read_args(
+        int argc,
+        char *argv[],
+        MainArgs& main_args)
 {
-    MainArgs main_args;
     std::string output_path = "";
     std::string certificate_path = "";
     std::string algorithm = "iterative_beam_search";
@@ -105,8 +108,9 @@ MainArgs read_args(int argc, char *argv[])
         ("time-limit,t", boost::program_options::value<double>(&time_limit), "Time limit in seconds\n  ex: 3600")
         ("only-write-at-the-end,e", "Only write output and certificate files at the end")
         ("verbosity-level,v", boost::program_options::value<int>(&verbosity_level), "")
-        ("print-instance", "")
-        ("print-solution", "")
+        ("print-instance", boost::program_options::value<int>(&main_args.print_instance), "print instance")
+        ("print-solution", boost::program_options::value<int>(&main_args.print_solution), "print solution")
+        ("print-checker", boost::program_options::value<int>(&main_args.print_checker), "print checker")
         ;
     boost::program_options::variables_map vm;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -120,9 +124,6 @@ MainArgs read_args(int argc, char *argv[])
         std::cout << desc << std::endl;;
         throw "";
     }
-
-    main_args.print_instance = (vm.count("print-instance"));
-    main_args.print_solution = (vm.count("print-solution"));
 
     main_args.algorithm_args = boost::program_options::split_unix(algorithm);
     for (std::string& s: main_args.algorithm_args)
@@ -147,12 +148,13 @@ MainArgs read_args(int argc, char *argv[])
     return main_args;
 }
 
-void run(
+std::vector<std::pair<Column, Value>> run(
         const MainArgs& main_args,
         Parameters& p)
 {
     ColumnGenerationOptionalParameters column_generation_parameters
         = read_column_generation_args(main_args.column_generation_argv);
+    std::vector<std::pair<Column, Value>> solution;
 
 #if XPRESS_FOUND
     if (column_generation_parameters.linear_programming_solver
@@ -162,22 +164,25 @@ void run(
 
     if (strcmp(main_args.algorithm_argv[0], "column_generation") == 0) {
         column_generation_parameters.info = main_args.info;
-        column_generation(p, column_generation_parameters);
+        auto column_generation_output = column_generation(p, column_generation_parameters);
     } else if (strcmp(main_args.algorithm_argv[0], "greedy") == 0) {
         GreedyOptionalParameters op;
         op.info = main_args.info;
         op.column_generation_parameters = column_generation_parameters;
-        greedy(p, op);
+        auto greedy_output = greedy(p, op);
+        solution = greedy_output.solution;
     } else if (strcmp(main_args.algorithm_argv[0], "limited_discrepancy_search") == 0) {
         auto op = read_limited_discrepancy_search_args(main_args.algorithm_argv);
         op.info = main_args.info;
         op.column_generation_parameters = column_generation_parameters;
-        limited_discrepancy_search(p, op);
+        auto limited_discrepancy_search_output = limited_discrepancy_search(p, op);
+        solution = limited_discrepancy_search_output.solution;
     } else if (strcmp(main_args.algorithm_argv[0], "heuristic_tree_search") == 0) {
         auto op = read_heuristic_tree_search_args(main_args.algorithm_argv);
         op.info = main_args.info;
         op.column_generation_parameters = column_generation_parameters;
-        heuristic_tree_search(p, op);
+        auto heuristic_tree_search_output = heuristic_tree_search(p, op);
+        solution = heuristic_tree_search_output.solution;
     } else {
         std::cerr << "\033[31m" << "ERROR, unknown algorithm: '" << main_args.algorithm_argv[0] << "'.\033[0m" << std::endl;
     }
@@ -187,5 +192,7 @@ void run(
             == LinearProgrammingSolver::Xpress)
         XPRSfree();
 #endif
+
+    return solution;
 }
 }

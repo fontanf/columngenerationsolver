@@ -58,6 +58,7 @@ struct Parameters
         row_upper_bounds(number_of_rows),
         row_coefficient_lower_bounds(number_of_rows),
         row_coefficient_upper_bounds(number_of_rows) { }
+
     ObjectiveSense objective_sense = ObjectiveSense::Min;
     Value column_lower_bound;
     Value column_upper_bound;
