@@ -42,7 +42,7 @@ GreedyOutput columngenerationsolver::greedy(
             = optional_parameters.column_generation_parameters;
         column_generation_parameters.fixed_columns = &fixed_columns;
         column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
-        //column_generation_parameters.info.set_verbose(true);
+        //column_generation_parameters.info.set_verbosity_level(1);
         auto output_columngeneration = column_generation(
                 parameters,
                 column_generation_parameters);

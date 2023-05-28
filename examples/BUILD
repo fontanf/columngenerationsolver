@@ -116,27 +116,3 @@ cc_binary(
         ] + ALL_DEP,
         copts = ALL_COPTS,
 )
-
-
-cc_library(
-        name = "starobservationscheduling",
-        hdrs = ["starobservationscheduling.hpp"],
-        deps = [
-                "//columngenerationsolver:columngenerationsolver",
-                "//examples/pricingsolver:singlenightstarobservationscheduling",
-                "@optimizationtools//optimizationtools/utils:utils",
-                "@orproblems//orproblems:starobservationscheduling",
-        ],
-        visibility = ["//visibility:public"],
-)
-
-cc_binary(
-        name = "starobservationscheduling_main",
-        srcs = ["starobservationscheduling_main.cpp"],
-        deps = [
-                ":starobservationscheduling",
-                "//columngenerationsolver:read_args",
-        ] + ALL_DEP,
-        copts = ALL_COPTS,
-)
-

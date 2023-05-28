@@ -96,17 +96,8 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 
 ### Scheduling
 
-[Star Observation Scheduling Problem](examples/starobservationscheduling.hpp)
-* Pricing problem: Single Night Star Observation Scheduling Problem [solved by dynamic programming](examples/pricingsolver/singlenightstarobservationscheduling.hpp)
-
-<details><summary>Benchmarks</summary>
-<p>
-
-* Benchmarks:
-  * `python3 ../optimizationtools/optimizationtools/bench_run.py --main ./bazel-bin/examples/starobservationscheduling_main --csv ../ordata/starobservationscheduling/data.csv -l starobservationscheduling -a "heuristic_tree_search" -t 60`
-
-</p>
-</details>
+Star observation scheduling problem from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.hpp)
+* Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/singlenightstarobservationschedulingsolver/algorithms/dynamic_programming.hpp)
 
 ### Graphs
 

@@ -22,12 +22,3 @@ cc_library(
         linkopts = ["-pthread"],
         visibility = ["//visibility:public"],
 )
-
-cc_library(
-        name = "singlenightstarobservationscheduling",
-        hdrs = ["singlenightstarobservationscheduling.hpp"],
-        deps = [
-                "@optimizationtools//optimizationtools/utils:info",
-        ],
-        visibility = ["//visibility:public"],
-)
