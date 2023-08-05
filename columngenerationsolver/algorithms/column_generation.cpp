@@ -53,7 +53,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             row_values[row_index] += val * row_coefficient;
             //std::cout << val << " " << row_coefficient << " " << val * row_coefficient << std::endl;
         }
-        c0 += column.objective_coefficient;
+        c0 += val * column.objective_coefficient;
     }
 
     // Compute fixed rows;
