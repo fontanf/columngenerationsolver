@@ -14,7 +14,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             << std::endl
             << "Algorithm" << std::endl
             << "---------" << std::endl
-            << "Column Generation" << std::endl
+            << "Column generation" << std::endl
             << std::endl
             << "Parameters" << std::endl
             << "----------" << std::endl
@@ -44,16 +44,16 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         = (optional_parameters.fixed_columns != NULL)?
         optional_parameters.fixed_columns: &fixed_columns_default;
     for (auto p: *fixed_columns) {
-        ColIdx col = p.first;
-        Value val = p.second;
-        const Column& column = parameters.columns[col];
+        ColIdx column_id = p.first;
+        Value value = p.second;
+        const Column& column = parameters.columns[column_id];
         for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-            RowIdx row_index = column.row_indices[row_pos];
+            RowIdx row_id = column.row_indices[row_pos];
             Value row_coefficient = column.row_coefficients[row_pos];
-            row_values[row_index] += val * row_coefficient;
+            row_values[row_id] += value * row_coefficient;
             //std::cout << val << " " << row_coefficient << " " << val * row_coefficient << std::endl;
         }
-        c0 += val * column.objective_coefficient;
+        c0 += value * column.objective_coefficient;
     }
 
     // Compute fixed rows;
@@ -61,7 +61,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
     std::vector<RowIdx> new_row_indices(m, -2);
     std::vector<RowIdx> new_rows;
     RowIdx row_pos = 0;
-    for (RowIdx row = 0; row < m; ++row) {
+    for (RowIdx row_id = 0; row_id < m; ++row_id) {
         //std::cout
         //    << "row " << row
         //    << " lb " << parameters.row_lower_bounds[row]
@@ -69,14 +69,14 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         //    << " ub " << parameters.row_upper_bounds[row]
         //    << std::endl;
         if (parameters.column_lower_bound >= 0
-                && parameters.row_coefficient_lower_bounds[row] >= 0
-                && row_values[row] > parameters.row_upper_bounds[row]) {
+                && parameters.row_coefficient_lower_bounds[row_id] >= 0
+                && row_values[row_id] > parameters.row_upper_bounds[row_id]) {
             // Infeasible.
             return output;
         }
         if (parameters.column_lower_bound >= 0
-                && parameters.row_coefficient_lower_bounds[row] >= 0
-                && row_values[row] == parameters.row_upper_bounds[row]) {
+                && parameters.row_coefficient_lower_bounds[row_id] >= 0
+                && row_values[row_id] == parameters.row_upper_bounds[row_id]) {
             //std::cout
             //    << "row " << row
             //    << " ub " << parameters.row_upper_bounds[row]
@@ -84,8 +84,8 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             //    << std::endl;
             continue;
         }
-        new_row_indices[row] = row_pos;
-        new_rows.push_back(row);
+        new_row_indices[row_id] = row_pos;
+        new_rows.push_back(row_id);
         row_pos++;
     }
     RowIdx new_number_of_rows = row_pos;
@@ -97,9 +97,13 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
     //std::cout << "Compute new row bounds..." << std::endl;
     std::vector<Value> new_row_lower_bounds(new_number_of_rows);
     std::vector<Value> new_row_upper_bounds(new_number_of_rows);
-    for (RowIdx row = 0; row < new_number_of_rows; ++row) {
-        new_row_lower_bounds[row] = parameters.row_lower_bounds[new_rows[row]] - row_values[new_rows[row]];
-        new_row_upper_bounds[row] = parameters.row_upper_bounds[new_rows[row]] - row_values[new_rows[row]];
+    for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
+        new_row_lower_bounds[row_id]
+            = parameters.row_lower_bounds[new_rows[row_id]]
+            - row_values[new_rows[row_id]];
+        new_row_upper_bounds[row_id]
+            = parameters.row_upper_bounds[new_rows[row_id]]
+            - row_values[new_rows[row_id]];
         //std::cout << "row " << row << " lb " << new_row_lower_bounds[row] << " ub " << new_row_upper_bounds[row] << std::endl;
     }
 
@@ -150,21 +154,21 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
 
     // Add dummy columns.
     //std::cout << "Add dumm columns..." << std::endl;
-    for (RowIdx row = 0; row < new_number_of_rows; ++row) {
-        if (new_row_lower_bounds[row] > 0) {
+    for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
+        if (new_row_lower_bounds[row_id] > 0) {
             solver_column_indices.push_back(-1);
             solver->add_column(
-                    {row},
-                    {new_row_lower_bounds[row]},
+                    {row_id},
+                    {new_row_lower_bounds[row_id]},
                     parameters.dummy_column_objective_coefficient,
                     parameters.column_lower_bound,
                     parameters.column_upper_bound);
         }
-        if (new_row_upper_bounds[row] < 0) {
+        if (new_row_upper_bounds[row_id] < 0) {
             solver_column_indices.push_back(-1);
             solver->add_column(
-                    {row},
-                    {new_row_upper_bounds[row]},
+                    {row_id},
+                    {new_row_upper_bounds[row_id]},
                     parameters.dummy_column_objective_coefficient,
                     parameters.column_lower_bound,
                     parameters.column_upper_bound);
@@ -175,42 +179,45 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
     //std::cout << "Initialize pricing solver..." << std::endl;
     std::vector<ColIdx> infeasible_columns = parameters.pricing_solver->initialize_pricing(parameters.columns, *fixed_columns);
     std::vector<int8_t> feasible(parameters.columns.size(), 1);
-    for (ColIdx col: infeasible_columns)
-        feasible[col] = 0;
+    for (ColIdx column_id: infeasible_columns)
+        feasible[column_id] = 0;
 
     // Add initial columns.
     //std::cout << "Add initial columns..." << std::endl;
-    for (ColIdx col = 0; col < (ColIdx)parameters.columns.size(); ++col) {
-        if (!feasible[col])
+    for (ColIdx column_id = 0;
+            column_id < (ColIdx)parameters.columns.size();
+            ++column_id) {
+        if (!feasible[column_id])
             continue;
-        const Column& column = parameters.columns[col];
-        std::vector<RowIdx> ri;
-        std::vector<Value> rc;
+        const Column& column = parameters.columns[column_id];
+        std::vector<RowIdx> row_ids;
+        std::vector<Value> row_coefficients;
         bool ok = true;
         for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-            RowIdx i = column.row_indices[row_pos];
-            Value c = column.row_coefficients[row_pos];
+            RowIdx row_id = column.row_indices[row_pos];
+            Value row_coefficient = column.row_coefficients[row_pos];
             // The column might not be feasible.
             // For example, it corresponds to the same bin / machine that a
             // currently fixed column or it contains an item / job also
             // included in a currently fixed column.
             if (parameters.column_lower_bound >= 0
-                    && c >= 0
-                    && row_values[i] + c > parameters.row_upper_bounds[i]) {
+                    && row_coefficient >= 0
+                    && row_values[row_id] + row_coefficient
+                    > parameters.row_upper_bounds[row_id]) {
                 ok = false;
                 break;
             }
-            if (new_row_indices[i] < 0)
+            if (new_row_indices[row_id] < 0)
                 continue;
-            ri.push_back(new_row_indices[i]);
-            rc.push_back(c);
+            row_ids.push_back(new_row_indices[row_id]);
+            row_coefficients.push_back(row_coefficient);
         }
         if (!ok)
             continue;
-        solver_column_indices.push_back(col);
+        solver_column_indices.push_back(column_id);
         solver->add_column(
-                ri,
-                rc,
+                row_ids,
+                row_coefficients,
                 column.objective_coefficient,
                 parameters.column_lower_bound,
                 parameters.column_upper_bound);
@@ -276,10 +283,11 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                     || norm(new_rows, duals_in, duals_out) == 0 // Shouldn't happen, but happens with Cplex.
                     || k > 1
                     || (!optional_parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
-                for (RowIdx i: new_rows)
-                    duals_sep[i]
-                        = alpha_cur * duals_in[i]
-                        + (1 - alpha_cur) * duals_out[i];
+                for (RowIdx row_id: new_rows) {
+                    duals_sep[row_id]
+                        = alpha_cur * duals_in[row_id]
+                        + (1 - alpha_cur) * duals_out[row_id];
+                }
                 //for (RowIdx i: new_rows)
                 //    std::cout
                 //        << "i " << i
@@ -287,23 +295,28 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                 //        << " sep " << duals_sep[i] << std::endl;
             } else { // Directional smoothing.
                 // Compute π_tilde.
-                for (RowIdx i: new_rows)
-                    duals_tilde[i]
-                        = alpha_cur * duals_in[i]
-                        + (1 - alpha_cur) * duals_out[i];
+                for (RowIdx row_id: new_rows) {
+                    duals_tilde[row_id]
+                        = alpha_cur * duals_in[row_id]
+                        + (1 - alpha_cur) * duals_out[row_id];
+                }
                 // Compute π_g.
                 Value coef_g
                     = norm(new_rows, duals_in, duals_out)
                     / norm(new_rows, subgradient);
-                for (RowIdx i: new_rows)
-                    duals_g[i]
-                        = duals_in[i]
-                        + coef_g * subgradient[i];
+                for (RowIdx row_id: new_rows) {
+                    duals_g[row_id]
+                        = duals_in[row_id]
+                        + coef_g * subgradient[row_id];
+                }
                 // Compute β.
                 if (optional_parameters.automatic_directional_smoothing) {
                     Value dot_product = 0;
-                    for (RowIdx i: new_rows)
-                        dot_product += (duals_out[i] - duals_in[i]) * (duals_g[i] - duals_in[i]);
+                    for (RowIdx row_id: new_rows) {
+                        dot_product
+                            += (duals_out[row_id] - duals_in[row_id])
+                            * (duals_g[row_id] - duals_in[row_id]);
+                    }
                     beta = dot_product
                             / norm(new_rows, duals_in, duals_out)
                             / norm(new_rows, duals_in, duals_g);
@@ -312,18 +325,20 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                     beta = std::max(0.0, beta);
                 }
                 // Compute ρ.
-                for (RowIdx i: new_rows)
-                    rho[i]
-                        = beta * duals_g[i]
-                        + (1 - beta) * duals_out[i];
+                for (RowIdx row_id: new_rows) {
+                    rho[row_id]
+                        = beta * duals_g[row_id]
+                        + (1 - beta) * duals_out[row_id];
+                }
                 // Compute π_sep.
                 Value coef_sep
                     = norm(new_rows, duals_in, duals_tilde)
                     / norm(new_rows, duals_in, rho);
-                for (RowIdx i: new_rows)
-                    duals_sep[i]
-                        = duals_in[i]
-                        + coef_sep * (rho[i] - duals_in[i]);
+                for (RowIdx row_id: new_rows) {
+                    duals_sep[row_id]
+                        = duals_in[row_id]
+                        + coef_sep * (rho[row_id] - duals_in[row_id]);
+                }
                 //for (RowIdx i: new_rows)
                 //    std::cout
                 //        << "i " << i
@@ -371,17 +386,20 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         // Get lagrangian constraint values.
         std::fill(lagrangian_constraint_values.begin(), lagrangian_constraint_values.end(), 0);
         for (const Column& column: all_columns) {
-            for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-                RowIdx row_index = column.row_indices[row_pos];
+            for (RowIdx row_pos = 0;
+                    row_pos < (RowIdx)column.row_indices.size();
+                    ++row_pos) {
+                RowIdx row_id = column.row_indices[row_pos];
                 Value row_coefficient = column.row_coefficients[row_pos];
-                lagrangian_constraint_values[row_index] += row_coefficient;
+                lagrangian_constraint_values[row_id] += row_coefficient;
             }
         }
         // Compute subgradient at separation point.
-        for (RowIdx row = 0; row < new_number_of_rows; ++row)
-            subgradient[new_rows[row]]
-                = std::min(0.0, new_row_upper_bounds[row] - lagrangian_constraint_values[new_rows[row]])
-                + std::max(0.0, new_row_lower_bounds[row] - lagrangian_constraint_values[new_rows[row]]);
+        for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
+            subgradient[new_rows[row_id]]
+                = std::min(0.0, new_row_upper_bounds[row_id] - lagrangian_constraint_values[new_rows[row_id]])
+                + std::max(0.0, new_row_lower_bounds[row_id] - lagrangian_constraint_values[new_rows[row_id]]);
+        }
 
         // Adjust alpha.
         if (optional_parameters.self_adjusting_wentges_smoothing
@@ -443,12 +461,14 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
     output.solution_value = c0 + solver->objective();
 
     // Compute solution
-    for (ColIdx col = 0; col < (ColIdx)solver_column_indices.size(); ++col) {
-        if (solver_column_indices[col] != -1
-                && std::abs(solver->primal(col)) >= FFOT_TOL) {
+    for (ColIdx column_id = 0;
+            column_id < (ColIdx)solver_column_indices.size();
+            ++column_id) {
+        if (solver_column_indices[column_id] != -1
+                && std::abs(solver->primal(column_id)) >= FFOT_TOL) {
             output.solution.push_back({
-                    solver_column_indices[col],
-                    solver->primal(col)});
+                    solver_column_indices[column_id],
+                    solver->primal(column_id)});
         }
     }
 

@@ -668,13 +668,51 @@ Total time (s):                   0.2371
 ```
 
 ```shell
-./bazel-bin/examples/multipleknapsack_main -v 1 -a "limited-discrepancy-search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
+./bazel-bin/examples/multipleknapsack_main -v 1 -a "greedy" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
 ```
 Instance
 --------
 Number of knapsacks:  10
 Number of items:      100
+
+======================================
+       Column Generation Solver       
+======================================
+
+Algorithm
+---------
+Greedy
+
+Parameters
+----------
+Linear programming solver:               CLP
+Static Wentges smoothing parameter:      0
+Static directional smoothing parameter:  0
+Self-adjusting Wentges smoothing:        0
+Automatic directional smoothing:         0
+
+Final statistics
+----------------
+Solution:                 26797
+Bound:                    26797
+Absolute gap:             1.09139e-11
+Relative gap (%):         4.07282e-14
+Total number of columns:  124
+Number of columns added:  124
+Total time (s):           0.0198602
+```
+
+```shell
+./bazel-bin/examples/capacitatedvehiclerouting_main --verbosity-level 1 --input ../ordata/capacitatedvehiclerouting/uchoa2014/X/X-n101-k25.vrp -a "limited-discrepancy-search" -t 60 -c sol.txt
+```
+```
+Instance
+--------
+Number of locations:  101
+Capacity:             206
+Total demand:         5147
+Demand ratio:         24.9854
 
 ======================================
        Column Generation Solver       
@@ -695,65 +733,25 @@ Automatic directional smoothing:         0
 
       Time      Solution         Bound           Gap   Gap (%)                 Comment
       ----      --------         -----           ---   -------                 -------
-     0.033          -inf   26797.00000           inf      -nan               root node
-     0.046   26797.00000   26797.00000       0.00000      0.00   node 10 discrepancy 0
+     1.501           inf    6295.88185           inf      -nan               root node
+     4.602    6756.00000    6295.88185     460.11815      6.81   node 26 discrepancy 0
+     4.603    6738.00000    6295.88185     442.11815      6.56   node 30 discrepancy 1
+     4.612    6496.00000    6295.88185     200.11815      3.08   node 34 discrepancy 1
+     5.455    6485.00000    6295.88185     189.11815      2.92   node 83 discrepancy 1
+    24.070    6483.00000    6295.88185     187.11815      2.89  node 420 discrepancy 2
+    24.241    6481.00000    6295.88185     185.11815      2.86  node 491 discrepancy 2
+    58.443    6478.00000    6295.88185     182.11815      2.81 node 1858 discrepancy 2
 
 Final statistics
 ----------------
-Solution:                 2.7e+04
-Bound:                    2.7e+04
-Absolute gap:             1.1e-11
-Relative gap (%):         4.1e-14
-Total number of columns:  124
-Number of columns added:  124
-Total time (s):           0.046
-Number of nodes:          11
-
-Checker
--------
-Number of items:                   49 / 100
-Number of duplicates:              0
-Number of overweighted knapsacks:  0
-Feasible:                          1
-Profit:                            26797
-```
-
-```shell
-./bazel-bin/examples/capacitatedvehiclerouting_main --verbosity-level 1 --input ../ordata/capacitatedvehiclerouting/uchoa2014/X/X-n101-k25.vrp -a greedy -c sol.txt
-```
-```
-Instance
---------
-Number of locations:  101
-Capacity:             206
-Total demand:         5147
-Demand ratio:         24.9854
-
-======================================
-       Column Generation Solver       
-======================================
-
-Algorithm
----------
-Greedy
-
-Parameters
-----------
-Linear programming solver:               CLP
-Static Wentges smoothing parameter:      0
-Static directional smoothing parameter:  0
-Self-adjusting Wentges smoothing:        0
-Automatic directional smoothing:         0
-
-Final statistics
-----------------
-Solution:                 6663
-Bound:                    6268.15
-Absolute gap:             394.851
-Relative gap (%):         5.92603
-Total number of columns:  3711
-Number of columns added:  3711
-Total time (s):           4.72573
+Solution:                 6.5e+03
+Bound:                    6.3e+03
+Absolute gap:             1.8e+02
+Relative gap (%):         2.8
+Total number of columns:  14111
+Number of columns added:  14111
+Total time (s):           60
+Number of nodes:          1886
 
 Checker
 -------
@@ -762,7 +760,7 @@ Number of duplicates:           0
 Number of routes:               26
 Number of overloaded vehicles:  0
 Feasible:                       1
-Total distance:                 6663
+Total distance:                 6478
 ```
 
 ## Usage, C++ library

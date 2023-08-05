@@ -14,7 +14,7 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
             << std::endl
             << "Algorithm" << std::endl
             << "---------" << std::endl
-            << "Limited Discrepancy Search" << std::endl
+            << "Limited discrepancy search" << std::endl
             << std::endl
             << "Parameters" << std::endl
             << "----------" << std::endl
