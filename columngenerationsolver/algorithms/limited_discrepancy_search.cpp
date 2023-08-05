@@ -105,40 +105,41 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
         column_generation_parameters.fixed_columns = &fixed_columns;
         column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
         //column_generation_parameters.info.set_verbosity_level(1);
-        auto output_columngeneration = column_generation(
+        auto cg_output = column_generation(
                 parameters,
                 column_generation_parameters);
-        output.time_lpsolve += output_columngeneration.time_lpsolve;
-        output.time_pricing += output_columngeneration.time_pricing;
-        output.number_of_added_columns += output_columngeneration.number_of_added_columns;
-        //std::cout << "bound " << output_columngeneration.solution_value << std::endl;
+        output.time_lpsolve += cg_output.time_lpsolve;
+        output.time_pricing += cg_output.time_pricing;
+        output.number_of_added_columns += cg_output.number_of_added_columns;
+        //std::cout << "bound " << cg_output.solution_value << std::endl;
         if (optional_parameters.info.needs_to_end())
             break;
         if (node->depth == 0) {
             Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
-            if (cg_it_limit == -1 || output_columngeneration.number_of_iterations < cg_it_limit) {
+            if (cg_it_limit == -1 || cg_output.number_of_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
-                output.bound = output_columngeneration.solution_value;
+                output.bound = cg_output.solution_value;
                 display(parameters, output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
                 optional_parameters.new_bound_callback(output);
             }
         }
-        if (output_columngeneration.solution.size() == 0) {
+        if (cg_output.solution.size() == 0) {
+            //std::cout << "no solution" << std::endl;
             continue;
         }
 
         //std::cout << "x";
-        //for (auto p: output_columngeneration.solution)
+        //for (auto p: cg_output.solution)
         //    std::cout << " " << p.first << " " << p.second << ";";
         //std::cout << std::endl;
 
         // Check bound
         if (output.solution.size() > 0) {
             if (parameters.objective_sense == ObjectiveSense::Min
-                    && output.solution_value <= output_columngeneration.solution_value + FFOT_TOL)
+                    && output.solution_value <= cg_output.solution_value + FFOT_TOL)
                 continue;
             if (parameters.objective_sense == ObjectiveSense::Max
-                    && output.solution_value >= output_columngeneration.solution_value - FFOT_TOL)
+                    && output.solution_value >= cg_output.solution_value - FFOT_TOL)
                 continue;
         }
 
@@ -152,7 +153,7 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
         Value val_best = -1;
         Value diff_best = -1;
         Value bp_best = -1;
-        for (auto p: output_columngeneration.solution) {
+        for (auto p: cg_output.solution) {
             ColIdx col = p.first;
             if (col < (ColIdx)tabu.size() && tabu[col] == 1)
                 continue;
@@ -187,14 +188,17 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
             continue;
 
         // Create children.
-        for (Value value = parameters.column_lower_bound; value <= parameters.column_upper_bound; ++value) {
+        for (Value value = parameters.column_upper_bound;
+                value >= parameters.column_lower_bound;
+                --value) {
+
             auto child = std::make_shared<LimitedDiscrepancySearchNode>();
-            child->father      = node;
-            child->col         = col_best;
-            child->value       = value;
-            child->value_sum   = node->value_sum + value;
+            child->father = node;
+            child->col = col_best;
+            child->value = value;
+            child->value_sum = node->value_sum + value;
             child->discrepancy = node->discrepancy + std::abs(val_best - value);
-            child->depth       = node->depth + 1;
+            child->depth = node->depth + 1;
             nodes.insert(child);
 
             // Update best solution.

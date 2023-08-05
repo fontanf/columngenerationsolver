@@ -150,11 +150,9 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
 
     // Add dummy columns.
     //std::cout << "Add dumm columns..." << std::endl;
-    RowIdx number_of_dummy_columns = 0;
     for (RowIdx row = 0; row < new_number_of_rows; ++row) {
         if (new_row_lower_bounds[row] > 0) {
             solver_column_indices.push_back(-1);
-            number_of_dummy_columns++;
             solver->add_column(
                     {row},
                     {new_row_lower_bounds[row]},
@@ -164,7 +162,6 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         }
         if (new_row_upper_bounds[row] < 0) {
             solver_column_indices.push_back(-1);
-            number_of_dummy_columns++;
             solver->add_column(
                     {row},
                     {new_row_upper_bounds[row]},
@@ -219,14 +216,21 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                 parameters.column_upper_bound);
     }
 
-    std::vector<Value> duals_sep(m, 0); // Duals given to the pricing solver.
-    std::vector<Value> duals_in(m, 0); // π_in, duals at the previous point.
-    std::vector<Value> duals_out(m, 0); // π_out, duals of next point without stabilization.
-    std::vector<Value> duals_tilde(m, 0); // π_in + (1 − α) (π_out − π_in)
-    std::vector<Value> duals_g(m, 0); // Duals in the direction of the subgradient.
-    std::vector<Value> rho(m, 0); // β π_g + (1 − β) π_out
+    // Duals given to the pricing solver.
+    std::vector<Value> duals_sep(m, 0);
+    // π_in, duals at the previous point.
+    std::vector<Value> duals_in(m, 0);
+    // π_out, duals of next point without stabilization.
+    std::vector<Value> duals_out(m, 0);
+    // π_in + (1 − α) (π_out − π_in)
+    std::vector<Value> duals_tilde(m, 0);
+    // Duals in the direction of the subgradient.
+    std::vector<Value> duals_g(m, 0);
+    // β π_g + (1 − β) π_out
+    std::vector<Value> rho(m, 0);
     std::vector<Value> lagrangian_constraint_values(m, 0);
-    std::vector<Value> subgradient(m, 0); // g_in.
+    // g_in.
+    std::vector<Value> subgradient(m, 0);
     double alpha = optional_parameters.static_wentges_smoothing_parameter;
     for (output.number_of_iterations = 1;; output.number_of_iterations++) {
         // Solve LP
@@ -238,11 +242,11 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Display.
         optional_parameters.info.os()
-                << std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
-                << std::setw(10) << output.number_of_iterations
-                << std::setw(20) << std::fixed << std::setprecision(7) << c0 + solver->objective()
-                << std::setw(10) << output.number_of_added_columns
-                << std::endl;
+            << std::setw(10) << std::fixed << std::setprecision(3) << optional_parameters.info.elapsed_time()
+            << std::setw(10) << output.number_of_iterations
+            << std::setw(20) << std::fixed << std::setprecision(7) << c0 + solver->objective()
+            << std::setw(10) << output.number_of_added_columns
+            << std::endl;
 
         // Check time.
         if (optional_parameters.info.needs_to_end())
@@ -435,6 +439,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 
     // Compute solution value.
+    //std::cout << "c0 " << c0 << " obj " << solver->objective() << std::endl;
     output.solution_value = c0 + solver->objective();
 
     // Compute solution

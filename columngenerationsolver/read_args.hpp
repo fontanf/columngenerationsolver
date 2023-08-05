@@ -91,7 +91,7 @@ MainArgs read_args(
 {
     std::string output_path = "";
     std::string certificate_path = "";
-    std::string algorithm = "iterative_beam_search";
+    std::string algorithm = "limited-discrepancy-search";
     std::string column_generation_parameters = "";
     double time_limit = std::numeric_limits<double>::infinity();
     int verbosity_level = 1;
@@ -162,7 +162,7 @@ std::vector<std::pair<Column, Value>> run(
         XPRSinit(NULL);
 #endif
 
-    if (strcmp(main_args.algorithm_argv[0], "column_generation") == 0) {
+    if (strcmp(main_args.algorithm_argv[0], "column-generation") == 0) {
         column_generation_parameters.info = main_args.info;
         auto column_generation_output = column_generation(p, column_generation_parameters);
     } else if (strcmp(main_args.algorithm_argv[0], "greedy") == 0) {
@@ -171,13 +171,13 @@ std::vector<std::pair<Column, Value>> run(
         op.column_generation_parameters = column_generation_parameters;
         auto greedy_output = greedy(p, op);
         solution = greedy_output.solution;
-    } else if (strcmp(main_args.algorithm_argv[0], "limited_discrepancy_search") == 0) {
+    } else if (strcmp(main_args.algorithm_argv[0], "limited-discrepancy-search") == 0) {
         auto op = read_limited_discrepancy_search_args(main_args.algorithm_argv);
         op.info = main_args.info;
         op.column_generation_parameters = column_generation_parameters;
         auto limited_discrepancy_search_output = limited_discrepancy_search(p, op);
         solution = limited_discrepancy_search_output.solution;
-    } else if (strcmp(main_args.algorithm_argv[0], "heuristic_tree_search") == 0) {
+    } else if (strcmp(main_args.algorithm_argv[0], "heuristic-tree-search") == 0) {
         auto op = read_heuristic_tree_search_args(main_args.algorithm_argv);
         op.info = main_args.info;
         op.column_generation_parameters = column_generation_parameters;

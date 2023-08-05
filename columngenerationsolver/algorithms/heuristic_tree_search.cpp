@@ -46,37 +46,37 @@ HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
         //parameters.columns.clear();
         //for (const auto& p: output.solution)
         //    parameters.columns.push_back(p.first);
-        LimitedDiscrepancySearchOptionalParameters parameters_limited_discrepancy_search;
-        parameters_limited_discrepancy_search.info.set_time_limit(optional_parameters.info.remaining_time());
-        parameters_limited_discrepancy_search.column_generation_parameters
+        LimitedDiscrepancySearchOptionalParameters lds_parameters;
+        lds_parameters.info.set_time_limit(optional_parameters.info.remaining_time());
+        lds_parameters.column_generation_parameters
             = optional_parameters.column_generation_parameters;
-        parameters_limited_discrepancy_search.column_generation_parameters.maximum_number_of_iterations
+        lds_parameters.column_generation_parameters.maximum_number_of_iterations
             = output.maximum_number_of_iterations;
-        parameters_limited_discrepancy_search.heuristictreesearch_stop = true;
+        lds_parameters.heuristictreesearch_stop = true;
 
-        parameters_limited_discrepancy_search.new_bound_callback = [&parameters, &optional_parameters, &output](
-                const columngenerationsolver::LimitedDiscrepancySearchOutput& o)
+        lds_parameters.new_bound_callback = [&parameters, &optional_parameters, &output](
+                const columngenerationsolver::LimitedDiscrepancySearchOutput& lds_output)
         {
             if ((parameters.objective_sense == ObjectiveSense::Min
-                        && output.bound + FFOT_TOL < o.bound)
+                        && output.bound + FFOT_TOL < lds_output.bound)
                     || (parameters.objective_sense == ObjectiveSense::Max
-                        && output.bound - FFOT_TOL > o.bound)) {
-                output.bound = o.bound;
+                        && output.bound - FFOT_TOL > lds_output.bound)) {
+                output.bound = lds_output.bound;
                 std::stringstream ss;
                 ss << "it " << output.maximum_number_of_iterations;
                 display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
                 optional_parameters.new_bound_callback(output);
             }
-            if (o.solution.size() > 0) {
+            if (lds_output.solution.size() > 0) {
                 // Update solution.
                 if ((parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value - FFOT_TOL > o.solution_value)
+                            && output.solution_value - FFOT_TOL > lds_output.solution_value)
                         || (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value + FFOT_TOL < o.solution_value)) {
-                    output.solution = o.solution;
-                    output.solution_value = o.solution_value;
+                            && output.solution_value + FFOT_TOL < lds_output.solution_value)) {
+                    output.solution = lds_output.solution;
+                    output.solution_value = lds_output.solution_value;
                     output.solution_iteration = output.maximum_number_of_iterations;
-                    output.solution_node = o.number_of_nodes;
+                    output.solution_node = lds_output.number_of_nodes;
                     std::stringstream ss;
                     ss << "it " << output.solution_iteration << " node " << output.solution_node;
                     display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
@@ -85,7 +85,7 @@ HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
             }
         };
 
-        auto output_limited_discrepancy_search = limited_discrepancy_search(parameters, parameters_limited_discrepancy_search);
+        auto lds_output = limited_discrepancy_search(parameters, lds_parameters);
 
     }
 

@@ -668,7 +668,7 @@ Total time (s):                   0.2371
 ```
 
 ```shell
-./bazel-bin/examples/multipleknapsack_main -v 1 -a "limited_discrepancy_search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
+./bazel-bin/examples/multipleknapsack_main -v 1 -a "limited-discrepancy-search" -i "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"
 ```
 ```
 Instance

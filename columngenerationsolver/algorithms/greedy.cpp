@@ -43,22 +43,22 @@ GreedyOutput columngenerationsolver::greedy(
         column_generation_parameters.fixed_columns = &fixed_columns;
         column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
         //column_generation_parameters.info.set_verbosity_level(1);
-        auto output_columngeneration = column_generation(
+        auto cg_output = column_generation(
                 parameters,
                 column_generation_parameters);
-        output.time_lpsolve += output_columngeneration.time_lpsolve;
-        output.time_pricing += output_columngeneration.time_pricing;
-        output.number_of_added_columns += output_columngeneration.number_of_added_columns;
+        output.time_lpsolve += cg_output.time_lpsolve;
+        output.time_pricing += cg_output.time_pricing;
+        output.number_of_added_columns += cg_output.number_of_added_columns;
         if (optional_parameters.info.needs_to_end())
             break;
-        if (output_columngeneration.solution.size() == 0)
+        if (cg_output.solution.size() == 0)
             break;
 
         ColIdx col_best = -1;
         Value val_best = -1;
         Value diff_best = -1;
         Value bp_best = -1;
-        for (auto p: output_columngeneration.solution) {
+        for (auto p: cg_output.solution) {
             ColIdx col = p.first;
             Value val = p.second;
             Value bp = parameters.columns[col].branching_priority;
@@ -89,8 +89,8 @@ GreedyOutput columngenerationsolver::greedy(
         // Update bound.
         if (fixed_columns.size() == 0) {
             Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
-            if (cg_it_limit == -1 || (output_columngeneration.number_of_iterations < cg_it_limit))
-                output.bound = output_columngeneration.solution_value;
+            if (cg_it_limit == -1 || (cg_output.number_of_iterations < cg_it_limit))
+                output.bound = cg_output.solution_value;
         }
         // Update fixed columns.
         fixed_columns.push_back({col_best, val_best});
