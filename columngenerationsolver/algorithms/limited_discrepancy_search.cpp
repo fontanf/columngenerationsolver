@@ -2,6 +2,16 @@
 
 using namespace columngenerationsolver;
 
+struct LimitedDiscrepancySearchNode
+{
+    std::shared_ptr<LimitedDiscrepancySearchNode> father = nullptr;
+    ColIdx col = -1;
+    Value value = 0;
+    Value discrepancy = 0;
+    Value value_sum = 1;
+    ColIdx depth = 0;
+};
+
 LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_search(
         Parameters& parameters,
         LimitedDiscrepancySearchOptionalParameters optional_parameters)

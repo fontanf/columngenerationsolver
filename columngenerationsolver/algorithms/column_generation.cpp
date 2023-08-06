@@ -47,7 +47,9 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         ColIdx column_id = p.first;
         Value value = p.second;
         const Column& column = parameters.columns[column_id];
-        for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
+        for (RowIdx row_pos = 0;
+                row_pos < (RowIdx)column.row_indices.size();
+                ++row_pos) {
             RowIdx row_id = column.row_indices[row_pos];
             Value row_coefficient = column.row_coefficients[row_pos];
             row_values[row_id] += value * row_coefficient;
@@ -145,9 +147,7 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
                     new_row_upper_bounds));
 #endif
     if (solver == NULL) {
-        std::cerr << "\033[31m" << "ERROR, no linear programming solver found." << "\033[0m" << std::endl;
-        assert(false);
-        return output;
+        throw std::runtime_error("ERROR, no linear programming solver found");
     }
 
     std::vector<ColIdx> solver_column_indices;
@@ -193,7 +193,9 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         std::vector<RowIdx> row_ids;
         std::vector<Value> row_coefficients;
         bool ok = true;
-        for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
+        for (RowIdx row_pos = 0;
+                row_pos < (RowIdx)column.row_indices.size();
+                ++row_pos) {
             RowIdx row_id = column.row_indices[row_pos];
             Value row_coefficient = column.row_coefficients[row_pos];
             // The column might not be feasible.
@@ -260,8 +262,10 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             break;
         // Check iteration limit.
         if (optional_parameters.maximum_number_of_iterations != -1
-                && output.number_of_iterations > optional_parameters.maximum_number_of_iterations)
+                && output.number_of_iterations
+                > optional_parameters.maximum_number_of_iterations) {
             break;
+        }
 
         // Search for new columns.
         std::vector<Column> all_columns;
@@ -384,7 +388,10 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             break;
 
         // Get lagrangian constraint values.
-        std::fill(lagrangian_constraint_values.begin(), lagrangian_constraint_values.end(), 0);
+        std::fill(
+                lagrangian_constraint_values.begin(),
+                lagrangian_constraint_values.end(),
+                0);
         for (const Column& column: all_columns) {
             for (RowIdx row_pos = 0;
                     row_pos < (RowIdx)column.row_indices.size();
@@ -397,8 +404,14 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
         // Compute subgradient at separation point.
         for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
             subgradient[new_rows[row_id]]
-                = std::min(0.0, new_row_upper_bounds[row_id] - lagrangian_constraint_values[new_rows[row_id]])
-                + std::max(0.0, new_row_lower_bounds[row_id] - lagrangian_constraint_values[new_rows[row_id]]);
+                = std::min(
+                        0.0,
+                        new_row_upper_bounds[row_id]
+                        - lagrangian_constraint_values[new_rows[row_id]])
+                + std::max(
+                        0.0,
+                        new_row_lower_bounds[row_id]
+                        - lagrangian_constraint_values[new_rows[row_id]]);
         }
 
         // Adjust alpha.
@@ -438,7 +451,9 @@ ColumnGenerationOutput columngenerationsolver::column_generation(
             // Add new column to the local LP solver.
             std::vector<RowIdx> ri;
             std::vector<Value> rc;
-            for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
+            for (RowIdx row_pos = 0;
+                    row_pos < (RowIdx)column.row_indices.size();
+                    ++row_pos) {
                 RowIdx i = column.row_indices[row_pos];
                 Value c = column.row_coefficients[row_pos];
                 if (new_row_indices[i] < 0)

@@ -43,11 +43,11 @@ namespace columngenerationsolver
 namespace espprctw
 {
 
-typedef int64_t LocationId;
-typedef int64_t LocationPos;
-typedef int64_t Demand;
-typedef double Time;
-typedef double Profit;
+using LocationId = int64_t;
+using LocationPos = int64_t;
+using Demand = int64_t;
+using Time = double;
+using Profit = double;
 
 struct Location
 {
@@ -63,31 +63,41 @@ class Instance
 
 public:
 
-    Instance(LocationId n):
-        locations_(n),
-        travel_times_(n, std::vector<Time>(n, -1))
+    Instance(LocationId number_of_locations):
+        locations_(number_of_locations),
+        travel_times_(number_of_locations, std::vector<Time>(number_of_locations, -1))
     {
-        for (LocationId j = 0; j < n; ++j)
-            travel_times_[j][j] = std::numeric_limits<Time>::max();
+        for (LocationId location_id = 0;
+                location_id < number_of_locations;
+                ++location_id) {
+            travel_times_[location_id][location_id] = std::numeric_limits<Time>::max();
+        }
     }
+
     void set_capacity(Demand demand) { locations_[0].demand = demand; }
+
     void set_location(
-            LocationId j,
+            LocationId location_id,
             Demand demand,
             Profit profit,
             Time release_date,
             Time deadline,
             Time service_time)
     {
-        locations_[j].demand = demand;
-        locations_[j].profit = profit;
-        locations_[j].release_date = release_date;
-        locations_[j].deadline = deadline;
-        locations_[j].service_time = service_time;
+        locations_[location_id].demand = demand;
+        locations_[location_id].profit = profit;
+        locations_[location_id].release_date = release_date;
+        locations_[location_id].deadline = deadline;
+        locations_[location_id].service_time = service_time;
     }
-    void set_travel_time(LocationId j1, LocationId j2, Time t) { travel_times_[j1][j2] = t; }
 
-    virtual ~Instance() { }
+    void set_travel_time(
+            LocationId location_id_1,
+            LocationId location_id_2,
+            Time travel_time)
+    {
+        travel_times_[location_id_1][location_id_2] = travel_time;
+    }
 
     inline LocationId number_of_vertices() const { return locations_.size(); }
     inline Time travel_time(LocationId j1, LocationId j2) const { return travel_times_[j1][j2]; }

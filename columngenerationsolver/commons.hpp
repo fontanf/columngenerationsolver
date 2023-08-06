@@ -10,10 +10,10 @@
 namespace columngenerationsolver
 {
 
-typedef int64_t Counter;
-typedef int64_t ColIdx;
-typedef int64_t RowIdx;
-typedef double  Value;
+using Counter = int64_t;
+using ColIdx = int64_t;
+using RowIdx = int64_t;
+using Value = double;
 
 enum class ObjectiveSense { Min, Max };
 

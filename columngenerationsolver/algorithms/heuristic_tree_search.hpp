@@ -19,7 +19,7 @@ struct HeuristicTreeSearchOutput
     Counter maximum_number_of_iterations = 0;
 };
 
-typedef std::function<void(const HeuristicTreeSearchOutput&)> HeuristicTreeSearchCallback;
+using HeuristicTreeSearchCallback = std::function<void(const HeuristicTreeSearchOutput&)>;
 
 struct HeuristicTreeSearchOptionalParameters
 {

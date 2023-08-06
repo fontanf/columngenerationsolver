@@ -19,7 +19,7 @@ struct LimitedDiscrepancySearchOutput
     Counter number_of_added_columns = 0;
 };
 
-typedef std::function<void(const LimitedDiscrepancySearchOutput&)> LimitedDiscrepancySearchCallback;
+using LimitedDiscrepancySearchCallback = std::function<void(const LimitedDiscrepancySearchOutput&)>;
 
 struct LimitedDiscrepancySearchOptionalParameters
 {
@@ -40,16 +40,6 @@ struct LimitedDiscrepancySearchOptionalParameters
 
     /** Info structure. */
     optimizationtools::Info info = optimizationtools::Info();
-};
-
-struct LimitedDiscrepancySearchNode
-{
-    std::shared_ptr<LimitedDiscrepancySearchNode> father = nullptr;
-    ColIdx col = -1;
-    Value value = 0;
-    Value discrepancy = 0;
-    Value value_sum = 1;
-    ColIdx depth = 0;
 };
 
 LimitedDiscrepancySearchOutput limited_discrepancy_search(

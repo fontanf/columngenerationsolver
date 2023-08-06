@@ -33,11 +33,11 @@ namespace columngenerationsolver
 namespace espprc
 {
 
-typedef int64_t VertexId;
-typedef int64_t VertexPos;
-typedef int64_t Demand;
-typedef double Distance;
-typedef double Profit;
+using VertexId = int64_t;
+using VertexPos = int64_t;
+using Demand = int64_t;
+using Distance = double;
+using Profit = double;
 
 struct Location
 {
