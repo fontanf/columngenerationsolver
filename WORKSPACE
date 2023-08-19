@@ -127,6 +127,7 @@ cc_library(
 http_archive(
     name = "coinor_windows",
     urls = ["https://github.com/coin-or/Cbc/releases/download/releases%2F2.10.10/Cbc-releases.2.10.10-w64-msvc16-md.zip"],
+    sha256 = "94a951904eb80c2f351785fc9340216e88970a716634bc1ccd8b4fc5024af37c",
     build_file_content = """
 cc_library(
     name = "osi",
