@@ -6,7 +6,10 @@ CLP_COPTS = select({
             "//examples:clp_build": ["-DCLP_FOUND"],
             "//conditions:default": []})
 CLP_DEP = select({
-            "//examples:clp_build": ["@coinor//:clp"],
+            "//examples:clp_windows": ["@coinor_windows//:clp"],
+            "//conditions:default": []
+        }) + select({
+            "//examples:clp_linux": ["@coinor_linux//:clp"],
             "//conditions:default": []})
 
 CPLEX_COPTS = select({
