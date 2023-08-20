@@ -1,15 +1,15 @@
 STDCPP = select({
             "@bazel_tools//src/conditions:windows": ['/std:c++latest'],
-            "//conditions:default":                 ["-std=c++11"],})
+            "//conditions:default": ["-std=c++11"],})
 
 CLP_COPTS = select({
             "//examples:clp_build": ["-DCLP_FOUND"],
             "//conditions:default": []})
 CLP_DEP = select({
-            "//examples:clp_windows": ["@coinor_windows//:clp"],
+            "//examples:clp_windows": ["@clp_windows//:clp"],
             "//conditions:default": []
         }) + select({
-            "//examples:clp_linux": ["@coinor_linux//:clp"],
+            "//examples:clp_linux": ["@clp_linux//:clp"],
             "//conditions:default": []})
 
 CPLEX_COPTS = select({

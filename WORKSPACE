@@ -87,47 +87,23 @@ local_repository(
 )
 
 http_archive(
-    name = "coinor_linux",
-    urls = ["https://github.com/coin-or/Cbc/releases/download/releases%2F2.10.10/Cbc-releases.2.10.10-x86_64-ubuntu20-gcc940-static.tar.gz"],
-    sha256 = "872c78bfcdd1566f134d2f7757b76b2a2479a5b1ade065cdd1d4b303ed6f8006",
+    name = "osi_linux",
+    urls = ["https://github.com/coin-or/Osi/releases/download/releases%2F0.108.8/Osi-releases.0.108.8-x86_64-ubuntu20-gcc940-static.tar.gz"],
+    sha256 = "bd5a5bf1e6b6a28d13d41ab1554becd9f3992afe775785e51a88c9405cf2853e",
     build_file_content = """
 cc_library(
     name = "osi",
     hdrs = glob(["include/coin/Osi*.h*"], exclude_directories = 0),
     strip_include_prefix = "include/coin/",
-    visibility = ["//visibility:public"],
-)
-cc_library(
-    name = "coinutils",
-    hdrs = glob(["include/coin/Coin*.h*"], exclude_directories = 0),
-    strip_include_prefix = "include/coin/",
-    srcs = ["lib/libCoinUtils.a"],
-    linkopts = ["-llapack", "-lblas", "-lbz2", "-lz"],
-    visibility = ["//visibility:public"],
-)
-cc_library(
-    name = "clp",
-    hdrs = glob(["include/coin/Clp*.h*"], exclude_directories = 0),
-    strip_include_prefix = "include/coin",
-    srcs = ["lib/libClp.a"],
-    deps = [":coinutils", ":osi"],
-    visibility = ["//visibility:public"],
-)
-cc_library(
-    name = "cbc",
-    hdrs = glob(["include/coin/Cbc*.h*"], exclude_directories = 0),
-    strip_include_prefix = "include/coin",
-    srcs = ["lib/libCbc.a", "lib/libOsiCbc.a"],
-    deps = [":coinutils", ":osi", ":clp"],
+    srcs = ["lib/libOsi.a", "lib/libOsiCommonTests.a"],
     visibility = ["//visibility:public"],
 )
 """,
 )
 
 http_archive(
-    name = "coinor_windows",
-    urls = ["https://github.com/coin-or/Cbc/releases/download/releases%2F2.10.10/Cbc-releases.2.10.10-w64-msvc16-md.zip"],
-    sha256 = "94a951904eb80c2f351785fc9340216e88970a716634bc1ccd8b4fc5024af37c",
+    name = "osi_windows",
+    urls = ["https://github.com/coin-or/Osi/releases/download/releases%2F0.108.8/Osi-releases.0.108.8-w64-msvc16-md.zip"],
     build_file_content = """
 cc_library(
     name = "osi",
@@ -136,6 +112,29 @@ cc_library(
     visibility = ["//visibility:public"],
     srcs = ["lib/libOsi.lib", "lib/libOsiCommonTests.lib"],
 )
+""",
+)
+
+http_archive(
+    name = "coinutils_linux",
+    urls = ["https://github.com/coin-or/CoinUtils/releases/download/releases%2F2.11.9/CoinUtils-releases.2.11.9-x86_64-ubuntu20-gcc940-static.tar.gz"],
+    sha256 = "872c78bfcdd1566f134d2f7757b76b2a2479a5b1ade065cdd1d4b303ed6f8006",
+    build_file_content = """
+cc_library(
+    name = "coinutils",
+    hdrs = glob(["include/coin/Coin*.h*"], exclude_directories = 0),
+    strip_include_prefix = "include/coin/",
+    srcs = ["lib/libCoinUtils.a"],
+    linkopts = ["-llapack", "-lblas", "-lbz2", "-lz"],
+    visibility = ["//visibility:public"],
+)
+""",
+)
+
+http_archive(
+    name = "coinutils_windows",
+    urls = ["https://github.com/coin-or/CoinUtils/releases/download/releases%2F2.11.9/CoinUtils-releases.2.11.9-w64-msvc16-md.zip"],
+    build_file_content = """
 cc_library(
     name = "coinutils",
     hdrs = glob(["include/coin/Coin*.h*"], exclude_directories = 0),
@@ -143,20 +142,35 @@ cc_library(
     srcs = ["lib/libCoinUtils.lib"],
     visibility = ["//visibility:public"],
 )
+""",
+)
+
+http_archive(
+    name = "clp_linux",
+    urls = ["https://github.com/coin-or/Clp/releases/download/releases%2F1.17.8/Clp-releases.1.17.8-x86_64-ubuntu20-gcc940-static.tar.gz"],
+    sha256 = "d569b04d19c25876e55d2557a1d9739df8eb50ec8ca11a98ad387fd8b90212c9",
+    build_file_content = """
 cc_library(
     name = "clp",
-    hdrs = glob(["include/coin/Clp*.h*"], exclude_directories = 0),
+    hdrs = glob(["include/coin/*Clp*.h*"], exclude_directories = 0),
     strip_include_prefix = "include/coin",
-    srcs = ["lib/libClp.lib", "lib/libOsiClp.lib"],
-    deps = [":coinutils", ":osi"],
+    srcs = ["lib/libClp.a", "lib/libOsiClp.a"],
+    deps = ["@osi_linux//:osi", "@coinutils_linux//:coinutils"],
     visibility = ["//visibility:public"],
 )
+""",
+)
+
+http_archive(
+    name = "clp_windows",
+    urls = ["https://github.com/coin-or/Clp/releases/download/releases%2F1.17.8/Clp-releases.1.17.8-w64-msvc16-md.zip"],
+    build_file_content = """
 cc_library(
-    name = "cbc",
-    hdrs = glob(["include/coin/Cbc*.h*"], exclude_directories = 0),
+    name = "clp",
+    hdrs = glob(["include/coin/*Clp*.h*"], exclude_directories = 0),
     strip_include_prefix = "include/coin",
-    srcs = ["lib/libCbc.lib", "lib/libOsiCbc.lib", "lib/libCgl.lib"],
-    deps = [":coinutils", ":osi", ":clp"],
+    srcs = ["lib/libClp.lib", "lib/libOsiClp.lib"],
+    deps = ["osi_windows//:osi", "coinutils_windows//:coinutils"],
     visibility = ["//visibility:public"],
 )
 """,
