@@ -1,5 +1,5 @@
 /**
- * Elementary Shortest Path Problem with Resource Constraint.
+ * Elementary shortest path problem with resource constraint
  *
  * Input:
  * - n vertices with (j = 1..n)

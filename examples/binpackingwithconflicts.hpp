@@ -1,5 +1,5 @@
 /**
- * Bin Packing Problem with Conflicts.
+ * Bin packing problem with conflicts.
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/binpackingwithconflicts.hpp

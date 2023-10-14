@@ -1,5 +1,5 @@
 /**
- * Elementary Shortest Path Problem with Resource Constraint and Time Windows.
+ * Elementary shortest path problem with resource constraint and time windows
  *
  * Input:
  * - n vertices with (j = 1..n):

@@ -1,5 +1,5 @@
 /**
- * Vehicle Routing Problem with Time Windows.
+ * Vehicle routing problem with time windows
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/vehicleroutingwithtimewindows.hpp

@@ -1,5 +1,5 @@
 /**
- * Cutting Stock Problem.
+ * Cutting stock problem.
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/cuttingstock.hpp

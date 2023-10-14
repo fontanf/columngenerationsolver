@@ -1,5 +1,5 @@
 /**
- * Multiple Knapsack Problem.
+ * Multiple knapsack problem.
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/multipleknapsack.hpp

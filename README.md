@@ -1,4 +1,4 @@
-# Column Generation Solver
+# Column generation solver
 
 A solver based on column generation.
 
@@ -36,14 +36,14 @@ Features:
 
 Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orproblems)
 
-When the sub-problems can be solved with a very efficient algorithm - typically a pseudo-polynomial dynamic programming algorithm - then the bottleneck is the resolution of the linear problems. This is the case for the examples Cutting Stock, Multiple Knapsack, Generalized Assignment and Star Observation Scheduling.
+When the sub-problems can be solved with a very efficient algorithm - typically a pseudo-polynomial dynamic programming algorithm - then the bottleneck is the resolution of the linear problems. This is the case for the examples cutting stock, multiple knapsack, generalized assignment and star observation scheduling.
 
-When the sub-problems are more difficult to solve, their resolution become the bottleneck of the algorithm. This is the case for the examples Geometrical Variable-sized Bin Packing, Bin Packing with Conflicts, Capacitated Vehicle Routing, Vehicle Routing Problem with Time Windows and Graph Coloring. Here, these sub-problems are solved using generic approaches based on Heuristic Tree Search or Local Search. During the first column generation iterations, these heuristic algorithms are stopped early to avoid spending a lot of time to find trivial columns.
+When the sub-problems are more difficult to solve, their resolution become the bottleneck of the algorithm. This is the case for the examples geometrical variable-sized bin packing, bin packing with conflicts, capacitated vehicle routing, vehicle routing problem with time windows and graph coloring. Here, these sub-problems are solved using generic approaches based on heuristic tree search or local search. During the first column generation iterations, these heuristic algorithms are stopped early to avoid spending a lot of time to find trivial columns.
 
 ### Packing
 
-[Cutting Stock Problem](examples/cuttingstock.hpp)
-* Pricing problem: Bounded Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+[Cutting stock problem](examples/cuttingstock.hpp)
+* Pricing problem: bounded knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
 <details><summary>Benchmarks</summary>
 <p>
@@ -54,8 +54,8 @@ When the sub-problems are more difficult to solve, their resolution become the b
 </p>
 </details>
 
-[Multiple Knapsack Problem](examples/multipleknapsack.hpp)
-* Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+[Multiple knapsack problem](examples/multipleknapsack.hpp)
+* Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
 <details><summary>Benchmarks</summary>
 <p>
@@ -66,22 +66,22 @@ When the sub-problems are more difficult to solve, their resolution become the b
 </p>
 </details>
 
-Generalized Assignment Problem from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp)
-* Pricing problem: Knapsck Problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
+[Generalized assignment problem](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp) from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver)
+* Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-Geometrical Cutting Stock and Variable-sized Bin Packing Problems from [fontanf/packingsolver](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp)
-* Pricing problem: Geometrical Knapsack Problems solved with the algorithms from the same repository
+[Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
+* Pricing problem: geometrical knapsack problems solved with the algorithms from the same repository
 
-[Bin Packing Problem with Conflicts](examples/binpackingwithconflicts.hpp)
-* Pricing problem: Knapsack Problem with Conflicts solved with the [Heuristic Tree Search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsackwithconflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Bin packing problem with conflicts](examples/binpackingwithconflicts.hpp)
+* Pricing problem: knapsack problem with conflicts solved with the [heuristic tree search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsackwithconflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Routing
 
-[Capacitated Vehicle Routing Problem](examples/capacitatedvehiclerouting.hpp)
-* Pricing problem: Elementary Shortest Path Problem with Resource Constraint [solved by Heuristic Tree Search](examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Capacitated vehicle routing problem](examples/capacitatedvehiclerouting.hpp)
+* Pricing problem: elementary shortest path problem with resource constraint [solved by heuristic tree search](examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
-[Vehicle Routing Problem with Time Windows](examples/vehicleroutingwithtimewindows.hpp)
-* Pricing problem: Elementary Shortest Path Problem with Resource Constraint and Time Windows [solved by Heuristic Tree Search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Vehicle routing problem with time windows](examples/vehicleroutingwithtimewindows.hpp)
+* Pricing problem: elementary shortest path problem with resource constraint and time windows [solved by heuristic tree search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 <details><summary>Benchmarks</summary>
 <p>
@@ -96,13 +96,13 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 
 ### Scheduling
 
-Star observation scheduling problem from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.hpp)
+[Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.hpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/flexiblestarobservationschedulingsolver/algorithms/column_generation.hpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
 * Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/singlenightstarobservationschedulingsolver/algorithms/dynamic_programming.hpp)
 
 ### Graphs
 
-Graph Coloring Problem from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp)
-* Pricing problem: Maximum-Weight Independent Set Problem solved with the `localsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
+[Graph coloring problem](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp) from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver)
+* Pricing problem: maximum-weight independent set problem solved with the `localsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
 
 ## Usage, running examples from command line
 
