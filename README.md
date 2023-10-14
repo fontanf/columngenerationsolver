@@ -69,7 +69,7 @@ When the sub-problems are more difficult to solve, their resolution become the b
 [Generalized assignment problem](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp) from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver)
 * Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-[Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
+[Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.cpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
 * Pricing problem: geometrical knapsack problems solved with the algorithms from the same repository
 
 [Bin packing problem with conflicts](examples/binpackingwithconflicts.hpp)
@@ -96,7 +96,7 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 
 ### Scheduling
 
-[Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.hpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/flexiblestarobservationschedulingsolver/algorithms/column_generation.hpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
+[Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.cpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/flexiblestarobservationschedulingsolver/algorithms/column_generation.cpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
 * Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/singlenightstarobservationschedulingsolver/algorithms/dynamic_programming.hpp)
 
 ### Graphs
