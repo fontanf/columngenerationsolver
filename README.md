@@ -24,10 +24,10 @@ A linear programming solver is required. Currently, CLP, Xpress and CPLEX are su
 
 Features:
 * Algorithms:
-  * Column generation `column_generation`
+  * Column generation `column-generation`
   * Greedy `greedy`
-  * Limited Discrepancy Search `limited_discrepancy_search`
-  * Heuristic Tree Search `heuristic_tree_search`
+  * Limited Discrepancy Search `limited-discrepancy-search`
+  * Heuristic Tree Search `heuristic-tree-search`
 * Sabilization technics:
   * Static and self-adjusting Wentges smoothing
   * Static and automatic directional smoothing
