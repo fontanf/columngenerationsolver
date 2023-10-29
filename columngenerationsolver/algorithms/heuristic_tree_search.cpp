@@ -9,7 +9,7 @@ HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
     // Initial display.
     optional_parameters.info.os()
             << "======================================" << std::endl
-            << "       Column Generation Solver       " << std::endl
+            << "        ColumnGenerationSolver        " << std::endl
             << "======================================" << std::endl
             << std::endl
             << "Algorithm" << std::endl

@@ -19,7 +19,7 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
     // Initial display.
     optional_parameters.info.os()
             << "======================================" << std::endl
-            << "       Column Generation Solver       " << std::endl
+            << "        ColumnGenerationSolver        " << std::endl
             << "======================================" << std::endl
             << std::endl
             << "Algorithm" << std::endl
