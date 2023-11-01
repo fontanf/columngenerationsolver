@@ -26,8 +26,8 @@ Features:
 * Algorithms:
   * Column generation `column-generation`
   * Greedy `greedy`
-  * Limited Discrepancy Search `limited-discrepancy-search`
-  * Heuristic Tree Search `heuristic-tree-search`
+  * Limited discrepancy search `limited-discrepancy-search`
+  * Heuristic tree search `heuristic-tree-search`
 * Sabilization technics:
   * Static and self-adjusting Wentges smoothing
   * Static and automatic directional smoothing
@@ -96,8 +96,8 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 
 ### Scheduling
 
-[Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/algorithms/column_generation.cpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/flexiblestarobservationschedulingsolver/algorithms/column_generation.cpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
-* Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/singlenightstarobservationschedulingsolver/algorithms/dynamic_programming.hpp)
+[Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/starobservationscheduling/algorithms/column_generation.cpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/flexiblestarobservationscheduling/algorithms/column_generation.cpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
+* Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/singlenightstarobservationscheduling/algorithms/dynamic_programming.hpp) and single-night flexible star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/singlenightflexiblestarobservationscheduling/algorithms/dynamic_programming.hpp)
 
 ### Graphs
 
