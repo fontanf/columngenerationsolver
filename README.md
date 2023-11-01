@@ -97,12 +97,12 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 ### Scheduling
 
 [Star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/starobservationscheduling/algorithms/column_generation.cpp) and [flexible star observation scheduling problem](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/flexiblestarobservationscheduling/algorithms/column_generation.cpp) from [fontanf/starobservationscheduling](https://github.com/fontanf/starobservationschedulingsolver)
-* Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/singlenightstarobservationscheduling/algorithms/dynamic_programming.hpp) and single-night flexible star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/singlenightflexiblestarobservationscheduling/algorithms/dynamic_programming.hpp)
+* Pricing problem: single-night star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/singlenightstarobservationscheduling/algorithms/dynamic_programming.hpp) and single-night flexible star observation scheduling problem [solved by dynamic programming](https://github.com/fontanf/starobservationschedulingsolver/blob/main/starobservationschedulingsolver/flexiblesinglenightstarobservationscheduling/algorithms/dynamic_programming.hpp)
 
 ### Graphs
 
 [Graph coloring problem](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp) from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver)
-* Pricing problem: maximum-weight independent set problem solved with the `localsearch` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
+* Pricing problem: maximum-weight independent set problem solved with the `local-search` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
 
 ## Usage, running examples from command line
 
