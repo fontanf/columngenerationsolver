@@ -69,7 +69,7 @@ When the sub-problems are more difficult to solve, their resolution become the b
 [Generalized assignment problem](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp) from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver)
 * Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-[Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.cpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
+[Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
 * Pricing problem: geometrical knapsack problems solved with the algorithms from the same repository
 
 [Bin packing problem with conflicts](examples/binpackingwithconflicts.hpp)
@@ -101,7 +101,7 @@ python3 ../optimizationtools/scripts/bench_process.py --csv ../ordata/vehiclerou
 
 ### Graphs
 
-[Graph coloring problem](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/columngeneration.cpp) from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver)
+[Graph coloring problem](https://github.com/fontanf/coloringsolver/blob/master/coloringsolver/algorithms/column_generation.cpp) from [fontanf/coloringsolver](https://github.com/fontanf/coloringsolver)
 * Pricing problem: maximum-weight independent set problem solved with the `local-search` algorithm from [fontanf/stablesolver](https://github.com/fontanf/stablesolver) implemented with [fontanf/localsearchsolver](https://github.com/fontanf/localsearchsolver)
 
 ## Usage, running examples from command line
