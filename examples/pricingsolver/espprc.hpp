@@ -2,18 +2,18 @@
  * Elementary shortest path problem with resource constraint
  *
  * Input:
- * - n vertices with (j = 1..n)
+ * - n locations with (j = 1..n)
  *   - a demand dⱼ
  *   - a profit pⱼ
- * - an n×n matrix containing the distances between each pair of vertices
+ * - an n×n matrix containing the distances between each pair of locations
  * - a capacity c
  * Problem:
  * - find a tour from city 1 to city 1 such that:
- *   - each other vertex is visited at most once
- *   - the total demand of the visited vertices does not exceed the capacity
+ *   - each other location is visited at most once
+ *   - the total demand of the visited locations does not exceed the capacity
  * Objective:
  * - minimize the total length of the tour minus the profit a the visited
- *   vertices
+ *   locations
  *
  * Tree search:
  * - forward branching
@@ -33,59 +33,144 @@ namespace columngenerationsolver
 namespace espprc
 {
 
-using VertexId = int64_t;
-using VertexPos = int64_t;
+using LocationId = int64_t;
+using LocationPos = int64_t;
 using Demand = int64_t;
 using Distance = double;
 using Profit = double;
 
+/**
+ * Structure for a location.
+ */
 struct Location
 {
+    /** Demand. */
     Demand demand;
+
+    /** Profit. */
     Profit profit;
 };
 
+/**
+ * Instance class for an 'espprc' problem.
+ */
 class Instance
 {
 
 public:
 
-    Instance(VertexId n):
-        locations_(n),
-        distances_(n, std::vector<Distance>(n, -1))
+    /*
+     * Getters
+     */
+
+    /** Get the number of locations. */
+    inline LocationId number_of_locations() const { return locations_.size(); }
+
+    /** Get the distance between two locations. */
+    inline Distance distance(
+            LocationId location_id_1,
+            LocationId location_id_2) const
     {
-        for (VertexId j = 0; j < n; ++j)
-            distances_[j][j] = std::numeric_limits<Distance>::max();
-    }
-    void set_capacity(Demand demand) { locations_[0].demand = demand; }
-    void set_location(
-            VertexId j,
-            Demand demand,
-            Profit profit)
-    {
-        locations_[j].demand = demand;
-        locations_[j].profit = profit;
-    }
-    void set_distance(VertexId j1, VertexId j2, Distance d)
-    {
-        assert(j1 >= 0);
-        assert(j2 >= 0);
-        assert(j1 < number_of_vertices());
-        assert(j2 < number_of_vertices());
-        distances_[j1][j2] = d;
+        return distances_[location_id_1][location_id_2];
     }
 
-    virtual ~Instance() { }
+    /** Get a location. */
+    inline const Location& location(LocationId location_id) const { return locations_[location_id]; }
 
-    inline VertexId number_of_vertices() const { return locations_.size(); }
-    inline Distance distance(VertexId j1, VertexId j2) const { return distances_[j1][j2]; }
-    inline const Location& location(VertexId j) const { return locations_[j]; }
+    /** Get the capacity. */
     inline Demand capacity() const { return locations_[0].demand; }
 
 private:
 
+    /*
+     * Private methods
+     */
+
+    /** Create an instance manually. */
+    Instance() { }
+
+    /*
+     * Private attributes
+     */
+
+    /** Locations. */
     std::vector<Location> locations_;
+
+    /** Distances. */
     std::vector<std::vector<Distance>> distances_;
+
+    friend class InstanceBuilder;
+
+};
+
+/**
+ * Instance builder class for an 'espprc' problem.
+ */
+class InstanceBuilder
+{
+
+public:
+
+    /** Constructor. */
+    InstanceBuilder(LocationId number_of_locations)
+    {
+        instance_.locations_ = std::vector<Location>(number_of_locations);
+        instance_.distances_ = std::vector<std::vector<Distance>>(
+                number_of_locations,
+                std::vector<Distance>(number_of_locations, -1));
+        for (LocationId location_id = 0;
+                location_id < number_of_locations;
+                ++location_id) {
+            instance_.distances_[location_id][location_id] = std::numeric_limits<Distance>::max();
+        }
+    }
+
+    /** Set the capacity of the vehicle. */
+    void set_capacity(Demand demand) { instance_.locations_[0].demand = demand; }
+
+    /** Set the demand of a location. */
+    void set_demand(
+            LocationId location_id,
+            Demand demand)
+    {
+        instance_.locations_[location_id].demand = demand;
+    }
+
+    /** Set the profit of a location. */
+    void set_profit(
+            LocationId location_id,
+            Profit profit)
+    {
+        instance_.locations_[location_id].profit = profit;
+    }
+
+    /** Set the distance between two locations. */
+    void set_distance(
+            LocationId location_id_1,
+            LocationId location_id_2,
+            Distance distance)
+    {
+        instance_.distances_[location_id_1][location_id_2] = distance;
+    }
+
+    /*
+     * Build
+     */
+
+    /** Build. */
+    Instance build()
+    {
+        return std::move(instance_);
+    }
+
+private:
+
+    /*
+     * Private attributes
+     */
+
+    /** Instance. */
+    Instance instance_;
 
 };
 
@@ -97,43 +182,45 @@ public:
     struct Node
     {
         std::shared_ptr<Node> father = nullptr;
-        std::vector<bool> available_vertices;
-        VertexId j = 0; // Last visited vertex.
-        VertexId number_of_vertices = 1;
+        std::vector<bool> available_locations;
+        LocationId last_location_id = 0;
+        LocationId number_of_locations = 1;
         Distance length = 0;
         Profit profit = 0;
         Demand demand = 0;
         double guide = 0;
-        VertexPos next_child_pos = 0;
+        LocationPos next_child_pos = 0;
     };
 
     BranchingScheme(const Instance& instance):
         instance_(instance),
-        sorted_vertices_(instance.number_of_vertices()),
+        sorted_locations_(instance.number_of_locations()),
         generator_(0)
     {
-        // Initialize sorted_vertices_.
-        for (VertexId j = 0; j < instance_.number_of_vertices(); ++j) {
-            sorted_vertices_[j].reset(instance.number_of_vertices());
-            for (VertexId j2 = 0; j2 < instance_.number_of_vertices(); ++j2)
-                sorted_vertices_[j].set_cost(j2, instance_.distance(j, j2) - instance_.location(j2).profit);
+        // Initialize sorted_locations_.
+        for (LocationId location_id = 0;
+                location_id < instance_.number_of_locations();
+                ++location_id) {
+            sorted_locations_[location_id].reset(instance.number_of_locations());
+            for (LocationId location_id_2 = 0; location_id_2 < instance_.number_of_locations(); ++location_id_2)
+                sorted_locations_[location_id].set_cost(location_id_2, instance_.distance(location_id, location_id_2) - instance_.location(location_id_2).profit);
         }
     }
 
-    inline VertexId neighbor(VertexId j, VertexPos pos) const
+    inline LocationId neighbor(LocationId location_id, LocationPos pos) const
     {
-        assert(j >= 0);
-        assert(j < instance_.number_of_vertices());
+        assert(location_id >= 0);
+        assert(location_id < instance_.number_of_locations());
         assert(pos >= 0);
-        assert(pos < instance_.number_of_vertices());
-        return sorted_vertices_[j].get(pos, generator_);
+        assert(pos < instance_.number_of_locations());
+        return sorted_locations_[location_id].get(pos, generator_);
     }
 
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
-        r->available_vertices.resize(instance_.number_of_vertices(), true);
-        r->available_vertices[0] = false;
+        r->available_locations.resize(instance_.number_of_locations(), true);
+        r->available_locations[0] = false;
         r->guide = instance_.distance(0, neighbor(0, 0));
         return r;
     }
@@ -143,35 +230,35 @@ public:
     {
         assert(!infertile(father));
         assert(!leaf(father));
-        VertexId j_next = neighbor(father->j, father->next_child_pos);
-        Distance d = instance_.distance(father->j, j_next);
+        LocationId next_location_id = neighbor(father->last_location_id, father->next_child_pos);
+        Distance d = instance_.distance(father->last_location_id, next_location_id);
         // Update father
         father->next_child_pos++;
-        VertexId j_next_next = neighbor(father->j, father->next_child_pos);
-        Distance d_next = instance_.distance(father->j, j_next_next);
+        LocationId next_location_id_next = neighbor(father->last_location_id, father->next_child_pos);
+        Distance d_next = instance_.distance(father->last_location_id, next_location_id_next);
         if (d_next == std::numeric_limits<Distance>::max()) {
             father->guide = std::numeric_limits<double>::max();
         } else {
             father->guide = father->length + d_next
-                - father->profit - instance_.location(j_next_next).profit;
+                - father->profit - instance_.location(next_location_id_next).profit;
         }
-        if (father->demand + instance_.location(j_next).demand > instance_.capacity())
+        if (father->demand + instance_.location(next_location_id).demand > instance_.capacity())
             return nullptr;
-        if (!father->available_vertices[j_next])
+        if (!father->available_locations[next_location_id])
             return nullptr;
 
         // Compute new child.
         auto child = std::shared_ptr<Node>(new BranchingScheme::Node());
         child->father = father;
-        child->available_vertices = father->available_vertices;
-        child->available_vertices[j_next] = false;
-        child->j = j_next;
-        child->number_of_vertices = father->number_of_vertices + 1;
+        child->available_locations = father->available_locations;
+        child->available_locations[next_location_id] = false;
+        child->last_location_id = next_location_id;
+        child->number_of_locations = father->number_of_locations + 1;
         child->length = father->length + d;
-        child->profit = father->profit + instance_.location(j_next).profit;
-        child->demand = father->demand + instance_.location(j_next).demand;
-        child->guide = child->length + instance_.distance(j_next, neighbor(j_next, 0))
-            - child->profit - instance_.location(neighbor(j_next, 0)).profit;
+        child->profit = father->profit + instance_.location(next_location_id).profit;
+        child->demand = father->demand + instance_.location(next_location_id).demand;
+        child->guide = child->length + instance_.distance(next_location_id, neighbor(next_location_id, 0))
+            - child->profit - instance_.location(neighbor(next_location_id, 0)).profit;
         return child;
     }
 
@@ -196,7 +283,7 @@ public:
     inline bool leaf(
             const std::shared_ptr<Node>& node) const
     {
-        return node->number_of_vertices == instance_.number_of_vertices();
+        return node->number_of_locations == instance_.number_of_locations();
     }
 
     bool bound(
@@ -212,40 +299,40 @@ public:
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        return node_1->length + instance_.distance(node_1->j, 0) - node_1->profit
-            < node_2->length + instance_.distance(node_2->j, 0) - node_2->profit;
+        return node_1->length + instance_.distance(node_1->last_location_id, 0) - node_1->profit
+                < node_2->length + instance_.distance(node_2->last_location_id, 0) - node_2->profit;
     }
 
     bool equals(
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        if (node_1->number_of_vertices != node_2->number_of_vertices)
+        if (node_1->number_of_locations != node_2->number_of_locations)
             return false;
-        std::vector<bool> v(instance_.number_of_vertices(), false);
+        std::vector<bool> v(instance_.number_of_locations(), false);
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
-            v[node_tmp->j] = true;
+            v[node_tmp->last_location_id] = true;
         for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
-            if (!v[node_tmp->j])
+            if (!v[node_tmp->last_location_id])
                 return false;
         return true;
     }
 
     std::string display(const std::shared_ptr<Node>& node) const
     {
-        if (node->j == 0)
+        if (node->last_location_id == 0)
             return "";
         std::stringstream ss;
-        ss << node->length + instance_.distance(node->j, 0) - node->profit
-            << " (n" << node->number_of_vertices
-            << " l" << node->length + instance_.distance(node->j, 0)
+        ss << node->length + instance_.distance(node->last_location_id, 0) - node->profit
+            << " (n" << node->number_of_locations
+            << " l" << node->length + instance_.distance(node->last_location_id, 0)
             << " p" << node->profit
             << ")";
         return ss.str();
     }
 
     /**
-     * Dominances.
+     * Dominances
      */
 
     inline bool comparable(
@@ -256,16 +343,16 @@ public:
 
     struct NodeHasher
     {
-        std::hash<VertexId> hasher_1;
+        std::hash<LocationId> hasher_1;
         std::hash<std::vector<bool>> hasher_2;
 
         inline bool operator()(
                 const std::shared_ptr<Node>& node_1,
                 const std::shared_ptr<Node>& node_2) const
         {
-            if (node_1->j != node_2->j)
+            if (node_1->last_location_id != node_2->last_location_id)
                 return false;
-            if (node_1->available_vertices != node_2->available_vertices)
+            if (node_1->available_locations != node_2->available_locations)
                 return false;
             return true;
         }
@@ -273,8 +360,8 @@ public:
         inline std::size_t operator()(
                 const std::shared_ptr<Node>& node) const
         {
-            size_t hash = hasher_1(node->j);
-            optimizationtools::hash_combine(hash, hasher_2(node->available_vertices));
+            size_t hash = hasher_1(node->last_location_id);
+            optimizationtools::hash_combine(hash, hasher_2(node->available_locations));
             return hash;
         }
     };
@@ -295,7 +382,8 @@ private:
 
     const Instance& instance_;
 
-    mutable std::vector<optimizationtools::SortedOnDemandArray> sorted_vertices_;
+    mutable std::vector<optimizationtools::SortedOnDemandArray> sorted_locations_;
+
     mutable std::mt19937_64 generator_;
 
 };

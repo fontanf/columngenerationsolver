@@ -161,35 +161,44 @@ std::vector<Column> PricingSolver::solve_pricing(
             continue;
         espp2cvrp_.push_back(location_id);
     }
-    LocationId espp_n = espp2cvrp_.size();
-    if (espp_n == 1)
+    LocationId espp_number_of_locations = espp2cvrp_.size();
+    if (espp_number_of_locations == 1)
         return {};
-    espprctw::Instance espp_instance(espp_n);
+    espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     double multiplier = 1000;
     for (LocationId espp_location_id = 0;
-            espp_location_id < espp_n;
+            espp_location_id < espp_number_of_locations;
             ++espp_location_id) {
         LocationId location_id = espp2cvrp_[espp_location_id];
         const Location& location = instance_.location(location_id);
-        espp_instance.set_location(
+        espp_instance_builder.set_location_demand(
                 espp_location_id,
-                location.demand,
-                ((location_id != 0)? std::round(multiplier * duals[location_id]): 0),
-                std::round(multiplier * location.release_date),
-                std::round(multiplier * location.deadline),
+                location.demand);
+        espp_instance_builder.set_location_profit(
+                espp_location_id,
+                ((location_id != 0)? std::round(multiplier * duals[location_id]): 0));
+        espp_instance_builder.set_location_release_date(
+                espp_location_id,
+                std::round(multiplier * location.release_date));
+        espp_instance_builder.set_location_deadline(
+                espp_location_id,
+                std::round(multiplier * location.deadline));
+        espp_instance_builder.set_location_service_time(
+                espp_location_id,
                 std::round(multiplier * location.service_time));
         for (LocationId espp_location_id_2 = 0;
-                espp_location_id_2 < espp_n;
+                espp_location_id_2 < espp_number_of_locations;
                 ++espp_location_id_2) {
             if (espp_location_id_2 == espp_location_id)
                 continue;
             LocationId location_id_2 = espp2cvrp_[espp_location_id_2];
-            espp_instance.set_travel_time(
+            espp_instance_builder.set_travel_time(
                     espp_location_id,
                     espp_location_id_2,
                     std::round(multiplier * instance_.travel_time(location_id, location_id_2)));
         }
     }
+    espprctw::Instance espp_instance = espp_instance_builder.build();
 
     std::vector<Column> columns;
     espprctw::BranchingScheme branching_scheme(espp_instance);
@@ -210,16 +219,16 @@ std::vector<Column> PricingSolver::solve_pricing(
         LocationId i = 0;
         for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
                 espp_output.solution_pool.solutions()) {
-            if (i > 2 * espp_n)
+            if (i > 2 * espp_number_of_locations)
                 break;
-            if (node->j == 0)
+            if (node->last_location_id == 0)
                 continue;
 
             std::vector<LocationId> solution; // Without the depot.
             for (auto node_tmp = node;
                     node_tmp->father != nullptr;
                     node_tmp = node_tmp->father)
-                solution.push_back(espp2cvrp_[node_tmp->j]);
+                solution.push_back(espp2cvrp_[node_tmp->last_location_id]);
             std::reverse(solution.begin(), solution.end());
             i += solution.size();
 

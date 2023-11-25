@@ -152,33 +152,36 @@ std::vector<Column> PricingSolver::solve_pricing(
         espp2vrp_.push_back(location_id);
     }
 
-    LocationId espp_n = espp2vrp_.size();
-    espprc::Instance instance_espp(espp_n);
+    LocationId espp_number_of_locations = espp2vrp_.size();
+    espprc::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     for (LocationId espp_location_id = 0;
-            espp_location_id < espp_n;
+            espp_location_id < espp_number_of_locations;
             ++espp_location_id) {
         LocationId location_id = espp2vrp_[espp_location_id];
-        instance_espp.set_location(
+        espp_instance_builder.set_demand(
                 espp_location_id,
-                instance_.demand(location_id),
+                instance_.demand(location_id));
+        espp_instance_builder.set_profit(
+                espp_location_id,
                 ((location_id != 0)? duals[location_id - 1]: 0));
         for (LocationId espp_location_id_2 = 0;
-                espp_location_id_2 < espp_n;
+                espp_location_id_2 < espp_number_of_locations;
                 ++espp_location_id_2) {
             if (espp_location_id_2 == espp_location_id)
                 continue;
             LocationId location_id_2 = espp2vrp_[espp_location_id_2];
-            instance_espp.set_distance(
+            espp_instance_builder.set_distance(
                     espp_location_id,
                     espp_location_id_2,
                     instance_.distance(location_id, location_id_2));
         }
     }
+    espprc::Instance espp_instance = espp_instance_builder.build();
 
     std::vector<Column> columns;
 
     // Solve subproblem instance.
-    espprc::BranchingScheme branching_scheme(instance_espp);
+    espprc::BranchingScheme branching_scheme(espp_instance);
     for (;;) {
         bool ok = false;
 
@@ -194,15 +197,16 @@ std::vector<Column> PricingSolver::solve_pricing(
         LocationId i = 0;
         for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
                 espp_output.solution_pool.solutions()) {
-            if (i > 2 * espp_n)
+            if (i > 2 * espp_number_of_locations)
                 break;
-            if (node->j == 0)
+            if (node->last_location_id == 0)
                 continue;
             std::vector<LocationId> solution; // Without the depot.
             for (auto node_tmp = node;
                     node_tmp->father != nullptr;
-                    node_tmp = node_tmp->father)
-                solution.push_back(espp2vrp_[node_tmp->j]);
+                    node_tmp = node_tmp->father) {
+                solution.push_back(espp2vrp_[node_tmp->last_location_id]);
+            }
             std::reverse(solution.begin(), solution.end());
             i += solution.size();
 
