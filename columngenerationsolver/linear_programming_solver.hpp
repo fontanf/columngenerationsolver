@@ -105,12 +105,12 @@ class ColumnGenerationSolverClp: public ColumnGenerationSolver
 public:
 
     ColumnGenerationSolverClp(
-            ObjectiveSense objective_sense,
+            optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
     {
         model_.messageHandler()->setLogLevel(0);
-        if (objective_sense == ObjectiveSense::Min) {
+        if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.setOptimizationDirection(1);
         } else {
             model_.setOptimizationDirection(-1);
@@ -169,7 +169,7 @@ class ColumnGenerationSolverCplex: public ColumnGenerationSolver
 public:
 
     ColumnGenerationSolverCplex(
-            ObjectiveSense objective_sense,
+            optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds):
         env_(),
@@ -178,7 +178,7 @@ public:
         ranges_(env_),
         cplex_(model_)
     {
-        if (objective_sense == ObjectiveSense::Min) {
+        if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             obj_.setSense(IloObjective::Minimize);
         } else {
             obj_.setSense(IloObjective::Maximize);
@@ -245,7 +245,7 @@ class ColumnGenerationSolverXpress: public ColumnGenerationSolver
 public:
 
     ColumnGenerationSolverXpress(
-            ObjectiveSense objective_sense,
+            optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
     {
@@ -254,7 +254,7 @@ public:
         XPRSsetintcontrol(problem_, XPRS_THREADS, 1);
         //XPRSsetlogfile(problem_, "xpress.log");
         // Objective.
-        if (objective_sense == ObjectiveSense::Min) {
+        if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             XPRSchgobjsense(problem_, XPRS_OBJ_MINIMIZE);
         } else {
             XPRSchgobjsense(problem_, XPRS_OBJ_MAXIMIZE);
@@ -366,13 +366,13 @@ class ColumnGenerationSolverKnitro: public ColumnGenerationSolver
 public:
 
     ColumnGenerationSolverKnitro(
-            ObjectiveSense objective_sense,
+            optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
     {
         KN_new(&kc_);
         KN_set_param_by_name(kc_, "outlev", 4);
-        if (objective_sense == ObjectiveSense::Min) {
+        if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             KN_set_obj_goal(kc_, KN_OBJGOAL_MINIMIZE);
         } else {
             KN_set_obj_goal(kc_, KN_OBJGOAL_MAXIMIZE);

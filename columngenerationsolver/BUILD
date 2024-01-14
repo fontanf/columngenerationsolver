@@ -8,6 +8,7 @@ cc_library(
         name = "columngenerationsolver",
         hdrs = [
                 "commons.hpp",
+                "algorithm_formatter.hpp",
                 "linear_programming_solver.hpp",
                 "algorithms/column_generation.hpp",
                 "algorithms/greedy.hpp",
@@ -15,14 +16,14 @@ cc_library(
                 "algorithms/heuristic_tree_search.hpp",
         ],
         srcs = [
-                "commons.cpp",
+                "algorithm_formatter.cpp",
                 "algorithms/column_generation.cpp",
                 "algorithms/greedy.cpp",
                 "algorithms/limited_discrepancy_search.cpp",
                 "algorithms/heuristic_tree_search.cpp",
         ],
         deps = [
-                "@optimizationtools//optimizationtools/utils:info",
+                "@optimizationtools//optimizationtools/utils:utils",
         ] + CLP_DEP + CPLEX_DEP + GUROBI_DEP + XPRESS_DEP,
         copts = STDCPP + CLP_COPTS + CPLEX_COPTS + GUROBI_COPTS + XPRESS_COPTS,
         visibility = ["//visibility:public"],

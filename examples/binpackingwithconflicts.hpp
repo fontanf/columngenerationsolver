@@ -60,11 +60,10 @@ public:
         dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
     { }
 
-    virtual std::vector<ColIdx> initialize_pricing(
-            const std::vector<Column>& columns,
-            const std::vector<std::pair<ColIdx, Value>>& fixed_columns);
+    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual std::vector<Column> solve_pricing(
+    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -83,53 +82,55 @@ private:
 
 };
 
-columngenerationsolver::Parameters get_parameters(const Instance& instance)
+inline columngenerationsolver::Model get_model(const Instance& instance)
 {
-    columngenerationsolver::Parameters p(instance.number_of_items());
+    columngenerationsolver::Model model;
 
-    p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
-    p.column_lower_bound = 0;
-    p.column_upper_bound = 1;
+    model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
+    model.column_lower_bound = 0;
+    model.column_upper_bound = 1;
+
     // Row bounds.
     for (ItemId item_id = 0; item_id < instance.number_of_items(); ++item_id) {
-        p.row_lower_bounds[item_id] = 1;
-        p.row_upper_bounds[item_id] = 1;
-        p.row_coefficient_lower_bounds[item_id] = 0;
-        p.row_coefficient_upper_bounds[item_id] = 1;
+        Row row;
+        row.lower_bound = 1;
+        row.upper_bound = 1;
+        row.coefficient_lower_bound = 0;
+        row.coefficient_upper_bound = 1;
+        model.rows.push_back(row);
     }
+
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = 2 * instance.number_of_items();
+    model.dummy_column_objective_coefficient = 2 * instance.number_of_items();
+
     // Pricing solver.
-    p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance, p.dummy_column_objective_coefficient));
-    return p;
+    model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
+            new PricingSolver(instance, model.dummy_column_objective_coefficient));
+
+    return model;
 }
 
-std::vector<ColIdx> PricingSolver::initialize_pricing(
-            const std::vector<Column>& columns,
-            const std::vector<std::pair<ColIdx, Value>>& fixed_columns)
+std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
 {
     std::fill(packed_items_.begin(), packed_items_.end(), 0);
     for (auto p: fixed_columns) {
-        const Column& column = columns[p.first];
+        const Column& column = *(p.first);
         Value value = p.second;
         if (value < 0.5)
             continue;
-        for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-            RowIdx row_index = column.row_indices[row_pos];
-            Value row_coefficient = column.row_coefficients[row_pos];
-            packed_items_[row_index] += value * row_coefficient;
-        }
+        for (const LinearTerm& element: column.elements)
+            packed_items_[element.row] += value * element.coefficient;
     }
     return {};
 }
 
-std::vector<Column> PricingSolver::solve_pricing(
+std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
     // Build subproblem instance.
-    treesearchsolver::knapsackwithconflicts::Instance instance_kp;
-    instance_kp.set_capacity(instance_.capacity());
+    treesearchsolver::knapsackwithconflicts::InstanceBuilder kp_instance_builder;
+    kp_instance_builder.set_capacity(instance_.capacity());
     kp2bpp_.clear();
     std::fill(bpp2kp_.begin(), bpp2kp_.end(), -1);
     for (ItemId item_id = 0; item_id < instance_.number_of_items(); ++item_id) {
@@ -140,25 +141,26 @@ std::vector<Column> PricingSolver::solve_pricing(
             continue;
         bpp2kp_[item_id] = kp2bpp_.size();
         kp2bpp_.push_back(item_id);
-        instance_kp.add_item(instance_.item(item_id).weight, duals[item_id]);
+        kp_instance_builder.add_item(instance_.item(item_id).weight, duals[item_id]);
         for (ItemId item_id_2: instance_.item(item_id).neighbors)
             if (item_id_2 < item_id && bpp2kp_[item_id_2] != -1)
-                instance_kp.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
+                kp_instance_builder.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
     }
     ItemId kp_n = kp2bpp_.size();
+    const orproblems::knapsackwithconflicts::Instance kp_instance = kp_instance_builder.build();
 
-    std::vector<Column> columns;
+    std::vector<std::shared_ptr<const Column>> columns;
 
     // Solve subproblem instance.
-    treesearchsolver::knapsackwithconflicts::BranchingScheme branching_scheme(instance_kp, {});
+    treesearchsolver::knapsackwithconflicts::BranchingScheme branching_scheme(kp_instance, {});
     for (;;) {
         bool ok = false;
 
-        treesearchsolver::IterativeBeamSearchOptionalParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> kp_parameters;
+        treesearchsolver::IterativeBeamSearchParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> kp_parameters;
+        kp_parameters.verbosity_level = 0;
         kp_parameters.maximum_size_of_the_solution_pool = 100;
         kp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
         kp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
-        //parameters_espp.info.set_verbose(true);
         auto kp_output = treesearchsolver::iterative_beam_search(
                 branching_scheme, kp_parameters);
 
@@ -170,12 +172,16 @@ std::vector<Column> PricingSolver::solve_pricing(
                 break;
             Column column;
             column.objective_coefficient = 1;
-            for (auto node_tmp = node; node_tmp->father != nullptr; node_tmp = node_tmp->father) {
+            for (auto node_tmp = node;
+                    node_tmp->parent != nullptr;
+                    node_tmp = node_tmp->parent) {
                 i++;
-                column.row_indices.push_back(kp2bpp_[node_tmp->j]);
-                column.row_coefficients.push_back(1);
+                LinearTerm element;
+                element.row = kp2bpp_[node_tmp->item_id];
+                element.coefficient = 1;
+                column.elements.push_back(element);
             }
-            columns.push_back(column);
+            columns.push_back(std::shared_ptr<const Column>(new Column(column)));
 
             if (columngenerationsolver::compute_reduced_cost(column, duals)
                     <= -dummy_column_objective_coefficient_ * 10e-9) {
@@ -195,7 +201,25 @@ std::vector<Column> PricingSolver::solve_pricing(
     return columns;
 }
 
+inline void write_solution(
+        const Solution& solution,
+        const std::string& certificate_path)
+{
+    std::ofstream file(certificate_path);
+    if (!file.good()) {
+        throw std::runtime_error(
+                "Unable to open file \"" + certificate_path + "\".");
+    }
+
+    file << solution.columns().size() << std::endl;
+    for (auto colval: solution.columns()) {
+        const Column& column = *(colval.first);
+        file << column.elements.size() << " ";
+        for (const LinearTerm& element: column.elements)
+            file << " " << element.row;
+        file << std::endl;
+    }
 }
 
 }
-
+}

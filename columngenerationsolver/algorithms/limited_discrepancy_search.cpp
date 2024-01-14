@@ -1,49 +1,48 @@
 #include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
 
+#include "columngenerationsolver/algorithm_formatter.hpp"
+
+#include <unordered_set>
+
 using namespace columngenerationsolver;
+
+namespace
+{
 
 struct LimitedDiscrepancySearchNode
 {
-    std::shared_ptr<LimitedDiscrepancySearchNode> father = nullptr;
-    ColIdx col = -1;
+    /** Parent node. */
+    std::shared_ptr<LimitedDiscrepancySearchNode> parent = nullptr;
+
+    /** Column branched on. */
+    std::shared_ptr<const Column> column = nullptr;
+
+    /** Value of the column branched at this node. */
     Value value = 0;
+
+    /** Discrepancy of the node. */
     Value discrepancy = 0;
+
+    /** Sum of the value of each fixed column. */
     Value value_sum = 1;
+
+    /** Depth of the node. */
     ColIdx depth = 0;
 };
 
-LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_search(
-        Parameters& parameters,
-        LimitedDiscrepancySearchOptionalParameters optional_parameters)
+}
+
+const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_search(
+        const Model& model,
+        const LimitedDiscrepancySearchOptionalParameters& optional_parameters)
 {
     // Initial display.
-    optional_parameters.info.os()
-            << "======================================" << std::endl
-            << "        ColumnGenerationSolver        " << std::endl
-            << "======================================" << std::endl
-            << std::endl
-            << "Algorithm" << std::endl
-            << "---------" << std::endl
-            << "Limited discrepancy search" << std::endl
-            << std::endl
-            << "Parameters" << std::endl
-            << "----------" << std::endl
-            << "Linear programming solver:               " << optional_parameters.column_generation_parameters.linear_programming_solver << std::endl
-            << "Discrepancy limit:                       " << optional_parameters.discrepancy_limit << std::endl
-            << "Static Wentges smoothing parameter:      " << optional_parameters.column_generation_parameters.static_wentges_smoothing_parameter << std::endl
-            << "Static directional smoothing parameter:  " << optional_parameters.column_generation_parameters.static_directional_smoothing_parameter << std::endl
-            << "Self-adjusting Wentges smoothing:        " << optional_parameters.column_generation_parameters.self_adjusting_wentges_smoothing << std::endl
-            << "Automatic directional smoothing:         " << optional_parameters.column_generation_parameters.automatic_directional_smoothing << std::endl
-            << std::endl;
-
-    LimitedDiscrepancySearchOutput output;
-    output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?
-        std::numeric_limits<Value>::infinity():
-        -std::numeric_limits<Value>::infinity();
-    output.bound = (parameters.objective_sense == ObjectiveSense::Min)?
-        -std::numeric_limits<Value>::infinity():
-        std::numeric_limits<Value>::infinity();
-    display_initialize(optional_parameters.info);
+    LimitedDiscrepancySearchOutput output(model);
+    AlgorithmFormatter algorithm_formatter(
+            model,
+            optional_parameters,
+            output);
+    algorithm_formatter.start("Limited discrepancy search");
 
     // Nodes
     auto comp = [](
@@ -65,18 +64,21 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
         output.number_of_nodes++;
         //std::cout << "nodes.size() " << nodes.size() << std::endl;
 
-        // Check time.
-        if (optional_parameters.info.needs_to_end())
+        // Check end.
+        if (optional_parameters.timer.needs_to_end())
             break;
-        if (std::abs(output.solution_value - output.bound) < FFOT_TOL)
+
+        if (output.solution.feasible()
+                && std::abs(output.solution.objective_value() - output.bound) < FFOT_TOL)
             break;
 
         // Get node
         auto node = *nodes.begin();
         nodes.erase(nodes.begin());
+
         // Check discrepancy limit.
         if (!optional_parameters.continue_until_feasible
-                || !output.solution.empty())
+                || !output.solution.columns().empty())
             if (node->discrepancy > optional_parameters.discrepancy_limit)
                 break;
         if (output.maximum_depth < node->depth - node->discrepancy)
@@ -86,14 +88,14 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
                 && output.number_of_nodes > 2 * output.maximum_depth)
             break;
 
-        std::vector<std::pair<ColIdx, Value>> fixed_columns;
+        std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
         auto node_tmp = node;
-        std::vector<uint8_t> tabu(parameters.columns.size(), 0);
-        while (node_tmp->father != NULL) {
+        std::unordered_set<std::shared_ptr<const Column>> tabu;
+        while (node_tmp->parent != NULL) {
             if (node_tmp->value != 0)
-                fixed_columns.push_back({node_tmp->col, node_tmp->value});
-            tabu[node_tmp->col] = 1;
-            node_tmp = node_tmp->father;
+                fixed_columns.push_back({node_tmp->column, node_tmp->value});
+            tabu.insert(node_tmp->column);
+            node_tmp = node_tmp->parent;
         }
         //std::cout
         //    << "t " << optional_parameters.info.elapsed_time()
@@ -106,34 +108,49 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
         //    << " value_sum " << node->value_sum
         //    << " fixed_columns.size() " << fixed_columns.size()
         //    << std::endl;
-        //if (node->father != NULL)
-        //    std::cout << node->value << " " << parameters.columns[node->col] << std::endl;
+        //if (node->parent != NULL)
+        //    std::cout << node->value << " " << model.columns[node->col] << std::endl;
 
         // Run column generation
         ColumnGenerationOptionalParameters column_generation_parameters
             = optional_parameters.column_generation_parameters;
+        if (node->depth == 0) {
+            algorithm_formatter.print_column_generation_header();
+            column_generation_parameters.iteration_callback = [&algorithm_formatter](
+                    const ColumnGenerationOutput& cg_output)
+            {
+                algorithm_formatter.print_column_generation_iteration(
+                        cg_output.number_of_iterations,
+                        cg_output.relaxation_solution.objective_value(),
+                        cg_output.columns.size());
+            };
+        }
+        column_generation_parameters.initial_columns.insert(
+                column_generation_parameters.initial_columns.end(),
+                output.columns.begin(),
+                output.columns.end());
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
-        //column_generation_parameters.info.set_verbosity_level(1);
+        column_generation_parameters.timer = optional_parameters.timer;
+        column_generation_parameters.verbosity_level = 0;
         auto cg_output = column_generation(
-                parameters,
+                model,
                 column_generation_parameters);
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
-        output.number_of_added_columns += cg_output.number_of_added_columns;
+        output.columns.insert(output.columns.end(), cg_output.columns.begin(), cg_output.columns.end());
         //std::cout << "bound " << cg_output.solution_value << std::endl;
-        if (optional_parameters.info.needs_to_end())
+        if (optional_parameters.timer.needs_to_end())
             break;
+
         if (node->depth == 0) {
+            algorithm_formatter.print_header();
             Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1 || cg_output.number_of_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
-                output.bound = cg_output.solution_value;
-                display(parameters, output.solution_value, output.bound, std::stringstream("root node"), optional_parameters.info);
-                optional_parameters.new_bound_callback(output);
+                algorithm_formatter.update_bound(cg_output.relaxation_solution.objective_value());
             }
         }
-        if (cg_output.solution.size() == 0) {
+        if (cg_output.relaxation_solution.columns().empty()) {
             //std::cout << "no solution" << std::endl;
             continue;
         }
@@ -144,117 +161,90 @@ LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_searc
         //std::cout << std::endl;
 
         // Check bound
-        if (output.solution.size() > 0) {
-            if (parameters.objective_sense == ObjectiveSense::Min
-                    && output.solution_value <= cg_output.solution_value + FFOT_TOL)
+        if (output.solution.feasible()) {
+            // TODO add a parameter to not cut.
+            if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
+                    && output.solution.objective_value() <= cg_output.solution.objective_value() + FFOT_TOL)
                 continue;
-            if (parameters.objective_sense == ObjectiveSense::Max
-                    && output.solution_value >= cg_output.solution_value - FFOT_TOL)
+            if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
+                    && output.solution.objective_value() >= cg_output.solution.objective_value() - FFOT_TOL)
                 continue;
         }
 
         //std::cout << "fc";
         //for (auto p: fixed_columns)
-        //    std::cout << " " << p.first << " " << p.second << ";";
+        //    std::cout << " " << *(p.first) << " " << p.second << ";";
         //std::cout << std::endl;
 
         // Compute next column to branch on.
-        ColIdx col_best = -1;
-        Value val_best = -1;
+        std::shared_ptr<const Column> column_best = nullptr;
+        Value value_best = -1;
         Value diff_best = -1;
-        Value bp_best = -1;
-        for (auto p: cg_output.solution) {
-            ColIdx col = p.first;
-            if (col < (ColIdx)tabu.size() && tabu[col] == 1)
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            const std::shared_ptr<const Column>& column = p.first;
+            if (tabu.find(column) != tabu.end())
                 continue;
-            Value val = p.second;
-            Value bp = parameters.columns[col].branching_priority;
-            if (std::abs(ceil(val)) > FFOT_TOL) {
-                if (col_best == -1
-                        || bp_best < bp
-                        || (bp_best == bp && diff_best > ceil(val) - val)) {
-                    col_best = col;
-                    val_best = ceil(val);
-                    diff_best = ceil(val) - val;
-                    bp_best = bp;
+            Value value = p.second;
+            if (std::abs(ceil(value)) > FFOT_TOL) {
+                if (column_best == nullptr
+                        || column_best->branching_priority < column->branching_priority
+                        || (column_best->branching_priority == column->branching_priority
+                            && diff_best > ceil(value) - value)) {
+                    column_best = column;
+                    value_best = ceil(value);
+                    diff_best = ceil(value) - value;
                 }
             }
-            if (std::abs(floor(val)) > FFOT_TOL) {
-                if (col_best == -1
-                        || bp_best < bp
-                        || (bp_best == bp && diff_best > val - floor(val))) {
-                    col_best = col;
-                    val_best = floor(val);
-                    diff_best = val - floor(val);
-                    bp_best = bp;
+            if (std::abs(floor(value)) > FFOT_TOL) {
+                if (column_best == nullptr
+                        || column_best->branching_priority < column->branching_priority
+                        || (column_best->branching_priority == column->branching_priority
+                            && diff_best > value - floor(value))) {
+                    column_best = column;
+                    value_best = floor(value);
+                    diff_best = value - floor(value);
                 }
             }
         }
         //std::cout << "col_best " << col_best
-        //    << " val_best " << val_best
+        //    << " value_best " << value_best
         //    << " diff_best " << diff_best
         //    << std::endl;
-        if (col_best == -1)
+        if (column_best == nullptr)
             continue;
 
         // Create children.
-        for (Value value = parameters.column_upper_bound;
-                value >= parameters.column_lower_bound;
+        for (Value value = model.column_upper_bound;
+                value >= model.column_lower_bound;
                 --value) {
 
             auto child = std::make_shared<LimitedDiscrepancySearchNode>();
-            child->father = node;
-            child->col = col_best;
+            child->parent = node;
+            child->column = column_best;
             child->value = value;
             child->value_sum = node->value_sum + value;
-            child->discrepancy = node->discrepancy + std::abs(val_best - value);
+            child->discrepancy = node->discrepancy + std::abs(value_best - value);
             child->depth = node->depth + 1;
             nodes.insert(child);
 
             // Update best solution.
-            fixed_columns.push_back({col_best, value});
-            if (is_feasible(parameters, fixed_columns)) {
-                if (output.solution.size() == 0) {
-                    output.solution = to_solution(parameters, fixed_columns);
-                    output.solution_value = compute_value(parameters, fixed_columns);
-                    output.solution_discrepancy = node->discrepancy;
-                    //std::cout << "New best solution value " << output.solution_value << std::endl;
-                    std::stringstream ss;
-                    ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                    display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
-                    optional_parameters.new_bound_callback(output);
-                } else {
-                    Value solution_value = compute_value(parameters, fixed_columns);
-                    if (parameters.objective_sense == ObjectiveSense::Min
-                            && output.solution_value - FFOT_TOL > solution_value) {
-                        //std::cout << "New best solution value " << solution_value << std::endl;
-                        output.solution = to_solution(parameters, fixed_columns);
-                        output.solution_value = solution_value;
-                        output.solution_discrepancy = node->discrepancy;
-                        std::stringstream ss;
-                        ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                        display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
-                        optional_parameters.new_bound_callback(output);
-                    }
-                    if (parameters.objective_sense == ObjectiveSense::Max
-                            && output.solution_value + FFOT_TOL < solution_value) {
-                        output.solution = to_solution(parameters, fixed_columns);
-                        output.solution_value = solution_value;
-                        output.solution_discrepancy = node->discrepancy;
-                        std::stringstream ss;
-                        ss << "node " << output.number_of_nodes << " discrepancy " << output.solution_discrepancy;
-                        display(parameters, output.solution_value, output.bound, ss, optional_parameters.info);
-                        optional_parameters.new_bound_callback(output);
-                    }
-                }
-            }
-            fixed_columns.pop_back();
+            SolutionBuilder solution_builder;
+            solution_builder.set_model(model);
+            for (const auto& p: fixed_columns)
+                solution_builder.add_column(p.first, p.second);
+            solution_builder.add_column(column_best, value);
+            Solution solution = solution_builder.build();
+            algorithm_formatter.update_solution(solution);
         }
+
+        std::stringstream ss;
+        ss << "node " << output.number_of_nodes
+            << " depth " << node->depth
+            << " disc " << node->discrepancy;
+        algorithm_formatter.print(ss.str());
 
     }
 
-    output.total_number_of_columns = parameters.columns.size();
-    display_end(output, optional_parameters.info);
-    optional_parameters.info.os() << "Number of nodes:          " << output.number_of_nodes << std::endl;
+    algorithm_formatter.end();
     return output;
 }

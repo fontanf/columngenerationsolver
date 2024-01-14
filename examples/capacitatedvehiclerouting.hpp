@@ -39,14 +39,11 @@
 #include "orproblems/capacitatedvehiclerouting.hpp"
 
 #include "treesearchsolver/iterative_beam_search.hpp"
-#include "treesearchsolver/best_first_search.hpp"
-#include "treesearchsolver/iterative_memory_bounded_best_first_search.hpp"
 
 #include "optimizationtools/utils/utils.hpp"
 
 namespace columngenerationsolver
 {
-
 namespace capacitatedvehiclerouting
 {
 
@@ -65,11 +62,10 @@ public:
         dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
     { }
 
-    virtual std::vector<ColIdx> initialize_pricing(
-            const std::vector<Column>& columns,
-            const std::vector<std::pair<ColIdx, Value>>& fixed_columns);
+    virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual std::vector<Column> solve_pricing(
+    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -86,48 +82,51 @@ private:
 
 };
 
-columngenerationsolver::Parameters get_parameters(const Instance& instance)
+inline columngenerationsolver::Model get_model(const Instance& instance)
 {
-    columngenerationsolver::Parameters p(instance.number_of_locations() - 1);
+    columngenerationsolver::Model model;
 
-    p.objective_sense = columngenerationsolver::ObjectiveSense::Min;
-    p.column_lower_bound = 0;
-    p.column_upper_bound = 1;
-    // Row bounds.
-    for (LocationId location_id = 0;
-            location_id < instance.number_of_locations() - 1;
+    model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
+    model.column_lower_bound = 0;
+    model.column_upper_bound = 1;
+
+    // Rows.
+    for (LocationId location_id = 1;
+            location_id < instance.number_of_locations();
             ++location_id) {
-        p.row_lower_bounds[location_id] = 1;
-        p.row_upper_bounds[location_id] = 1;
-        p.row_coefficient_lower_bounds[location_id] = 0;
-        p.row_coefficient_upper_bounds[location_id] = 1;
+        Row row;
+        row.lower_bound = 1;
+        row.upper_bound = 1;
+        row.coefficient_lower_bound = 0;
+        row.coefficient_upper_bound = 1;
+        model.rows.push_back(row);
     }
+
     // Dummy column objective coefficient.
-    p.dummy_column_objective_coefficient = 3 * instance.maximum_distance();
+    model.dummy_column_objective_coefficient = 3 * instance.highest_distance();
+
     // Pricing solver.
-    p.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance, p.dummy_column_objective_coefficient));
-    return p;
+    model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
+            new PricingSolver(instance, model.dummy_column_objective_coefficient));
+
+    return model;
 }
 
-std::vector<ColIdx> PricingSolver::initialize_pricing(
-            const std::vector<Column>& columns,
-            const std::vector<std::pair<ColIdx, Value>>& fixed_columns)
+std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
-    for (auto p: fixed_columns) {
-        const Column& column = columns[p.first];
+    for (const auto& p: fixed_columns) {
+        const Column& column = *(p.first);
         Value value = p.second;
         if (value < 0.5)
             continue;
-        for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-            RowIdx row_index = column.row_indices[row_pos];
-            Value row_coefficient = column.row_coefficients[row_pos];
-            if (row_coefficient < 0.5)
+        for (const LinearTerm& element: column.elements) {
+            if (element.coefficient < 0.5)
                 continue;
             // row_index + 1 since there is not constraint for location 0 which
             // is the depot.
-            visited_customers_[row_index + 1] = 1;
+            visited_customers_[element.row + 1] = 1;
         }
     }
     return {};
@@ -138,7 +137,7 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
-std::vector<Column> PricingSolver::solve_pricing(
+std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
     // Build subproblem instance.
@@ -178,18 +177,18 @@ std::vector<Column> PricingSolver::solve_pricing(
     }
     espprc::Instance espp_instance = espp_instance_builder.build();
 
-    std::vector<Column> columns;
+    std::vector<std::shared_ptr<const Column>> columns;
 
     // Solve subproblem instance.
     espprc::BranchingScheme branching_scheme(espp_instance);
     for (;;) {
         bool ok = false;
 
-        treesearchsolver::IterativeBeamSearchOptionalParameters<espprc::BranchingScheme> espp_parameters;
+        treesearchsolver::IterativeBeamSearchParameters<espprc::BranchingScheme> espp_parameters;
         espp_parameters.maximum_size_of_the_solution_pool = 100;
         espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
         espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
-        //espp_parameters.info.set_verbose(true);
+        espp_parameters.verbosity_level = 0;
         auto espp_output = treesearchsolver::iterative_beam_search(
                 branching_scheme, espp_parameters);
 
@@ -203,8 +202,8 @@ std::vector<Column> PricingSolver::solve_pricing(
                 continue;
             std::vector<LocationId> solution; // Without the depot.
             for (auto node_tmp = node;
-                    node_tmp->father != nullptr;
-                    node_tmp = node_tmp->father) {
+                    node_tmp->parent != nullptr;
+                    node_tmp = node_tmp->parent) {
                 solution.push_back(espp2vrp_[node_tmp->last_location_id]);
             }
             std::reverse(solution.begin(), solution.end());
@@ -213,18 +212,20 @@ std::vector<Column> PricingSolver::solve_pricing(
             Column column;
             LocationId location_id_prev = 0;
             for (LocationId location_id: solution) {
-                column.row_indices.push_back(location_id - 1);
-                column.row_coefficients.push_back(1);
+                LinearTerm element;
+                element.row = location_id - 1;
+                element.coefficient = 1;
+                column.elements.push_back(element);
                 column.objective_coefficient += instance_.distance(location_id_prev, location_id);
                 location_id_prev = location_id;
             }
             column.objective_coefficient += instance_.distance(location_id_prev, 0);
             ColumnExtra extra {solution};
             column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-            columns.push_back(column);
+            columns.push_back(std::shared_ptr<const Column>(new Column(column)));
 
             if (columngenerationsolver::compute_reduced_cost(column, duals)
-                    <= -dummy_column_objective_coefficient_ * 10e-9) {
+                    <= -dummy_column_objective_coefficient_ * 1e-9) {
                 ok = true;
             }
         }
@@ -241,7 +242,26 @@ std::vector<Column> PricingSolver::solve_pricing(
     return columns;
 }
 
+inline void write_solution(
+        const Solution& solution,
+        const std::string& certificate_path)
+{
+    std::ofstream file(certificate_path);
+    if (!file.good()) {
+        throw std::runtime_error(
+                "Unable to open file \"" + certificate_path + "\".");
+    }
+
+    file << solution.columns().size() << std::endl;
+    for (auto colval: solution.columns()) {
+        std::shared_ptr<ColumnExtra> extra
+            = std::static_pointer_cast<ColumnExtra>(colval.first->extra);
+        file << extra->route.size() << " ";
+        for (LocationId location_id: extra->route)
+            file << " " << location_id;
+        file << std::endl;
+    }
 }
 
 }
-
+}

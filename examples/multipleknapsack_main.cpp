@@ -6,74 +6,55 @@ using namespace multipleknapsack;
 
 int main(int argc, char *argv[])
 {
-    MainArgs main_args;
-    read_args(argc, argv, main_args);
-    auto& os = main_args.info.os();
+    // Setup options.
+    boost::program_options::options_description desc = setup_args();
+    desc.add_options()
+        //("guide,g", boost::program_options::value<GuideId>(), "")
+        ;
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+    try {
+        boost::program_options::notify(vm);
+    } catch (const boost::program_options::required_option& e) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
 
     // Create instance.
-    Instance instance(main_args.instance_path, main_args.format);
-    if (main_args.print_instance > 0) {
-        os
-            << "Instance" << std::endl
-            << "--------" << std::endl;
-        instance.print(os, main_args.print_instance);
-        os << std::endl;
-    }
+    InstanceBuilder instance_builder;
+    instance_builder.read(
+            vm["input"].as<std::string>(),
+            vm["format"].as<std::string>());
+    const Instance instance = instance_builder.build();
 
-    Parameters p = multipleknapsack::get_parameters(instance);
-    auto solution = run(main_args, p);
+    // Create model.
+    Model model = get_model(instance);
 
-    // Write solution.
-    std::string certificate_path = main_args.info.output->certificate_path;
-    if (!certificate_path.empty()) {
-        std::ofstream file(certificate_path);
-        if (!file.good()) {
-            throw std::runtime_error(
-                    "Unable to open file \"" + certificate_path + "\".");
-        }
-
-        std::vector<std::vector<ItemId>> sol(instance.number_of_knapsacks());
-        for (auto colval: solution) {
-            const Column& column = colval.first;
-            //Value value = colval.second;
-            // Get the knapsack id.
-            KnapsackId knapsack_id = -1;
-            for (RowIdx pos = 0; pos < (RowIdx)column.row_indices.size(); ++pos) {
-                if (column.row_coefficients[pos] > 0.5
-                        && column.row_indices[pos] < instance.number_of_knapsacks()) {
-                    knapsack_id = column.row_indices[pos];
-                }
-            }
-            // Get the items.
-            for (RowIdx pos = 0; pos < (RowIdx)column.row_indices.size(); ++pos) {
-                if (column.row_coefficients[pos] > 0.5
-                        && column.row_indices[pos] >= instance.number_of_knapsacks()) {
-                    ItemId item_id = column.row_indices[pos] - instance.number_of_knapsacks();
-                    sol[knapsack_id].push_back(item_id);
-                }
-            }
-        }
-        // Write.
-        for (KnapsackId knapsack_id = 0;
-                knapsack_id < instance.number_of_knapsacks();
-                ++knapsack_id) {
-            file << sol[knapsack_id].size() << std::endl;
-            for (ItemId item_id: sol[knapsack_id])
-                file << " " << item_id;
-            file << std::endl;
-        }
-    }
+    // Solve.
+    auto output = run(
+            model,
+            [&instance](
+                const Solution& solution,
+                const std::string& certificate_path)
+            {
+                write_solution(instance, solution, certificate_path);
+            },
+            vm);
 
     // Run checker.
-    if (main_args.print_checker > 0
-            && certificate_path != "") {
-        os << std::endl
+    if (vm.count("certificate")
+            && vm["print-checker"].as<int>() > 0) {
+        std::cout << std::endl
             << "Checker" << std::endl
             << "-------" << std::endl;
         instance.check(
-                main_args.info.output->certificate_path,
-                os,
-                main_args.print_checker);
+                vm["certificate"].as<std::string>(),
+                std::cout,
+                vm["print-checker"].as<int>());
     }
 
     return 0;

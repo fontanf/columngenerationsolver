@@ -1,121 +1,118 @@
 #include "columngenerationsolver/algorithms/greedy.hpp"
 
+#include "columngenerationsolver/algorithm_formatter.hpp"
+
 using namespace columngenerationsolver;
 
-GreedyOutput columngenerationsolver::greedy(
-        Parameters& parameters,
-        GreedyOptionalParameters optional_parameters)
+const GreedyOutput columngenerationsolver::greedy(
+        const Model& model,
+        const GreedyOptionalParameters& optional_parameters)
 {
     // Initial display.
-    optional_parameters.info.os()
-            << "======================================" << std::endl
-            << "        ColumnGenerationSolver        " << std::endl
-            << "======================================" << std::endl
-            << std::endl
-            << "Algorithm" << std::endl
-            << "---------" << std::endl
-            << "Greedy" << std::endl
-            << std::endl
-            << "Parameters" << std::endl
-            << "----------" << std::endl
-            << "Linear programming solver:               " << optional_parameters.column_generation_parameters.linear_programming_solver << std::endl
-            << "Static Wentges smoothing parameter:      " << optional_parameters.column_generation_parameters.static_wentges_smoothing_parameter << std::endl
-            << "Static directional smoothing parameter:  " << optional_parameters.column_generation_parameters.static_directional_smoothing_parameter << std::endl
-            << "Self-adjusting Wentges smoothing:        " << optional_parameters.column_generation_parameters.self_adjusting_wentges_smoothing << std::endl
-            << "Automatic directional smoothing:         " << optional_parameters.column_generation_parameters.automatic_directional_smoothing << std::endl;
+    GreedyOutput output(model);
+    AlgorithmFormatter algorithm_formatter(
+            model,
+            optional_parameters,
+            output);
+    algorithm_formatter.start("Greedy");
 
-    GreedyOutput output;
-    output.solution_value = (parameters.objective_sense == ObjectiveSense::Min)?
-        std::numeric_limits<Value>::infinity():
-        -std::numeric_limits<Value>::infinity();
-    output.bound = (parameters.objective_sense == ObjectiveSense::Min)?
-        -std::numeric_limits<Value>::infinity():
-        std::numeric_limits<Value>::infinity();
-    std::vector<std::pair<ColIdx, Value>> fixed_columns;
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
 
-    for (;;) {
-        // Check time
-        if (optional_parameters.info.needs_to_end())
+    for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
+
+        // Check end.
+        if (optional_parameters.timer.needs_to_end())
             break;
 
+        // Solve relaxation.
         ColumnGenerationOptionalParameters column_generation_parameters
             = optional_parameters.column_generation_parameters;
+        if (fixed_columns.empty()) {
+            algorithm_formatter.print_column_generation_header();
+            column_generation_parameters.iteration_callback = [&algorithm_formatter](
+                    const ColumnGenerationOutput& cg_output)
+            {
+                algorithm_formatter.print_column_generation_iteration(
+                        cg_output.number_of_iterations,
+                        cg_output.relaxation_solution.objective_value(),
+                        cg_output.columns.size());
+            };
+        }
+        column_generation_parameters.initial_columns.insert(
+                column_generation_parameters.initial_columns.end(),
+                output.columns.begin(),
+                output.columns.end());
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.info = optimizationtools::Info(optional_parameters.info, false, "");
-        //column_generation_parameters.info.set_verbosity_level(1);
+        column_generation_parameters.timer = optional_parameters.timer;
+        column_generation_parameters.verbosity_level = 0;
         auto cg_output = column_generation(
-                parameters,
+                model,
                 column_generation_parameters);
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
-        output.number_of_added_columns += cg_output.number_of_added_columns;
-        if (optional_parameters.info.needs_to_end())
+        output.columns.insert(output.columns.end(), cg_output.columns.begin(), cg_output.columns.end());
+
+        if (fixed_columns.empty()) {
+            algorithm_formatter.print_header();
+        }
+
+        if (optional_parameters.timer.needs_to_end())
             break;
-        if (cg_output.solution.size() == 0)
+        if (cg_output.relaxation_solution.columns().size() == 0)
             break;
 
-        ColIdx col_best = -1;
-        Value val_best = -1;
+        // Find column to branch on.
+        std::shared_ptr<const Column> column_best = nullptr;
+        Value value_best = -1;
         Value diff_best = -1;
-        Value bp_best = -1;
-        for (auto p: cg_output.solution) {
-            ColIdx col = p.first;
-            Value val = p.second;
-            Value bp = parameters.columns[col].branching_priority;
-            if (floor(val) != 0) {
-                if (col_best == -1
-                        || bp_best < bp
-                        || (bp_best == bp && diff_best > val - floor(val))) {
-                    col_best = col;
-                    val_best = floor(val);
-                    diff_best = val - floor(val);
-                    bp_best = bp;
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            const std::shared_ptr<const Column>& column = p.first;
+            Value value = p.second;
+            if (floor(value) != 0) {
+                if (column_best == nullptr
+                        || column_best->branching_priority < column->branching_priority
+                        || (column_best->branching_priority == column->branching_priority
+                            && diff_best > value - floor(value))) {
+                    column_best = column;
+                    value_best = floor(value);
+                    diff_best = value - floor(value);
                 }
             }
-            if (ceil(val) != 0) {
-                if (col_best == -1
-                        || bp_best < bp
-                        || (bp_best == bp && diff_best > ceil(val) - val)) {
-                    col_best = col;
-                    val_best = ceil(val);
-                    diff_best = ceil(val) - val;
-                    bp_best = bp;
+            if (ceil(value) != 0) {
+                if (column_best == nullptr
+                        || column_best->branching_priority < column->branching_priority
+                        || (column_best->branching_priority == column->branching_priority
+                            && diff_best > ceil(value) - value)) {
+                    column_best = column;
+                    value_best = ceil(value);
+                    diff_best = ceil(value) - value;
                 }
             }
         }
-        if (col_best == -1)
+        if (column_best == nullptr)
             break;
 
         // Update bound.
         if (fixed_columns.size() == 0) {
             Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1 || (cg_output.number_of_iterations < cg_it_limit))
-                output.bound = cg_output.solution_value;
+                algorithm_formatter.update_bound(
+                        cg_output.relaxation_solution.objective_value());
         }
+
         // Update fixed columns.
-        fixed_columns.push_back({col_best, val_best});
+        fixed_columns.push_back({column_best, value_best});
+
         // Update solution.
-        if (is_feasible(parameters, fixed_columns)) {
-            if (output.solution.size() == 0) {
-                output.solution = to_solution(parameters, fixed_columns);
-                output.solution_value = compute_value(parameters, fixed_columns);
-            } else {
-                Value solution_value = compute_value(parameters, fixed_columns);
-                if (parameters.objective_sense == ObjectiveSense::Min
-                        && output.solution_value > solution_value) {
-                    output.solution = to_solution(parameters, fixed_columns);
-                    output.solution_value = solution_value;
-                }
-                if (parameters.objective_sense == ObjectiveSense::Max
-                        && output.solution_value < solution_value) {
-                    output.solution = to_solution(parameters, fixed_columns);
-                    output.solution_value = solution_value;
-                }
-            }
-        }
+        SolutionBuilder solution_builder;
+        solution_builder.set_model(model);
+        for (const auto& p: fixed_columns)
+            solution_builder.add_column(p.first, p.second);
+        Solution solution = solution_builder.build();
+        algorithm_formatter.update_solution(solution);
+        algorithm_formatter.print("ndoe " + std::to_string(output.number_of_nodes));
     }
 
-    output.total_number_of_columns = parameters.columns.size();
-    display_end(output, optional_parameters.info);
+    algorithm_formatter.end();
     return output;
 }

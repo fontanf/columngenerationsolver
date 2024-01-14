@@ -2,7 +2,7 @@ cc_library(
         name = "espprc",
         hdrs = ["espprc.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools/utils:info",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@optimizationtools//optimizationtools/containers:containers",
                 "@treesearchsolver//treesearchsolver:treesearchsolver",
         ],
@@ -13,7 +13,7 @@ cc_library(
         name = "espprctw",
         hdrs = ["espprctw.hpp"],
         deps = [
-                "@optimizationtools//optimizationtools/utils:info",
+                "@optimizationtools//optimizationtools/utils:utils",
                 "@optimizationtools//optimizationtools/containers:containers",
                 "@treesearchsolver//treesearchsolver:treesearchsolver",
                 "@localsearchsolver//localsearchsolver:localsearchsolver",

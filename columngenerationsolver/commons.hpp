@@ -1,11 +1,11 @@
 #pragma once
 
-#include "optimizationtools/utils/info.hpp"
+#include "optimizationtools/utils/output.hpp"
+#include "optimizationtools/utils/utils.hpp"
 
 #include <vector>
 #include <cstdint>
-#include <limits>
-#include <set>
+#include <iomanip>
 
 namespace columngenerationsolver
 {
@@ -15,190 +15,343 @@ using ColIdx = int64_t;
 using RowIdx = int64_t;
 using Value = double;
 
-enum class ObjectiveSense { Min, Max };
+enum class VariableType { Continuous, Integer };
 
+struct LinearTerm
+{
+    /** Row index. */
+    RowIdx row;
+
+    /** Coefficient. */
+    Value coefficient;
+};
+
+/**
+ * Structure for a column.
+ */
 struct Column
 {
-    std::vector<RowIdx> row_indices;
-    std::vector<Value> row_coefficients;
+    /** Type. */
+    VariableType type = VariableType::Integer;
+
+    /** Lower bound. */
+    Value lower_bound = 0.0;
+
+    /** Upper bound. */
+    Value upper_bound = 1.0;
+
+    /** Coefficient in the objective. */
     Value objective_coefficient = 0;
 
+    /** Row indices. */
+    std::vector<LinearTerm> elements;
+
+    /** Branching priority. */
     Value branching_priority = 0;
+
+    /**
+     * Extra information.
+     *
+     * This field may be used to retrieve the real solution from the column.
+     * For example, if a column represent a path, the order in which the
+     * elements of the path are visited may be stored in this attribute.
+     */
     std::shared_ptr<void> extra;
 };
 
-inline std::ostream& operator<<(std::ostream &os, const Column& column)
+inline std::ostream& operator<<(
+        std::ostream& os,
+        const Column& column)
 {
     os << "objective coefficient: " << column.objective_coefficient << std::endl;
     os << "row indices:";
-    for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos)
-        os << " " << column.row_indices[row_pos];
+    for (RowIdx row_pos = 0;
+            row_pos < (RowIdx)column.elements.size();
+            ++row_pos) {
+        os << " " << column.elements[row_pos].row;
+    }
     os << std::endl;
     os << "row coefficients:";
-    for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_coefficients.size(); ++row_pos)
-        os << " " << column.row_coefficients[row_pos];
+    for (RowIdx row_pos = 0;
+            row_pos < (RowIdx)column.elements.size();
+            ++row_pos) {
+        os << " " << column.elements[row_pos].coefficient;
+    }
     return os;
 }
 
+/**
+ * Structure for a row.
+ */
+struct Row
+{
+    /** Lower bounds of the constraints. */
+    Value lower_bound = 0.0;
+
+    /** Upper bounds of the constraints. */
+    Value upper_bound = 0.0;
+
+    /**
+     * Lower bounds of the coefficicients of the variables to generate for each
+     * constraint.
+     */
+    Value coefficient_lower_bound = 0.0;
+
+    /**
+     * Upper bounds of the coefficicients of the variables to generate for each
+     * constraint.
+     */
+    Value coefficient_upper_bound = 1.0;
+};
+
+/**
+ * Interface for the pricing problem solver.
+ */
 class PricingSolver
 {
+
 public:
+
     virtual ~PricingSolver() { }
-    virtual std::vector<ColIdx> initialize_pricing(
-            const std::vector<Column>& columns,
-            const std::vector<std::pair<ColIdx, Value>>& fixed_columns) = 0;
-    virtual std::vector<Column> solve_pricing(
+
+    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns) = 0;
+
+    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals) = 0;
 };
 
-struct Parameters
+/**
+ * Structure for the (expenential) model.
+ */
+struct Model
 {
-    Parameters(RowIdx number_of_rows):
-        row_lower_bounds(number_of_rows),
-        row_upper_bounds(number_of_rows),
-        row_coefficient_lower_bounds(number_of_rows),
-        row_coefficient_upper_bounds(number_of_rows) { }
+    /** Objective sense. */
+    optimizationtools::ObjectiveDirection objective_sense = optimizationtools::ObjectiveDirection::Minimize;
 
-    ObjectiveSense objective_sense = ObjectiveSense::Min;
+    /** Lower bound of the columns to generate. */
     Value column_lower_bound;
+
+    /** Upper bound of the columns to generate. */
     Value column_upper_bound;
-    std::vector<Value> row_lower_bounds;
-    std::vector<Value> row_upper_bounds;
-    std::vector<Value> row_coefficient_lower_bounds;
-    std::vector<Value> row_coefficient_upper_bounds;
-    Value dummy_column_objective_coefficient;
+
+    /** Constraints. */
+    std::vector<Row> rows;
+
+    /** Solver of the pricing problem. */
     std::unique_ptr<PricingSolver> pricing_solver = NULL;
-    std::vector<Column> columns;
+
+    /** Objective coefficient of the dummy columns. */
+    Value dummy_column_objective_coefficient;
+
+    /** Column which are not dynamically generated. */
+    std::vector<std::shared_ptr<const Column>> columns;
+
+
+    virtual void format(
+            std::ostream& os,
+            int verbosity_level = 1) const
+    {
+        if (verbosity_level >= 1) {
+            os
+                << "Number of constraints:               " << rows.size() << std::endl
+                << "Column lower bound:                  " << column_lower_bound << std::endl
+                << "Column upper bound:                  " << column_upper_bound << std::endl
+                << "Dummy column objective coefficient:  " << column_upper_bound << std::endl
+                ;
+        }
+    }
+};
+
+/**
+ * Solution class.
+ */
+class Solution
+{
+
+public:
+
+    /** Get model. */
+    const Model& model() const { return *model_; }
+
+    /** Return 'true' iff the solution is feasible. */
+    bool feasible() const { return feasible_; }
+
+    /** Get the objective value of the solution. */
+    Value objective_value() const { return objective_value_; }
+
+    /** Get columns. */
+    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& columns() const { return columns_; };
+
+    /*
+     * Export
+     */
+
+    /** Export solution characteristics to a JSON structure. */
+    nlohmann::json to_json() const;
+
+    /** Write a formatted output of the instance to a stream. */
+    void format(
+            std::ostream& os,
+            int verbosity_level = 1) const
+    {
+        if (verbosity_level >= 1) {
+            os
+                << "Feasible:           " << feasible() << std::endl
+                << "Value:              " << objective_value() << std::endl
+                << "Number of columns:  " << columns_.size() << std::endl
+                ;
+        }
+
+        //if (verbosity_level >= 2) {
+        //    os << std::endl
+        //        << std::setw(12) << "Set"
+        //        << std::setw(12) << "Cost"
+        //        << std::endl
+        //        << std::setw(12) << "--------"
+        //        << std::setw(12) << "---"
+        //        << std::endl;
+        //    for (SetId set_id = 0;
+        //            set_id < instance().number_of_sets();
+        //            ++set_id) {
+        //        if (contains(set_id)) {
+        //            os
+        //                << std::setw(12) << set_id
+        //                << std::setw(12) << instance().set(set_id).cost
+        //                << std::endl;
+        //        }
+        //    }
+        //}
+    }
+
+private:
+
+    /** Constructor. */
+    Solution() { }
+
+    /** Model. */
+    const Model* model_;
+
+    /** Feasible. */
+    bool feasible_;
+
+    /** Objective value. */
+    Value objective_value_;
+
+    /** Row values. */
+    std::vector<Value> row_values_;
+
+    /** Columns. */
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> columns_;
+
+    friend class SolutionBuilder;
+
+};
+
+class SolutionBuilder
+{
+
+public:
+
+    /** Constructor. */
+    SolutionBuilder() { }
+
+    /** Set the model of the solution. */
+    SolutionBuilder& set_model(const Model& model) { solution_.model_ = &model; return *this; }
+
+    /** Add a column to the solution. */
+    void add_column(
+            const std::shared_ptr<const Column>& column,
+            Value value)
+    {
+        solution_.columns_.push_back({column, value});
+    }
+
+    /** Build. */
+    Solution build()
+    {
+        compute_feasible();
+        compute_objective_value();
+
+        return std::move(solution_);
+    }
+
+private:
+
+    /*
+     * Private methods
+     */
+
+    /** Compute the feasibility of the solution. */
+    void compute_feasible()
+    {
+        solution_.row_values_ = std::vector<Value>(solution_.model_->rows.size(), 0.0);
+        for (const auto& p: solution_.columns_) {
+            const Column& column = *p.first;
+            Value column_value = p.second;
+            for (const LinearTerm& element: column.elements) {
+                solution_.row_values_[element.row] += column_value * element.coefficient;
+            }
+        }
+
+        solution_.feasible_ = true;
+        for (RowIdx row = 0;
+                row < (RowIdx)solution_.model_->rows.size();
+                ++row) {
+            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound) {
+                // TODO tolerance.
+                solution_.feasible_ = false;
+            }
+            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound) {
+                // TODO tolerance.
+                solution_.feasible_ = false;
+            }
+        }
+
+        for (const auto& p: solution_.columns_) {
+            const Column& column = *(p.first);
+            Value value = p.second;
+            if (column.type == VariableType::Integer) {
+                Value fractionality = std::fabs(value - std::round(value));
+                if (fractionality > 0) {
+                    // TODO tolerance
+                    solution_.feasible_ = false;
+                }
+            }
+        }
+    }
+
+    /** Compute the objective value of the solution. */
+    void compute_objective_value()
+    {
+        solution_.objective_value_ = 0.0;
+        for (const auto& p: solution_.columns_) {
+            const Column& column = *p.first;
+            Value column_value = p.second;
+            solution_.objective_value_ += column.objective_coefficient * column_value;
+        }
+    }
+
+    /*
+     * Private attributes
+     */
+
+    /** Solution. */
+    Solution solution_;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// Implementation ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-inline void display_initialize(optimizationtools::Info& info)
-{
-    info.os()
-            << std::setw(10) << "Time"
-            << std::setw(14) << "Solution"
-            << std::setw(14) << "Bound"
-            << std::setw(14) << "Gap"
-            << std::setw(10) << "Gap (%)"
-            << std::setw(24) << "Comment" << std::endl
-            << std::setw(10) << "----"
-            << std::setw(14) << "--------"
-            << std::setw(14) << "-----"
-            << std::setw(14) << "---"
-            << std::setw(10) << "-------"
-            << std::setw(24) << "-------" << std::endl;
-}
-
-inline void display(
-        Parameters& p,
-        Value primal,
-        Value dual,
-        const std::stringstream& s,
-        optimizationtools::Info& info)
-{
-    double t = info.elapsed_time();
-    double gap = (p.objective_sense == ObjectiveSense::Min)?
-        primal - dual:
-        dual - primal;
-    info.os()
-            << std::setw(10) << std::fixed << std::setprecision(3) << t
-            << std::setw(14) << std::fixed << std::setprecision(5) << primal
-            << std::setw(14) << std::fixed << std::setprecision(5) << dual
-            << std::setw(14) << std::fixed << std::setprecision(5) << gap
-            << std::setw(10) << std::fixed << std::setprecision(2) << 100.0 * gap / std::max(std::abs(primal), std::abs(dual))
-            << std::setw(24) << s.str()
-            << std::endl;
-    info.output->number_of_solutions++;
-    std::string sol_str = "Solution" + std::to_string(info.output->number_of_solutions);
-    info.add_to_json(sol_str, "Value", std::to_string(primal));
-    info.add_to_json(sol_str, "Time", t);
-    info.add_to_json(sol_str, "Comment", s.str());
-    if (!info.output->only_write_at_the_end) {
-        info.write_json_output();
-    }
-}
-
-template <typename Output>
-inline void display_end(
-        const Output& output,
-        optimizationtools::Info& info)
-{
-    double t = info.elapsed_time();
-    Value primal = output.solution_value;
-    Value dual = output.bound;
-    info.os() << std::defaultfloat
-            << std::endl
-            << "Final statistics" << std::endl
-            << "----------------" << std::endl
-            << "Solution:                 " << primal << std::endl
-            << "Bound:                    " << dual << std::endl
-            << "Absolute gap:             " << std::abs(primal - dual) << std::endl
-            << "Relative gap (%):         " << 100.0 * std::abs(primal - dual) / std::max(std::abs(primal), std::abs(dual)) << std::endl
-            << "Total number of columns:  " << output.total_number_of_columns << std::endl
-            << "Number of columns added:  " << output.number_of_added_columns << std::endl
-            << "Total time (s):           " << t << std::endl;
-    std::string sol_str = "Solution";
-    info.add_to_json(sol_str, "Time", t);
-    info.add_to_json(sol_str, "Value", std::to_string(primal));
-    info.write_json_output();
-}
-
-inline bool is_feasible(
-        const Parameters& parameters,
-        const std::vector<std::pair<ColIdx, Value>>& solution)
-{
-    RowIdx m = parameters.row_lower_bounds.size();
-    std::vector<RowIdx> row_values(m, 0.0);
-    for (const auto& p: solution) {
-        const Column& column = parameters.columns[p.first];
-        Value val = p.second;
-        for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-            RowIdx row_index = column.row_indices[row_pos];
-            Value row_coefficient = column.row_coefficients[row_pos];
-            row_values[row_index] += val * row_coefficient;
-        }
-    }
-
-    for (RowIdx row = 0; row < m; ++row) {
-        if (row_values[row] < parameters.row_lower_bounds[row])
-            return false;
-        if (row_values[row] > parameters.row_upper_bounds[row])
-            return false;
-    }
-    return true;
-}
-
-inline Value compute_value(
-        const Parameters& parameters,
-        std::vector<std::pair<ColIdx, Value>> solution)
-{
-    Value c = 0.0;
-    for (auto p: solution) {
-        ColIdx col = p.first;
-        Value value = p.second;
-        const Column& column = parameters.columns[col];
-        c += column.objective_coefficient * value;
-    }
-    return c;
-}
-
-std::vector<std::pair<Column, Value> >const to_solution(
-        const Parameters& parameters,
-        const std::vector<std::pair<ColIdx, Value>>& columns);
-
 inline Value compute_reduced_cost(
         const Column& column,
         const std::vector<Value>& duals)
 {
     Value reduced_cost = column.objective_coefficient;
-    for (RowIdx row_pos = 0; row_pos < (RowIdx)column.row_indices.size(); ++row_pos) {
-        RowIdx row_index = column.row_indices[row_pos];
-        Value row_coefficient = column.row_coefficients[row_pos];
-        reduced_cost -= duals[row_index] * row_coefficient;
-    }
+    for (const LinearTerm& element: column.elements)
+        reduced_cost -= duals[element.row] * element.coefficient;
     return reduced_cost;
 }
 
@@ -227,5 +380,117 @@ inline Value norm(
     return std::sqrt(res);
 }
 
-}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
+struct Output: optimizationtools::Output
+{
+    /** Constructor. */
+    Output(const Model& model):
+        solution(SolutionBuilder().set_model(model).build()),
+        bound((model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                -std::numeric_limits<Value>::infinity():
+                +std::numeric_limits<Value>::infinity()) { }
+
+
+    /** Solution. */
+    Solution solution;
+
+    /** Bound. */
+    Value bound;
+
+    /** Elapsed time. */
+    double time = 0.0;
+
+    /** Time spent solving the LP subproblems. */
+    double time_lpsolve = 0.0;
+
+    /** Time spent solving the pricing subproblems. */
+    double time_pricing = 0.0;
+
+    /** Columns generated during the algorithm. */
+    std::vector<std::shared_ptr<const Column>> columns;
+
+
+    std::string solution_value() const
+    {
+        return optimizationtools::solution_value(
+                solution.model().objective_sense,
+                solution.feasible(),
+                solution.objective_value());
+    }
+
+    double absolute_optimality_gap() const
+    {
+        return optimizationtools::absolute_optimality_gap(
+                solution.model().objective_sense,
+                solution.feasible(),
+                solution.objective_value(),
+                bound);
+    }
+
+    double relative_optimality_gap() const
+    {
+       return optimizationtools::relative_optimality_gap(
+               solution.model().objective_sense,
+               solution.feasible(),
+               solution.objective_value(),
+               bound);
+    }
+
+    virtual nlohmann::json to_json() const
+    {
+        return {
+            {"Value", solution_value()},
+            {"Bound", bound},
+            {"AbsoluteOptimalityGap", absolute_optimality_gap()},
+            {"RelativeOptimalityGap", relative_optimality_gap()},
+            {"Time", time}};
+    }
+
+    virtual int format_width() const { return 30; }
+
+    virtual void format(std::ostream& os) const
+    {
+        int width = format_width();
+        os
+            << std::setw(width) << std::left << "Value: " << solution_value() << std::endl
+            << std::setw(width) << std::left << "Bound: " << bound << std::endl
+            << std::setw(width) << std::left << "Absolute optimality gap: " << absolute_optimality_gap() << std::endl
+            << std::setw(width) << std::left << "Relative optimality gap (%): " << relative_optimality_gap() * 100 << std::endl
+            << std::setw(width) << std::left << "Time: " << time << std::endl
+            ;
+    }
+};
+
+using NewSolutionCallback = std::function<void(const Output&)>;
+
+struct Parameters: optimizationtools::Parameters
+{
+    /** Callback function called when a new best solution is found. */
+    NewSolutionCallback new_solution_callback = [](const Output&) { };
+
+    /** Initial columns. */
+    std::vector<std::shared_ptr<const Column>> initial_columns;
+
+
+    virtual nlohmann::json to_json() const override
+    {
+        nlohmann::json json = optimizationtools::Parameters::to_json();
+        json.merge_patch({});
+        return json;
+    }
+
+    virtual int format_width() const override { return 23; }
+
+    virtual void format(std::ostream& os) const override
+    {
+        optimizationtools::Parameters::format(os);
+        //int width = format_width();
+        //os
+        //    ;
+    }
+};
+
+}

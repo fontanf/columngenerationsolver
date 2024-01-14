@@ -34,7 +34,7 @@ cc_library(
 git_repository(
     name = "optimizationtools",
     remote = "https://github.com/fontanf/optimizationtools.git",
-    commit = "e4b1995bd230a80f2bbfa83ccf8e229db3bb01a6",
+    commit = "673b717857ef96d35e000b794b479a9f3b3d3b3d",
 )
 
 local_repository(
@@ -43,31 +43,31 @@ local_repository(
 )
 
 git_repository(
-    name = "orproblems",
+    name = "orproblems_",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "7f3f6662f26961018b9d8f4fc6ec140a94358ddd",
+    commit = "82d9e15fd9b178a45cd64e78e9b22364e41a7e1d",
 )
 
 local_repository(
-    name = "orproblems_",
+    name = "orproblems",
     path = "../orproblems/",
 )
 
 git_repository(
-    name = "knapsacksolver",
+    name = "knapsacksolver_",
     remote = "https://github.com/fontanf/knapsacksolver.git",
-    commit = "1525b332d352e821723b9509d3e96d405571fe67",
+    commit = "b61de0a8e0d25b065dc60916c60a39899823158e",
 )
 
 local_repository(
-    name = "knapsacksolver_",
+    name = "knapsacksolver",
     path = "../knapsacksolver/",
 )
 
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "7d3e36252a547879f476a34bbda2777fa249b0d3",
+    commit = "2aee51c507fb28d945462f6d88ec064f35baba5d",
 )
 
 local_repository(
@@ -78,7 +78,7 @@ local_repository(
 git_repository(
     name = "localsearchsolver",
     remote = "https://github.com/fontanf/localsearchsolver.git",
-    commit = "43572d963b158adcaeeda5c64f253f4c5c394969",
+    commit = "304993bb84d9f3d7179d7eab280bc5700e9c7930",
 )
 
 local_repository(

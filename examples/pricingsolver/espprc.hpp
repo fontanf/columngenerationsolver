@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "optimizationtools/utils/info.hpp"
 #include "optimizationtools/utils/utils.hpp"
-#include "optimizationtools/containers/sorted_on_demand_array.hpp"
+#include "optimizationtools/containers//sorted_on_demand_array.hpp"
+
+#include <memory>
 
 namespace columngenerationsolver
 {
-
 namespace espprc
 {
 
@@ -181,7 +181,7 @@ public:
 
     struct Node
     {
-        std::shared_ptr<Node> father = nullptr;
+        std::shared_ptr<Node> parent = nullptr;
         std::vector<bool> available_locations;
         LocationId last_location_id = 0;
         LocationId number_of_locations = 1;
@@ -226,37 +226,37 @@ public:
     }
 
     inline std::shared_ptr<Node> next_child(
-            const std::shared_ptr<Node>& father) const
+            const std::shared_ptr<Node>& parent) const
     {
-        assert(!infertile(father));
-        assert(!leaf(father));
-        LocationId next_location_id = neighbor(father->last_location_id, father->next_child_pos);
-        Distance d = instance_.distance(father->last_location_id, next_location_id);
-        // Update father
-        father->next_child_pos++;
-        LocationId next_location_id_next = neighbor(father->last_location_id, father->next_child_pos);
-        Distance d_next = instance_.distance(father->last_location_id, next_location_id_next);
+        assert(!infertile(parent));
+        assert(!leaf(parent));
+        LocationId next_location_id = neighbor(parent->last_location_id, parent->next_child_pos);
+        Distance d = instance_.distance(parent->last_location_id, next_location_id);
+        // Update parent
+        parent->next_child_pos++;
+        LocationId next_location_id_next = neighbor(parent->last_location_id, parent->next_child_pos);
+        Distance d_next = instance_.distance(parent->last_location_id, next_location_id_next);
         if (d_next == std::numeric_limits<Distance>::max()) {
-            father->guide = std::numeric_limits<double>::max();
+            parent->guide = std::numeric_limits<double>::max();
         } else {
-            father->guide = father->length + d_next
-                - father->profit - instance_.location(next_location_id_next).profit;
+            parent->guide = parent->length + d_next
+                - parent->profit - instance_.location(next_location_id_next).profit;
         }
-        if (father->demand + instance_.location(next_location_id).demand > instance_.capacity())
+        if (parent->demand + instance_.location(next_location_id).demand > instance_.capacity())
             return nullptr;
-        if (!father->available_locations[next_location_id])
+        if (!parent->available_locations[next_location_id])
             return nullptr;
 
         // Compute new child.
         auto child = std::shared_ptr<Node>(new BranchingScheme::Node());
-        child->father = father;
-        child->available_locations = father->available_locations;
+        child->parent = parent;
+        child->available_locations = parent->available_locations;
         child->available_locations[next_location_id] = false;
         child->last_location_id = next_location_id;
-        child->number_of_locations = father->number_of_locations + 1;
-        child->length = father->length + d;
-        child->profit = father->profit + instance_.location(next_location_id).profit;
-        child->demand = father->demand + instance_.location(next_location_id).demand;
+        child->number_of_locations = parent->number_of_locations + 1;
+        child->length = parent->length + d;
+        child->profit = parent->profit + instance_.location(next_location_id).profit;
+        child->demand = parent->demand + instance_.location(next_location_id).demand;
         child->guide = child->length + instance_.distance(next_location_id, neighbor(next_location_id, 0))
             - child->profit - instance_.location(neighbor(next_location_id, 0)).profit;
         return child;
@@ -310,11 +310,17 @@ public:
         if (node_1->number_of_locations != node_2->number_of_locations)
             return false;
         std::vector<bool> v(instance_.number_of_locations(), false);
-        for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+        for (auto node_tmp = node_1;
+                node_tmp->parent != nullptr;
+                node_tmp = node_tmp->parent) {
             v[node_tmp->last_location_id] = true;
-        for (auto node_tmp = node_1; node_tmp->father != nullptr; node_tmp = node_tmp->father)
+        }
+        for (auto node_tmp = node_1;
+                node_tmp->parent != nullptr;
+                node_tmp = node_tmp->parent) {
             if (!v[node_tmp->last_location_id])
                 return false;
+        }
         return true;
     }
 
@@ -389,6 +395,4 @@ private:
 };
 
 }
-
 }
-

@@ -48,7 +48,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "@orproblems//orproblems:cuttingstock",
-                "@knapsacksolver//knapsacksolver/algorithms:dynamic_programming_primal_dual",
+                "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_primal_dual",
         ],
         visibility = ["//visibility:public"],
 )
@@ -70,7 +70,7 @@ cc_library(
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "@orproblems//orproblems:multipleknapsack",
-                "@knapsacksolver//knapsacksolver/algorithms:dynamic_programming_primal_dual",
+                "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_primal_dual",
         ],
         visibility = ["//visibility:public"],
 )
