@@ -19,11 +19,8 @@ struct ColumnGenerationOutput: Output
      */
     Solution relaxation_solution;
 
-    /** Number of column generation iterations. */
-    Counter number_of_iterations = 0;
-
-    /** Number of columns added. */
-    Counter number_of_added_columns = 0;
+    /** Number of columns in the linear subproblem. */
+    ColIdx number_of_columns_in_linear_subproblem = 0;
 
     /** Number of times the pricing algorithm has been called. */
     Counter number_of_pricings = 0;
@@ -33,11 +30,38 @@ struct ColumnGenerationOutput: Output
     Counter number_of_mispricings = 0;
 
     Counter number_of_no_stab_pricings = 0;
+
+
+    virtual int format_width() const override { return 31; }
+
+    virtual void format(std::ostream& os) const override
+    {
+        Output::format(os);
+        int width = format_width();
+        os
+            << std::setw(width) << std::left << "Number of pricings: " << number_of_pricings << std::endl
+            << std::setw(width) << std::left << "Number of first-try pricings: " << number_of_first_try_pricings << std::endl
+            << std::setw(width) << std::left << "Number of mispricings: " << number_of_mispricings << std::endl
+            << std::setw(width) << std::left << "Number of no-stab pricings: " << number_of_no_stab_pricings << std::endl
+            ;
+    }
+
+    virtual nlohmann::json to_json() const override
+    {
+        nlohmann::json json = Output::to_json();
+        json.merge_patch({
+                {"NumberOfPricings", number_of_pricings},
+                {"NumberOfFirstTryPricings", number_of_first_try_pricings},
+                {"NumberOfMispricings", number_of_mispricings},
+                {"NumberOfNoStabPricings", number_of_no_stab_pricings},
+                });
+        return json;
+    }
 };
 
 using ColumnGenerationIterationCallback = std::function<void(const ColumnGenerationOutput&)>;
 
-struct ColumnGenerationOptionalParameters: Parameters
+struct ColumnGenerationParameters: Parameters
 {
     /** Linear programming solver. */
     LinearProgrammingSolver linear_programming_solver = LinearProgrammingSolver::CLP;
@@ -100,6 +124,6 @@ struct ColumnGenerationOptionalParameters: Parameters
 
 const ColumnGenerationOutput column_generation(
         const Model& model,
-        const ColumnGenerationOptionalParameters& optional_parameters = {});
+        const ColumnGenerationParameters& parameters = {});
 
 }

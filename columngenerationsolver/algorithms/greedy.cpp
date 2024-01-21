@@ -6,13 +6,13 @@ using namespace columngenerationsolver;
 
 const GreedyOutput columngenerationsolver::greedy(
         const Model& model,
-        const GreedyOptionalParameters& optional_parameters)
+        const GreedyParameters& parameters)
 {
     // Initial display.
     GreedyOutput output(model);
     AlgorithmFormatter algorithm_formatter(
             model,
-            optional_parameters,
+            parameters,
             output);
     algorithm_formatter.start("Greedy");
 
@@ -21,19 +21,19 @@ const GreedyOutput columngenerationsolver::greedy(
     for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
 
         // Check end.
-        if (optional_parameters.timer.needs_to_end())
+        if (parameters.timer.needs_to_end())
             break;
 
         // Solve relaxation.
-        ColumnGenerationOptionalParameters column_generation_parameters
-            = optional_parameters.column_generation_parameters;
+        ColumnGenerationParameters column_generation_parameters
+            = parameters.column_generation_parameters;
         if (fixed_columns.empty()) {
             algorithm_formatter.print_column_generation_header();
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
                     const ColumnGenerationOutput& cg_output)
             {
                 algorithm_formatter.print_column_generation_iteration(
-                        cg_output.number_of_iterations,
+                        cg_output.number_of_column_generation_iterations,
                         cg_output.relaxation_solution.objective_value(),
                         cg_output.columns.size());
             };
@@ -43,20 +43,28 @@ const GreedyOutput columngenerationsolver::greedy(
                 output.columns.begin(),
                 output.columns.end());
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.timer = optional_parameters.timer;
+        column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
+
+        // Solve.
         auto cg_output = column_generation(
                 model,
                 column_generation_parameters);
+
+        // Update output statistics.
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
-        output.columns.insert(output.columns.end(), cg_output.columns.begin(), cg_output.columns.end());
+        output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
+        output.columns.insert(
+                output.columns.end(),
+                cg_output.columns.begin(),
+                cg_output.columns.end());
 
         if (fixed_columns.empty()) {
             algorithm_formatter.print_header();
         }
 
-        if (optional_parameters.timer.needs_to_end())
+        if (parameters.timer.needs_to_end())
             break;
         if (cg_output.relaxation_solution.columns().size() == 0)
             break;
@@ -94,10 +102,12 @@ const GreedyOutput columngenerationsolver::greedy(
 
         // Update bound.
         if (fixed_columns.size() == 0) {
-            Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
-            if (cg_it_limit == -1 || (cg_output.number_of_iterations < cg_it_limit))
+            Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
+            if (cg_it_limit == -1
+                    || (cg_output.number_of_column_generation_iterations < cg_it_limit)) {
                 algorithm_formatter.update_bound(
                         cg_output.relaxation_solution.objective_value());
+            }
         }
 
         // Update fixed columns.

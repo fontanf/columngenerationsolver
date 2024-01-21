@@ -8,7 +8,7 @@
 namespace columngenerationsolver
 {
 
-boost::program_options::options_description setup_args()
+inline boost::program_options::options_description setup_args()
 {
     boost::program_options::options_description desc("Allowed options");
     desc.add_options()
@@ -85,7 +85,7 @@ inline const Output run_column_generation(
         const WriteSolutionFunction& write_solution,
         const boost::program_options::variables_map& vm)
 {
-    ColumnGenerationOptionalParameters parameters;
+    ColumnGenerationParameters parameters;
     read_args(parameters, write_solution, vm);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
@@ -99,7 +99,7 @@ inline const Output run_greedy(
         const WriteSolutionFunction& write_solution,
         const boost::program_options::variables_map& vm)
 {
-    GreedyOptionalParameters parameters;
+    GreedyParameters parameters;
     read_args(parameters, write_solution, vm);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
@@ -113,7 +113,7 @@ inline const Output run_limited_discrepancy_search(
         const WriteSolutionFunction& write_solution,
         const boost::program_options::variables_map& vm)
 {
-    LimitedDiscrepancySearchOptionalParameters parameters;
+    LimitedDiscrepancySearchParameters parameters;
     read_args(parameters, write_solution, vm);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
@@ -127,7 +127,7 @@ inline const Output run_heuristic_tree_search(
         const WriteSolutionFunction& write_solution,
         const boost::program_options::variables_map& vm)
 {
-    HeuristicTreeSearchOptionalParameters parameters;
+    HeuristicTreeSearchParameters parameters;
     read_args(parameters, write_solution, vm);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();

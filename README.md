@@ -689,7 +689,7 @@ Number of columns:  10
 ```
 
 ```shell
-/bazel-bin/examples/vehicleroutingwithtimewindows_main -v 1 --input "../ordata/vehicleroutingwithtimewindows/solomon1987/RC101.txt" -c sol.txt -a limited-discrepancy-search -t 5
+./bazel-bin/examples/vehicleroutingwithtimewindows_main -v 1 --input "../ordata/vehicleroutingwithtimewindows/solomon1987/RC101.txt" -c sol.txt -a limited-discrepancy-search -t 5
 ```
 ```
 ==========================================

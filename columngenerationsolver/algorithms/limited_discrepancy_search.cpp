@@ -34,13 +34,13 @@ struct LimitedDiscrepancySearchNode
 
 const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy_search(
         const Model& model,
-        const LimitedDiscrepancySearchOptionalParameters& optional_parameters)
+        const LimitedDiscrepancySearchParameters& parameters)
 {
     // Initial display.
     LimitedDiscrepancySearchOutput output(model);
     AlgorithmFormatter algorithm_formatter(
             model,
-            optional_parameters,
+            parameters,
             output);
     algorithm_formatter.start("Limited discrepancy search");
 
@@ -58,14 +58,13 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
     // Root node.
     auto root = std::make_shared<LimitedDiscrepancySearchNode>();
     nodes.insert(root);
-    bool heuristictreesearch_stop = optional_parameters.heuristictreesearch_stop;
+    bool heuristictreesearch_stop = parameters.heuristictreesearch_stop;
 
     while (!nodes.empty()) {
-        output.number_of_nodes++;
         //std::cout << "nodes.size() " << nodes.size() << std::endl;
 
         // Check end.
-        if (optional_parameters.timer.needs_to_end())
+        if (parameters.timer.needs_to_end())
             break;
 
         if (output.solution.feasible()
@@ -77,9 +76,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         nodes.erase(nodes.begin());
 
         // Check discrepancy limit.
-        if (!optional_parameters.continue_until_feasible
+        if (!parameters.continue_until_feasible
                 || !output.solution.columns().empty())
-            if (node->discrepancy > optional_parameters.discrepancy_limit)
+            if (node->discrepancy > parameters.discrepancy_limit)
                 break;
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
@@ -87,6 +86,12 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 && output.number_of_nodes > 2
                 && output.number_of_nodes > 2 * output.maximum_depth)
             break;
+
+        // Update output statistics.
+        output.number_of_nodes++;
+        output.maximum_discrepancy = (std::max)(
+                output.maximum_discrepancy,
+                node->discrepancy);
 
         std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
         auto node_tmp = node;
@@ -98,7 +103,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             node_tmp = node_tmp->parent;
         }
         //std::cout
-        //    << "t " << optional_parameters.info.elapsed_time()
+        //    << "t " << parameters.info.elapsed_time()
         //    << " node " << output.number_of_nodes
         //    << " / " << nodes.size()
         //    << " diff " << node->discrepancy
@@ -112,15 +117,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         //    std::cout << node->value << " " << model.columns[node->col] << std::endl;
 
         // Run column generation
-        ColumnGenerationOptionalParameters column_generation_parameters
-            = optional_parameters.column_generation_parameters;
+        ColumnGenerationParameters column_generation_parameters
+            = parameters.column_generation_parameters;
         if (node->depth == 0) {
             algorithm_formatter.print_column_generation_header();
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
                     const ColumnGenerationOutput& cg_output)
             {
                 algorithm_formatter.print_column_generation_iteration(
-                        cg_output.number_of_iterations,
+                        cg_output.number_of_column_generation_iterations,
                         cg_output.relaxation_solution.objective_value(),
                         cg_output.columns.size());
             };
@@ -130,22 +135,32 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.columns.begin(),
                 output.columns.end());
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.timer = optional_parameters.timer;
+        column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
+
+        // Solve.
         auto cg_output = column_generation(
                 model,
                 column_generation_parameters);
+
+        // Update output statistics.
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
-        output.columns.insert(output.columns.end(), cg_output.columns.begin(), cg_output.columns.end());
+        output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
+        output.columns.insert(
+                output.columns.end(),
+                cg_output.columns.begin(),
+                cg_output.columns.end());
+
         //std::cout << "bound " << cg_output.solution_value << std::endl;
-        if (optional_parameters.timer.needs_to_end())
+        if (parameters.timer.needs_to_end())
             break;
 
         if (node->depth == 0) {
             algorithm_formatter.print_header();
-            Counter cg_it_limit = optional_parameters.column_generation_parameters.maximum_number_of_iterations;
-            if (cg_it_limit == -1 || cg_output.number_of_iterations < cg_it_limit) {
+            Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
+            if (cg_it_limit == -1
+                    || cg_output.number_of_column_generation_iterations < cg_it_limit) {
                 heuristictreesearch_stop = false;
                 algorithm_formatter.update_bound(cg_output.relaxation_solution.objective_value());
             }

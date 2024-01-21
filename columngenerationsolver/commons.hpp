@@ -409,6 +409,9 @@ struct Output: optimizationtools::Output
     /** Time spent solving the pricing subproblems. */
     double time_pricing = 0.0;
 
+    /** Number of column generation iterations. */
+    Counter number_of_column_generation_iterations = 0;
+
     /** Columns generated during the algorithm. */
     std::vector<std::shared_ptr<const Column>> columns;
 
@@ -446,7 +449,11 @@ struct Output: optimizationtools::Output
             {"Bound", bound},
             {"AbsoluteOptimalityGap", absolute_optimality_gap()},
             {"RelativeOptimalityGap", relative_optimality_gap()},
-            {"Time", time}};
+            {"Time", time},
+            {"PricingTime", time_pricing},
+            {"LpTime", time_lpsolve},
+            {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
+        };
     }
 
     virtual int format_width() const { return 30; }
@@ -460,6 +467,9 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Absolute optimality gap: " << absolute_optimality_gap() << std::endl
             << std::setw(width) << std::left << "Relative optimality gap (%): " << relative_optimality_gap() * 100 << std::endl
             << std::setw(width) << std::left << "Time: " << time << std::endl
+            << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
+            << std::setw(width) << std::left << "LP time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "# of CG iterations: " << number_of_column_generation_iterations << std::endl
             ;
     }
 };

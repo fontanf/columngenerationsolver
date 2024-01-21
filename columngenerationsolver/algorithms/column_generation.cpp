@@ -6,13 +6,13 @@ using namespace columngenerationsolver;
 
 const ColumnGenerationOutput columngenerationsolver::column_generation(
         const Model& model,
-        const ColumnGenerationOptionalParameters& optional_parameters)
+        const ColumnGenerationParameters& parameters)
 {
     // Initial display.
     ColumnGenerationOutput output(model);
     AlgorithmFormatter algorithm_formatter(
             model,
-            optional_parameters,
+            parameters,
             output);
     algorithm_formatter.start("Column generation");
     algorithm_formatter.print_column_generation_header();
@@ -28,8 +28,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
     const std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_default;
     const std::vector<std::pair<std::shared_ptr<const Column>, Value>>* fixed_columns
-        = (optional_parameters.fixed_columns != NULL)?
-        optional_parameters.fixed_columns:
+        = (parameters.fixed_columns != NULL)?
+        parameters.fixed_columns:
         &fixed_columns_default;
     for (auto p: *fixed_columns) {
         const Column& column = *(p.first);
@@ -102,7 +102,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     //std::cout << "Initialize solver..." << std::endl;
     std::unique_ptr<ColumnGenerationSolver> solver = NULL;
 #if CPLEX_FOUND
-    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::CPLEX)
+    if (parameters.linear_programming_solver == LinearProgrammingSolver::CPLEX)
         solver = std::unique_ptr<ColumnGenerationSolver>(
                 new ColumnGenerationSolverCplex(
                     model.objective_sense,
@@ -110,7 +110,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     new_row_upper_bounds));
 #endif
 #if CLP_FOUND
-    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::CLP) {
+    if (parameters.linear_programming_solver == LinearProgrammingSolver::CLP) {
         solver = std::unique_ptr<ColumnGenerationSolver>(
                 new ColumnGenerationSolverClp(
                     model.objective_sense,
@@ -119,7 +119,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 #endif
 #if XPRESS_FOUND
-    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::Xpress) {
+    if (parameters.linear_programming_solver == LinearProgrammingSolver::Xpress) {
         solver = std::unique_ptr<ColumnGenerationSolver>(
                 new ColumnGenerationSolverXpress(
                     model.objective_sense,
@@ -128,7 +128,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 #endif
 #if KNITRO_FOUND
-    if (optional_parameters.linear_programming_solver == LinearProgrammingSolver::Knitro)
+    if (parameters.linear_programming_solver == LinearProgrammingSolver::Knitro)
         solver = std::unique_ptr<ColumnGenerationSolver>(
                 new ColumnGenerationSolverKnitro(
                     model.objective_sense,
@@ -163,6 +163,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     model.column_upper_bound);
         }
     }
+    output.number_of_columns_in_linear_subproblem = solver_columns.size();
 
     // Initialize pricing solver.
     //std::cout << "Initialize pricing solver..." << std::endl;
@@ -172,7 +173,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
     // Add initial columns.
     //std::cout << "Add initial columns..." << std::endl;
-    for (const auto& columns: {model.columns, optional_parameters.initial_columns}) {
+    for (const auto& columns: {model.columns, parameters.initial_columns}) {
         for (const std::shared_ptr<const Column>& column: columns) {
 
             // Check column feasibility.
@@ -211,6 +212,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     model.column_upper_bound);
         }
     }
+    output.number_of_columns_in_linear_subproblem = solver_columns.size();
 
     // Duals given to the pricing solver.
     std::vector<Value> duals_sep(m, 0);
@@ -227,8 +229,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::vector<Value> lagrangian_constraint_values(m, 0);
     // g_in.
     std::vector<Value> subgradient(m, 0);
-    double alpha = optional_parameters.static_wentges_smoothing_parameter;
-    for (output.number_of_iterations = 1;; output.number_of_iterations++) {
+    double alpha = parameters.static_wentges_smoothing_parameter;
+    for (output.number_of_column_generation_iterations = 1;
+            ;
+            output.number_of_column_generation_iterations++) {
+
         // Solve LP
         auto start_lpsolve = std::chrono::high_resolution_clock::now();
         solver->solve();
@@ -253,18 +258,18 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Display.
         algorithm_formatter.print_column_generation_iteration(
-                output.number_of_iterations,
+                output.number_of_column_generation_iterations,
                 c0 + solver->objective(),
-                output.number_of_added_columns);
-        optional_parameters.iteration_callback(output);
+                output.number_of_columns_in_linear_subproblem);
+        parameters.iteration_callback(output);
 
         // Check time.
-        if (optional_parameters.timer.needs_to_end())
+        if (parameters.timer.needs_to_end())
             break;
         // Check iteration limit.
-        if (optional_parameters.maximum_number_of_iterations != -1
-                && output.number_of_iterations
-                > optional_parameters.maximum_number_of_iterations) {
+        if (parameters.maximum_number_of_iterations != -1
+                && output.number_of_column_generation_iterations
+                > parameters.maximum_number_of_iterations) {
             break;
         }
 
@@ -282,12 +287,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 output.number_of_mispricings++;
             // Compute separation point.
             double alpha_cur = std::max(0.0, 1 - k * (1 - alpha) - FFOT_TOL);
-            double beta = optional_parameters.static_directional_smoothing_parameter;
+            double beta = parameters.static_directional_smoothing_parameter;
             //std::cout << "alpha_cur " << alpha_cur << std::endl;
-            if (output.number_of_iterations == 1
+            if (output.number_of_column_generation_iterations == 1
                     || norm(new_rows, duals_in, duals_out) == 0 // Shouldn't happen, but happens with Cplex.
                     || k > 1
-                    || (!optional_parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
+                    || (!parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
                 for (RowIdx row_id: new_rows) {
                     duals_sep[row_id]
                         = alpha_cur * duals_in[row_id]
@@ -315,7 +320,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         + coef_g * subgradient[row_id];
                 }
                 // Compute β.
-                if (optional_parameters.automatic_directional_smoothing) {
+                if (parameters.automatic_directional_smoothing) {
                     Value dot_product = 0;
                     for (RowIdx row_id: new_rows) {
                         dot_product
@@ -358,8 +363,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // Call pricing solver on the computed separation point.
             auto start_pricing = std::chrono::high_resolution_clock::now();
             all_columns = model.pricing_solver->solve_pricing(duals_sep);
+
+            // Add new column to the global column pool.
             for (const std::shared_ptr<const Column>& column: all_columns)
                 output.columns.push_back(column);
+
             auto end_pricing = std::chrono::high_resolution_clock::now();
             auto time_span_pricing = std::chrono::duration_cast<std::chrono::duration<double>>(end_pricing - start_pricing);
             output.time_pricing += time_span_pricing.count();
@@ -420,7 +428,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         }
 
         // Adjust alpha.
-        if (optional_parameters.self_adjusting_wentges_smoothing
+        if (parameters.self_adjusting_wentges_smoothing
                 && norm(new_rows, duals_in, duals_sep) != 0) {
             //for (RowIdx i: new_rows)
             //    std::cout
@@ -448,10 +456,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             }
         }
 
-        for (const std::shared_ptr<const Column>& column: all_columns) {
+        for (const std::shared_ptr<const Column>& column: new_columns) {
             //std::cout << column << std::endl;
-            // Add new column to the global column pool.
-            output.number_of_added_columns++;
             // Add new column to the local LP solver.
             std::vector<RowIdx> ri;
             std::vector<Value> rc;
@@ -473,6 +479,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     model.column_lower_bound,
                     model.column_upper_bound);
         }
+        output.number_of_columns_in_linear_subproblem = solver_columns.size();
     }
 
     // Update bound.

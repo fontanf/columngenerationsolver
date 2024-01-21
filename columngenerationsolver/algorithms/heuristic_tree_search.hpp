@@ -7,13 +7,13 @@
 namespace columngenerationsolver
 {
 
-struct HeuristicTreeSearchOptionalParameters: Parameters
+struct HeuristicTreeSearchParameters: Parameters
 {
     /** Growth rate. */
     double growth_rate = 1.5;
 
     /** Parameters for the column generation sub-problem. */
-    ColumnGenerationOptionalParameters column_generation_parameters;
+    ColumnGenerationParameters column_generation_parameters;
 };
 
 struct HeuristicTreeSearchOutput: Output
@@ -32,6 +32,6 @@ struct HeuristicTreeSearchOutput: Output
 
 const HeuristicTreeSearchOutput heuristic_tree_search(
         const Model& model,
-        const HeuristicTreeSearchOptionalParameters& optional_parameters = {});
+        const HeuristicTreeSearchParameters& parameters = {});
 
 }

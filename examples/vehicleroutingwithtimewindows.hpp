@@ -261,7 +261,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
         if (ok) {
             break;
         } else {
-            if (bs_size_of_the_queue_ < 1024) {
+            if (bs_size_of_the_queue_ < 2048) {
                 bs_size_of_the_queue_ *= 2;
             } else {
                 break;

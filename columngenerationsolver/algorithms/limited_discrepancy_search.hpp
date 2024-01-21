@@ -5,7 +5,7 @@
 namespace columngenerationsolver
 {
 
-struct LimitedDiscrepancySearchOptionalParameters: Parameters
+struct LimitedDiscrepancySearchParameters: Parameters
 {
     /** Maximum discrepancy. */
     Value discrepancy_limit = std::numeric_limits<Value>::infinity();
@@ -16,7 +16,7 @@ struct LimitedDiscrepancySearchOptionalParameters: Parameters
     bool continue_until_feasible = false;
 
     /** Parameters for the column generation sub-problem. */
-    ColumnGenerationOptionalParameters column_generation_parameters;
+    ColumnGenerationParameters column_generation_parameters;
 };
 
 struct LimitedDiscrepancySearchOutput: Output
@@ -26,15 +26,40 @@ struct LimitedDiscrepancySearchOutput: Output
         Output(model) { }
 
 
-    Value solution_discrepancy = -1;
-
     Counter number_of_nodes = 0;
 
     Counter maximum_depth = 0;
+
+    Value maximum_discrepancy = -1;
+
+
+    virtual int format_width() const override { return 30; }
+
+    virtual void format(std::ostream& os) const override
+    {
+        Output::format(os);
+        int width = format_width();
+        os
+            << std::setw(width) << std::left << "Number of nodes: " << number_of_nodes << std::endl
+            << std::setw(width) << std::left << "Maximum depth: " << maximum_depth << std::endl
+            << std::setw(width) << std::left << "Maximum discrepancy: " << maximum_discrepancy << std::endl
+            ;
+    }
+
+    virtual nlohmann::json to_json() const override
+    {
+        nlohmann::json json = Output::to_json();
+        json.merge_patch({
+                {"NumberOfNodes", number_of_nodes},
+                {"MaximumDepth", maximum_depth},
+                {"MaximumDiscrepancy", maximum_discrepancy},
+                });
+        return json;
+    }
 };
 
 const LimitedDiscrepancySearchOutput limited_discrepancy_search(
         const Model& model,
-        const LimitedDiscrepancySearchOptionalParameters& optional_parameters = {});
+        const LimitedDiscrepancySearchParameters& parameters = {});
 
 }
