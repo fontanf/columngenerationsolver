@@ -43,24 +43,24 @@ local_repository(
 )
 
 git_repository(
-    name = "orproblems_",
+    name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
     commit = "82d9e15fd9b178a45cd64e78e9b22364e41a7e1d",
 )
 
 local_repository(
-    name = "orproblems",
+    name = "orproblems_",
     path = "../orproblems/",
 )
 
 git_repository(
-    name = "knapsacksolver_",
+    name = "knapsacksolver",
     remote = "https://github.com/fontanf/knapsacksolver.git",
-    commit = "b61de0a8e0d25b065dc60916c60a39899823158e",
+    commit = "5eb7326256722cff7ead250168d6cd97191da078",
 )
 
 local_repository(
-    name = "knapsacksolver",
+    name = "knapsacksolver_",
     path = "../knapsacksolver/",
 )
 

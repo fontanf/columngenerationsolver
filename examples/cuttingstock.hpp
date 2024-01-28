@@ -122,8 +122,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
 {
     // Build subproblem instance.
     kp2csp_.clear();
-    std::vector<double> profits_double;
-    std::vector<Weight> weights;
+    knapsacksolver::knapsack::InstanceFromFloatProfitsBuilder kp_instance_builder;
     for (ItemTypeId item_type_id = 0;
             item_type_id < instance_.number_of_item_types();
             ++item_type_id) {
@@ -134,19 +133,11 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
         for (Demand q = filled_demands_[item_type_id];
                 q < item_type.demand;
                 ++q) {
-            profits_double.push_back(profit);
-            weights.push_back(item_type.weight);
+            kp_instance_builder.add_item(profit, item_type.weight);
             kp2csp_.push_back(item_type_id);
         }
     }
-    std::vector<knapsacksolver::knapsack::Profit> profits = knapsacksolver::knapsack::convert(
-            profits_double,
-            weights,
-            instance_.capacity());
-    knapsacksolver::knapsack::InstanceBuilder kp_instance_builder;
     kp_instance_builder.set_capacity(instance_.capacity());
-    for (ItemPos pos = 0; pos < (ItemPos)profits.size(); ++pos)
-        kp_instance_builder.add_item(profits[pos], weights[pos]);
     knapsacksolver::knapsack::Instance kp_instance = kp_instance_builder.build();
 
     // Solve subproblem instance.
