@@ -19,7 +19,7 @@ struct LimitedDiscrepancySearchParameters: Parameters
     ColumnGenerationParameters column_generation_parameters;
 
 
-    virtual int format_width() const override { return 41; }
+    virtual int format_width() const override { return 39; }
 
     virtual void format(std::ostream& os) const override
     {
@@ -58,7 +58,7 @@ struct LimitedDiscrepancySearchOutput: Output
     Value maximum_discrepancy = -1;
 
 
-    virtual int format_width() const override { return 40; }
+    virtual int format_width() const override { return 30; }
 
     virtual void format(std::ostream& os) const override
     {

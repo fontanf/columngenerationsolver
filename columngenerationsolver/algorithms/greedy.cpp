@@ -18,7 +18,7 @@ const GreedyOutput columngenerationsolver::greedy(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
-    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns = parameters.fixed_columns;
 
     for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
 
@@ -32,10 +32,10 @@ const GreedyOutput columngenerationsolver::greedy(
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
         if (parameters.internal_diving == 2
-                || (parameters.internal_diving == 1 && fixed_columns.empty())) {
+                || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
             column_generation_parameters.internal_diving = 1;
         }
-        if (fixed_columns.empty()) {
+        if (output.number_of_nodes == 0) {
             algorithm_formatter.print_column_generation_header();
             column_generation_parameters.internal_diving = parameters.internal_diving;
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
@@ -52,7 +52,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 initial_columns.begin(),
                 initial_columns.end());
         column_generation_parameters.column_pool = column_pool;
-        column_generation_parameters.fixed_columns = &fixed_columns;
+        column_generation_parameters.fixed_columns = fixed_columns;
 
         // Solve.
         auto cg_output = column_generation(
@@ -72,7 +72,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 cg_output.columns.begin(),
                 cg_output.columns.end());
 
-        if (fixed_columns.empty()) {
+        if (output.number_of_nodes == 0) {
             algorithm_formatter.print_header();
         }
 
@@ -113,7 +113,7 @@ const GreedyOutput columngenerationsolver::greedy(
             break;
 
         // Update bound.
-        if (fixed_columns.empty()) {
+        if (output.number_of_nodes == 0) {
             Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1
                     || (cg_output.number_of_column_generation_iterations < cg_it_limit)) {

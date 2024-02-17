@@ -474,6 +474,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
             << std::setw(width) << std::left << "LP time: " << time_lpsolve << std::endl
             << std::setw(width) << std::left << "# of CG iterations: " << number_of_column_generation_iterations << std::endl
+            << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
             ;
     }
 };
@@ -491,6 +492,9 @@ struct Parameters: optimizationtools::Parameters
     /** Initial columns. */
     std::vector<std::shared_ptr<const Column>> initial_columns;
 
+    /** Fixed columns. */
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
+
     /**
      * Enable internal diving:
      * - 0: not enabled
@@ -506,6 +510,7 @@ struct Parameters: optimizationtools::Parameters
         json.merge_patch({
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
+                {"NumberOfFixedColumns", fixed_columns.size()},
                 {"InternalDiving", internal_diving},
                 });
         return json;
@@ -520,6 +525,7 @@ struct Parameters: optimizationtools::Parameters
         os
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
+            << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             ;
     }

@@ -98,7 +98,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.maximum_discrepancy,
                 node->discrepancy);
 
-        std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
+        std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns = parameters.fixed_columns;
         auto node_tmp = node;
         std::unordered_set<std::shared_ptr<const Column>> tabu;
         while (node_tmp->parent != NULL) {
@@ -127,7 +127,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
         if (parameters.internal_diving == 2
-                || (parameters.internal_diving == 1 && fixed_columns.empty())) {
+                || (parameters.internal_diving == 1 && node->depth == 0)) {
             column_generation_parameters.internal_diving = 1;
         }
         if (node->depth == 0) {
@@ -153,7 +153,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     node->parent->relaxation_solution.end());
         }
         column_generation_parameters.column_pool = column_pool;
-        column_generation_parameters.fixed_columns = &fixed_columns;
+        column_generation_parameters.fixed_columns = fixed_columns;
 
         // Solve.
         auto cg_output = column_generation(

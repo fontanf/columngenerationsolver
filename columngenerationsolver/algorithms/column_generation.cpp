@@ -91,12 +91,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::vector<Value> row_values(number_of_rows, 0.0);
     Value c0 = 0.0;
 
-    const std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_default;
-    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>* fixed_columns
-        = (parameters.fixed_columns != NULL)?
-        parameters.fixed_columns:
-        &fixed_columns_default;
-    for (auto p: *fixed_columns) {
+    for (auto p: parameters.fixed_columns) {
         const Column& column = *(p.first);
         Value value = p.second;
         for (const LinearTerm& element: column.elements)
@@ -231,7 +226,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // Initialize pricing solver.
     //std::cout << "Initialize pricing solver..." << std::endl;
     std::vector<std::shared_ptr<const Column>> infeasible_columns
-        = model.pricing_solver->initialize_pricing(*fixed_columns);
+        = model.pricing_solver->initialize_pricing(parameters.fixed_columns);
     std::vector<int8_t> feasible(model.columns.size(), 1);
 
     // Add initial columns.
@@ -473,7 +468,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     all_columns_tmp = model.pricing_solver->solve_pricing(duals_sep);
                 } else {
                     std::vector<Value> row_values_tmp = row_values;
-                    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = *fixed_columns;
+                    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = parameters.fixed_columns;
                     for (;;) {
                         model.pricing_solver->initialize_pricing(fixed_columns_tmp);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
@@ -538,7 +533,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         if (!has_fixed)
                             break;
                     }
-                    model.pricing_solver->initialize_pricing(*fixed_columns);
+                    model.pricing_solver->initialize_pricing(parameters.fixed_columns);
                 }
                 std::vector<std::shared_ptr<const Column>> all_columns;
                 for (const auto& column: all_columns_tmp) {

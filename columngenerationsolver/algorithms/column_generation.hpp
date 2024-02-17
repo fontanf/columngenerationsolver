@@ -62,9 +62,6 @@ struct ColumnGenerationParameters: Parameters
     /** Linear programming solver. */
     LinearProgrammingSolver linear_programming_solver = LinearProgrammingSolver::CLP;
 
-    /** Pointer to a vector containing the columns fixed. */
-    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>* fixed_columns = NULL;
-
     /** Maximum number of iterations. */
     Counter maximum_number_of_iterations = -1;
 
