@@ -31,8 +31,13 @@ const GreedyOutput columngenerationsolver::greedy(
             = parameters.column_generation_parameters;
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
+        if (parameters.internal_diving == 2
+                || (parameters.internal_diving == 1 && fixed_columns.empty())) {
+            column_generation_parameters.internal_diving = 1;
+        }
         if (fixed_columns.empty()) {
             algorithm_formatter.print_column_generation_header();
+            column_generation_parameters.internal_diving = parameters.internal_diving;
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
                     const ColumnGenerationOutput& cg_output)
             {

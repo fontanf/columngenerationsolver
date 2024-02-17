@@ -26,6 +26,7 @@ inline boost::program_options::options_description setup_args()
         ("print-checker", boost::program_options::value<int>()->default_value(1), "print checker")
 
         ("linear-programming-solver", boost::program_options::value<std::string>(), "set linear programming solver")
+        ("internal-diving", boost::program_options::value<int>(), "set internal diving")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
         ;
@@ -69,6 +70,8 @@ inline void read_args(
     }
     parameters.initial_columns = initial_columns;
     parameters.column_pool = column_pool;
+    if (vm.count("internal-diving"))
+        parameters.internal_diving = vm["internal-diving"].as<int>();
 }
 
 inline void write_output(

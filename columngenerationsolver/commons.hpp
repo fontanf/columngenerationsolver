@@ -491,6 +491,14 @@ struct Parameters: optimizationtools::Parameters
     /** Initial columns. */
     std::vector<std::shared_ptr<const Column>> initial_columns;
 
+    /**
+     * Enable internal diving:
+     * - 0: not enabled
+     * - 1: enabled at the root node
+     * - 2: enabled at all nodes
+     */
+    int internal_diving = 0;
+
 
     virtual nlohmann::json to_json() const override
     {
@@ -498,11 +506,12 @@ struct Parameters: optimizationtools::Parameters
         json.merge_patch({
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
+                {"InternalDiving", internal_diving},
                 });
         return json;
     }
 
-    virtual int format_width() const override { return 23; }
+    virtual int format_width() const override { return 41; }
 
     virtual void format(std::ostream& os) const override
     {
@@ -511,6 +520,7 @@ struct Parameters: optimizationtools::Parameters
         os
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
+            << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             ;
     }
 };

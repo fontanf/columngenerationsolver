@@ -75,13 +75,20 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     algorithm_formatter.start("Column generation");
     algorithm_formatter.print_column_generation_header();
 
-    RowIdx m = model.rows.size();
+    RowIdx number_of_rows = model.rows.size();
     //std::cout << "m " << m << std::endl;
     //std::cout << "fixed_columns.size() " << fixed_columns.size() << std::endl;
 
+    ColumnHasher column_hasher(model);
+    std::unordered_set<std::shared_ptr<const Column>,
+                       const ColumnHasher&,
+                       const ColumnHasher&> column_pool(0, column_hasher, column_hasher);
+    for (const auto& column: parameters.column_pool)
+        column_pool.insert(column);
+
     // Compute row values.
     //std::cout << "Compute row values..." << std::endl;
-    std::vector<RowIdx> row_values(m, 0.0);
+    std::vector<Value> row_values(number_of_rows, 0.0);
     Value c0 = 0.0;
 
     const std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_default;
@@ -92,23 +99,17 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     for (auto p: *fixed_columns) {
         const Column& column = *(p.first);
         Value value = p.second;
-        for (RowIdx row_pos = 0;
-                row_pos < (RowIdx)column.elements.size();
-                ++row_pos) {
-            RowIdx row_id = column.elements[row_pos].row;
-            Value row_coefficient = column.elements[row_pos].coefficient;
-            row_values[row_id] += value * row_coefficient;
-            //std::cout << val << " " << row_coefficient << " " << val * row_coefficient << std::endl;
-        }
+        for (const LinearTerm& element: column.elements)
+            row_values[element.row] += value * element.coefficient;
         c0 += value * column.objective_coefficient;
     }
 
     // Compute fixed rows;
     //std::cout << "Compute fixed rows..." << std::endl;
-    std::vector<RowIdx> new_row_indices(m, -2);
+    std::vector<RowIdx> new_row_indices(number_of_rows, -2);
     std::vector<RowIdx> new_rows;
     RowIdx row_pos = 0;
-    for (RowIdx row_id = 0; row_id < m; ++row_id) {
+    for (RowIdx row_id = 0; row_id < number_of_rows; ++row_id) {
         //std::cout
         //    << "row " << row
         //    << " lb " << model.row_lower_bounds[row]
@@ -198,7 +199,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 
     std::vector<std::shared_ptr<const Column>> solver_columns;
-    ColumnHasher column_hasher(model);
     std::unordered_set<std::shared_ptr<const Column>,
                        const ColumnHasher&,
                        const ColumnHasher&> solver_columns_set(0, column_hasher, column_hasher);
@@ -279,20 +279,20 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 
     // Duals given to the pricing solver.
-    std::vector<Value> duals_sep(m, 0);
+    std::vector<Value> duals_sep(number_of_rows, 0);
     // π_in, duals at the previous point.
-    std::vector<Value> duals_in(m, 0);
+    std::vector<Value> duals_in(number_of_rows, 0);
     // π_out, duals of next point without stabilization.
-    std::vector<Value> duals_out(m, 0);
+    std::vector<Value> duals_out(number_of_rows, 0);
     // π_in + (1 − α) (π_out − π_in)
-    std::vector<Value> duals_tilde(m, 0);
+    std::vector<Value> duals_tilde(number_of_rows, 0);
     // Duals in the direction of the subgradient.
-    std::vector<Value> duals_g(m, 0);
+    std::vector<Value> duals_g(number_of_rows, 0);
     // β π_g + (1 − β) π_out
-    std::vector<Value> rho(m, 0);
-    std::vector<Value> lagrangian_constraint_values(m, 0);
+    std::vector<Value> rho(number_of_rows, 0);
+    std::vector<Value> lagrangian_constraint_values(number_of_rows, 0);
     // g_in.
-    std::vector<Value> subgradient(m, 0);
+    std::vector<Value> subgradient(number_of_rows, 0);
     double alpha = parameters.static_wentges_smoothing_parameter;
     for (output.number_of_column_generation_iterations = 1;
             ;
@@ -386,7 +386,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             duals_in = duals_sep; // The last shall be the first.
             //std::cout << "alpha " << alpha << std::endl;
             for (Counter k = 1; ; ++k) { // Mispricing number.
-                                         // Update global mispricing number.
+                // Update global mispricing number.
                 if (k > 1)
                     output.number_of_mispricings++;
                 // Compute separation point.
@@ -468,7 +468,86 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // Call pricing solver on the computed separation point.
                 auto start_pricing = std::chrono::high_resolution_clock::now();
 
-                auto all_columns = model.pricing_solver->solve_pricing(duals_sep);
+                std::vector<std::shared_ptr<const Column>> all_columns_tmp;
+                if (!parameters.internal_diving) {
+                    all_columns_tmp = model.pricing_solver->solve_pricing(duals_sep);
+                } else {
+                    std::vector<Value> row_values_tmp = row_values;
+                    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp;
+                    for (;;) {
+                        model.pricing_solver->initialize_pricing(fixed_columns_tmp);
+                        std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
+                            = model.pricing_solver->solve_pricing(duals_sep);
+                        std::vector<std::shared_ptr<const Column>> all_columns_tmp_1;
+                        for (const auto& column: all_columns_tmp_0) {
+                            if (column->elements.empty())
+                                continue;
+                            all_columns_tmp_1.push_back(column);
+                            all_columns_tmp.push_back(column);
+                        }
+                        if (all_columns_tmp_1.empty())
+                            break;
+                        // Sort new columns by reduced cost.
+                        std::sort(
+                                all_columns_tmp.begin(),
+                                all_columns_tmp.end(),
+                                [&model, &duals_out](
+                                    const std::shared_ptr<const Column>& column_1,
+                                    const std::shared_ptr<const Column>& column_2)
+                                {
+                                    Value rc1 = compute_reduced_cost(*column_1, duals_out);
+                                    Value rc2 = compute_reduced_cost(*column_2, duals_out);
+                                    if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
+                                        return rc1 < rc2;
+                                    } else {
+                                        return rc1 > rc2;
+                                    }
+                                });
+                        // Loop through new column by order of reduced costs.
+                        bool has_fixed = false;
+                        for (const auto& column: all_columns_tmp_1) {
+                            // Compute the maximum number of copies of the
+                            // column that can be added.
+                            Value value = std::numeric_limits<Value>::infinity();
+                            for (const LinearTerm& element: column->elements) {
+                                if (element.coefficient > 0) {
+                                    Value v
+                                        = (model.rows[element.row].upper_bound
+                                                - row_values_tmp[element.row])
+                                        / element.coefficient;
+                                    value = (std::min)(value, v);
+                                } else {
+                                    Value v
+                                        = (row_values_tmp[element.row]
+                                                - model.rows[element.row].lower_bound)
+                                        / (-element.coefficient);
+                                    value = (std::min)(value, v);
+                                }
+                            }
+                            //std::cout << "value " << value << std::endl;
+
+                            if (value > 0) {
+                                // Update row values.
+                                for (const LinearTerm& element: column->elements)
+                                    row_values_tmp[element.row] += value * element.coefficient;
+                                // Update fixed columns.
+                                fixed_columns_tmp.push_back({column, value});
+                                has_fixed = true;
+                            }
+                        }
+                        if (!has_fixed)
+                            break;
+                    }
+                    model.pricing_solver->initialize_pricing(*fixed_columns);
+                }
+                std::vector<std::shared_ptr<const Column>> all_columns;
+                for (const auto& column: all_columns_tmp) {
+                    if (column_pool.find(column) != column_pool.end())
+                        continue;
+                    column_pool.insert(column);
+                    all_columns.push_back(column);
+                    output.columns.push_back(column);
+                }
 
                 auto end_pricing = std::chrono::high_resolution_clock::now();
                 auto time_span_pricing = std::chrono::duration_cast<std::chrono::duration<double>>(end_pricing - start_pricing);
@@ -476,10 +555,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 output.number_of_pricings++;
                 if (alpha_cur == 0 && beta == 0)
                     output.number_of_no_stab_pricings++;
-
-                // Add new column to the global column pool.
-                for (const std::shared_ptr<const Column>& column: all_columns)
-                    output.columns.push_back(column);
 
                 // Look for negative reduced cost columns.
                 for (const std::shared_ptr<const Column>& column: all_columns) {

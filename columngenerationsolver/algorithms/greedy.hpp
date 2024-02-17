@@ -9,6 +9,24 @@ struct GreedyParameters: Parameters
 {
     /** Parameters for the column generation sub-problem. */
     ColumnGenerationParameters column_generation_parameters;
+
+
+    virtual int format_width() const override { return 41; }
+
+    virtual void format(std::ostream& os) const override
+    {
+        Parameters::format(os);
+        //int width = format_width();
+        //os
+        //    ;
+    }
+
+    virtual nlohmann::json to_json() const override
+    {
+        nlohmann::json json = Parameters::to_json();
+        json.merge_patch({});
+        return json;
+    }
 };
 
 struct GreedyOutput: Output

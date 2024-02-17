@@ -126,6 +126,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             = parameters.column_generation_parameters;
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
+        if (parameters.internal_diving == 2
+                || (parameters.internal_diving == 1 && fixed_columns.empty())) {
+            column_generation_parameters.internal_diving = 1;
+        }
         if (node->depth == 0) {
             algorithm_formatter.print_column_generation_header();
             column_generation_parameters.iteration_callback = [&algorithm_formatter](

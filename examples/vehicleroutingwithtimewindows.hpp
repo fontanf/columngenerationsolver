@@ -59,11 +59,9 @@ class PricingSolver: public columngenerationsolver::PricingSolver
 public:
 
     PricingSolver(
-            const Instance& instance,
-            double dummy_column_objective_coefficient):
+            const Instance& instance):
         instance_(instance),
-        visited_customers_(instance.number_of_locations(), 0),
-        dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
+        visited_customers_(instance.number_of_locations(), 0)
     { }
 
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
@@ -71,6 +69,8 @@ public:
 
     virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals);
+
+    void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
 
 private:
 
@@ -80,9 +80,7 @@ private:
 
     std::vector<LocationId> espp2cvrp_;
 
-    treesearchsolver::NodeId bs_size_of_the_queue_ = 128;
-
-    double dummy_column_objective_coefficient_;
+    treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
 
 };
 
@@ -117,7 +115,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 
     // Pricing solver.
     model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance, model.dummy_column_objective_coefficient));
+            new PricingSolver(instance));
 
     return model;
 }
@@ -150,6 +148,8 @@ struct ColumnExtra
 std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
+    std::vector<std::shared_ptr<const Column>> columns;
+
     // Build subproblem instance.
     espp2cvrp_.clear();
     espp2cvrp_.push_back(0);
@@ -162,7 +162,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
     }
     LocationId espp_number_of_locations = espp2cvrp_.size();
     if (espp_number_of_locations == 1)
-        return {};
+        return columns;
     espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     double multiplier = 1000;
     for (LocationId espp_location_id = 0;
@@ -199,74 +199,51 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
     }
     espprctw::Instance espp_instance = espp_instance_builder.build();
 
-    std::vector<std::shared_ptr<const Column>> columns;
     espprctw::BranchingScheme branching_scheme(espp_instance);
 
     // Solve subproblem instance.
-    for (;;) {
-        bool ok = false;
+    treesearchsolver::IterativeBeamSearchParameters<espprctw::BranchingScheme> espp_parameters;
+    espp_parameters.maximum_size_of_the_solution_pool = 1;
+    espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
+    espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
+    espp_parameters.verbosity_level = 0;
+    auto espp_output = treesearchsolver::iterative_beam_search(
+            branching_scheme, espp_parameters);
 
-        treesearchsolver::IterativeBeamSearchParameters<espprctw::BranchingScheme> espp_parameters;
-        espp_parameters.maximum_size_of_the_solution_pool = 100;
-        espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
-        espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
-        espp_parameters.verbosity_level = 0;
-        auto espp_output = treesearchsolver::iterative_beam_search(
-                branching_scheme, espp_parameters);
+    // Retrieve column.
+    for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
+            espp_output.solution_pool.solutions()) {
+        if (node->last_location_id == 0)
+            continue;
 
-        // Retrieve column.
-        LocationId i = 0;
-        for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
-                espp_output.solution_pool.solutions()) {
-            if (i > 2 * espp_number_of_locations)
-                break;
-            if (node->last_location_id == 0)
-                continue;
+        std::vector<LocationId> solution; // Without the depot.
+        for (auto node_tmp = node;
+                node_tmp->parent != nullptr;
+                node_tmp = node_tmp->parent) {
+            solution.push_back(espp2cvrp_[node_tmp->last_location_id]);
+        }
+        std::reverse(solution.begin(), solution.end());
 
-            std::vector<LocationId> solution; // Without the depot.
-            for (auto node_tmp = node;
-                    node_tmp->parent != nullptr;
-                    node_tmp = node_tmp->parent) {
-                solution.push_back(espp2cvrp_[node_tmp->last_location_id]);
-            }
-            std::reverse(solution.begin(), solution.end());
-            i += solution.size();
-
-            Column column;
+        Column column;
+        LinearTerm element;
+        element.row = 0;
+        element.coefficient = 1;
+        column.elements.push_back(element);
+        LocationId location_id_prev = 0;
+        for (LocationId location_id: solution) {
             LinearTerm element;
-            element.row = 0;
+            element.row = location_id;
             element.coefficient = 1;
             column.elements.push_back(element);
-            LocationId location_id_prev = 0;
-            for (LocationId location_id: solution) {
-                LinearTerm element;
-                element.row = location_id;
-                element.coefficient = 1;
-                column.elements.push_back(element);
-                column.objective_coefficient += instance_.travel_time(location_id_prev, location_id);
-                location_id_prev = location_id;
-            }
-            column.objective_coefficient += instance_.travel_time(location_id_prev, 0);
-
-            // Extra.
-            ColumnExtra extra {solution};
-            column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-            columns.push_back(std::shared_ptr<const Column>(new Column(column)));
-
-            if (columngenerationsolver::compute_reduced_cost(column, duals)
-                    <= -dummy_column_objective_coefficient_ * 10e-9) {
-                ok = true;
-            }
+            column.objective_coefficient += instance_.travel_time(location_id_prev, location_id);
+            location_id_prev = location_id;
         }
-        if (ok) {
-            break;
-        } else {
-            if (bs_size_of_the_queue_ < 2048) {
-                bs_size_of_the_queue_ *= 2;
-            } else {
-                break;
-            }
-        }
+        column.objective_coefficient += instance_.travel_time(location_id_prev, 0);
+
+        // Extra.
+        ColumnExtra extra {solution};
+        column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
+        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
     }
 
     return columns;
