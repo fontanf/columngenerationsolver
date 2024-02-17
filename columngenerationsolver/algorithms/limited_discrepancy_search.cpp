@@ -21,6 +21,9 @@ struct LimitedDiscrepancySearchNode
     /** Value of the column branched at this node. */
     Value value = 0;
 
+    /** Relaxation solution. */
+    std::vector<std::shared_ptr<const Column>> relaxation_solution;
+
     /** Discrepancy of the node. */
     Value discrepancy = 0;
 
@@ -45,6 +48,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             output);
     algorithm_formatter.start("Limited discrepancy search");
 
+    std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
+
     // Nodes
     auto comp = [](
             const std::shared_ptr<LimitedDiscrepancySearchNode>& node_1,
@@ -59,7 +64,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
     // Root node.
     auto root = std::make_shared<LimitedDiscrepancySearchNode>();
     nodes.insert(root);
-    bool heuristictreesearch_stop = parameters.heuristictreesearch_stop;
 
     while (!nodes.empty()) {
         //std::cout << "nodes.size() " << nodes.size() << std::endl;
@@ -83,7 +87,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 break;
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
-        if (heuristictreesearch_stop
+        if (parameters.automatic_stop
                 && output.number_of_nodes > 2
                 && output.number_of_nodes > 2 * output.maximum_depth)
             break;
@@ -120,6 +124,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         // Run column generation
         ColumnGenerationParameters column_generation_parameters
             = parameters.column_generation_parameters;
+        column_generation_parameters.timer = parameters.timer;
+        column_generation_parameters.verbosity_level = 0;
         if (node->depth == 0) {
             algorithm_formatter.print_column_generation_header();
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
@@ -127,17 +133,23 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             {
                 algorithm_formatter.print_column_generation_iteration(
                         cg_output.number_of_column_generation_iterations,
-                        cg_output.relaxation_solution.objective_value(),
-                        cg_output.columns.size());
+                        cg_output.number_of_columns_in_linear_subproblem,
+                        cg_output.relaxation_solution_value);
             };
         }
-        column_generation_parameters.initial_columns.insert(
-                column_generation_parameters.initial_columns.end(),
-                output.columns.begin(),
-                output.columns.end());
+        if (node->parent == nullptr) {
+            column_generation_parameters.initial_columns.insert(
+                    column_generation_parameters.initial_columns.end(),
+                    parameters.initial_columns.begin(),
+                    parameters.initial_columns.end());
+        } else {
+            column_generation_parameters.initial_columns.insert(
+                    column_generation_parameters.initial_columns.end(),
+                    node->parent->relaxation_solution.begin(),
+                    node->parent->relaxation_solution.end());
+        }
+        column_generation_parameters.column_pool = column_pool;
         column_generation_parameters.fixed_columns = &fixed_columns;
-        column_generation_parameters.timer = parameters.timer;
-        column_generation_parameters.verbosity_level = 0;
 
         // Solve.
         auto cg_output = column_generation(
@@ -152,6 +164,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.columns.end(),
                 cg_output.columns.begin(),
                 cg_output.columns.end());
+        column_pool.insert(
+                column_pool.end(),
+                cg_output.columns.begin(),
+                cg_output.columns.end());
 
         //std::cout << "bound " << cg_output.solution_value << std::endl;
         if (parameters.timer.needs_to_end())
@@ -162,9 +178,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1
                     || cg_output.number_of_column_generation_iterations < cg_it_limit) {
-                heuristictreesearch_stop = false;
                 algorithm_formatter.update_bound(cg_output.relaxation_solution.objective_value());
             }
+            output.relaxation_solution = cg_output.relaxation_solution;
         }
         if (cg_output.relaxation_solution.columns().empty()) {
             //std::cout << "no solution" << std::endl;
@@ -186,6 +202,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     && output.solution.objective_value() >= cg_output.solution.objective_value() - FFOT_TOL)
                 continue;
         }
+
+        // Update node relaxation solution.
+        for (const auto& p: cg_output.relaxation_solution.columns())
+            node->relaxation_solution.push_back(p.first);
 
         //std::cout << "fc";
         //for (auto p: fixed_columns)

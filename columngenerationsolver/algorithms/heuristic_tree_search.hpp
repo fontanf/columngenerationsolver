@@ -1,8 +1,6 @@
 #pragma once
 
 #include "columngenerationsolver/algorithms/column_generation.hpp"
-#include "columngenerationsolver/algorithms/greedy.hpp"
-#include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
 
 namespace columngenerationsolver
 {

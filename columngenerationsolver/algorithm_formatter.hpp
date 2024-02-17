@@ -30,8 +30,8 @@ public:
     /** Print current iteration of the column generation algorithm. */
     void print_column_generation_iteration(
             Counter iteration,
-            double value,
-            ColIdx number_of_columns);
+            ColIdx number_of_columns,
+            double value);
 
     /** Print the header. */
     void print_header();

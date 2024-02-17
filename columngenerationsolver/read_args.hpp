@@ -25,7 +25,9 @@ inline boost::program_options::options_description setup_args()
         ("log-to-stderr", "write log to stderr")
         ("print-checker", boost::program_options::value<int>()->default_value(1), "print checker")
 
-        //("maximum-number-of-nodes", boost::program_options::value<int>(), "set the maximum number of nodes")
+        ("linear-programming-solver", boost::program_options::value<std::string>(), "set linear programming solver")
+        ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
+        ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
         ;
     return desc;
 }
@@ -35,7 +37,9 @@ using WriteSolutionFunction = std::function<void(const Solution&, const std::str
 inline void read_args(
         Parameters& parameters,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool,
+        const std::vector<std::shared_ptr<const Column>>& initial_columns)
 {
     parameters.timer.set_sigint_handler();
     parameters.messages_to_stdout = true;
@@ -63,6 +67,8 @@ inline void read_args(
             }
         };
     }
+    parameters.initial_columns = initial_columns;
+    parameters.column_pool = column_pool;
 }
 
 inline void write_output(
@@ -83,10 +89,12 @@ inline void write_output(
 inline const Output run_column_generation(
         const Model& model,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool,
+        const std::vector<std::shared_ptr<const Column>>& initial_columns)
 {
     ColumnGenerationParameters parameters;
-    read_args(parameters, write_solution, vm);
+    read_args(parameters, write_solution, vm, column_pool, initial_columns);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
     const Output output = column_generation(model, parameters);
@@ -97,10 +105,12 @@ inline const Output run_column_generation(
 inline const Output run_greedy(
         const Model& model,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool,
+        const std::vector<std::shared_ptr<const Column>>& initial_columns)
 {
     GreedyParameters parameters;
-    read_args(parameters, write_solution, vm);
+    read_args(parameters, write_solution, vm, column_pool, initial_columns);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
     const Output output = greedy(model, parameters);
@@ -111,12 +121,16 @@ inline const Output run_greedy(
 inline const Output run_limited_discrepancy_search(
         const Model& model,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool,
+        const std::vector<std::shared_ptr<const Column>>& initial_columns)
 {
     LimitedDiscrepancySearchParameters parameters;
-    read_args(parameters, write_solution, vm);
-    //if (vm.count("maximum-number-of-nodes"))
-    //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
+    read_args(parameters, write_solution, vm, column_pool, initial_columns);
+    if (vm.count("discrepancy-limit"))
+        parameters.discrepancy_limit = vm["discrepancy-limit"].as<int>();
+    if (vm.count("automatic-stop"))
+        parameters.automatic_stop = vm["automatic-stop"].as<bool>();
     const Output output = limited_discrepancy_search(model, parameters);
     write_output(write_solution, vm, output);
     return output;
@@ -125,10 +139,12 @@ inline const Output run_limited_discrepancy_search(
 inline const Output run_heuristic_tree_search(
         const Model& model,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool,
+        const std::vector<std::shared_ptr<const Column>>& initial_columns)
 {
     HeuristicTreeSearchParameters parameters;
-    read_args(parameters, write_solution, vm);
+    read_args(parameters, write_solution, vm, column_pool, initial_columns);
     //if (vm.count("maximum-number-of-nodes"))
     //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
     const Output output = heuristic_tree_search(model, parameters);
@@ -139,7 +155,9 @@ inline const Output run_heuristic_tree_search(
 inline Output run(
         const Model& model,
         const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm)
+        const boost::program_options::variables_map& vm,
+        const std::vector<std::shared_ptr<const Column>>& column_pool = {},
+        const std::vector<std::shared_ptr<const Column>>& initial_columns = {})
 {
 
 #if XPRESS_FOUND
@@ -150,13 +168,13 @@ inline Output run(
 
     std::string algorithm = vm["algorithm"].as<std::string>();
     if (algorithm == "column-generation") {
-        return run_column_generation(model, write_solution, vm);
+        return run_column_generation(model, write_solution, vm, column_pool, initial_columns);
     } else if (algorithm == "greedy") {
-        return run_greedy(model, write_solution, vm);
+        return run_greedy(model, write_solution, vm, column_pool, initial_columns);
     } else if (algorithm == "limited-discrepancy-search") {
-        return run_limited_discrepancy_search(model, write_solution, vm);
+        return run_limited_discrepancy_search(model, write_solution, vm, column_pool, initial_columns);
     } else if (algorithm == "heuristic-tree-search") {
-        return run_heuristic_tree_search(model, write_solution, vm);
+        return run_heuristic_tree_search(model, write_solution, vm, column_pool, initial_columns);
     } else {
         throw std::invalid_argument(
                 "Unknown algorithm \"" + algorithm + "\".");

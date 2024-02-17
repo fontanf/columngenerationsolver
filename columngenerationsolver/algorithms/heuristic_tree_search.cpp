@@ -1,6 +1,7 @@
 #include "columngenerationsolver/algorithms/heuristic_tree_search.hpp"
 
 #include "columngenerationsolver/algorithm_formatter.hpp"
+#include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
 
 using namespace columngenerationsolver;
 
@@ -35,7 +36,7 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
             = parameters.column_generation_parameters;
         lds_parameters.column_generation_parameters.maximum_number_of_iterations
             = output.maximum_number_of_iterations;
-        lds_parameters.heuristictreesearch_stop = true;
+        lds_parameters.automatic_stop = true;
 
         lds_parameters.new_solution_callback = [&algorithm_formatter](
                 const Output& callback_output)

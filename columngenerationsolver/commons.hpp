@@ -157,7 +157,7 @@ struct Model
                 << "Number of constraints:               " << rows.size() << std::endl
                 << "Column lower bound:                  " << column_lower_bound << std::endl
                 << "Column upper bound:                  " << column_upper_bound << std::endl
-                << "Dummy column objective coefficient:  " << column_upper_bound << std::endl
+                << "Dummy column objective coefficient:  " << dummy_column_objective_coefficient << std::endl
                 ;
         }
     }
@@ -391,7 +391,8 @@ struct Output: optimizationtools::Output
         solution(SolutionBuilder().set_model(model).build()),
         bound((model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
                 -std::numeric_limits<Value>::infinity():
-                +std::numeric_limits<Value>::infinity()) { }
+                +std::numeric_limits<Value>::infinity()),
+        relaxation_solution(SolutionBuilder().set_model(model).build()) { }
 
 
     /** Solution. */
@@ -414,6 +415,9 @@ struct Output: optimizationtools::Output
 
     /** Columns generated during the algorithm. */
     std::vector<std::shared_ptr<const Column>> columns;
+
+    /** Solution. */
+    Solution relaxation_solution;
 
 
     std::string solution_value() const
@@ -481,6 +485,9 @@ struct Parameters: optimizationtools::Parameters
     /** Callback function called when a new best solution is found. */
     NewSolutionCallback new_solution_callback = [](const Output&) { };
 
+    /** Column pool. */
+    std::vector<std::shared_ptr<const Column>> column_pool;
+
     /** Initial columns. */
     std::vector<std::shared_ptr<const Column>> initial_columns;
 
@@ -488,7 +495,10 @@ struct Parameters: optimizationtools::Parameters
     virtual nlohmann::json to_json() const override
     {
         nlohmann::json json = optimizationtools::Parameters::to_json();
-        json.merge_patch({});
+        json.merge_patch({
+                {"NumberOfColumnsInTheColumnPool", column_pool.size()},
+                {"NumberOfInitialColumns", initial_columns.size()},
+                });
         return json;
     }
 
@@ -497,9 +507,11 @@ struct Parameters: optimizationtools::Parameters
     virtual void format(std::ostream& os) const override
     {
         optimizationtools::Parameters::format(os);
-        //int width = format_width();
-        //os
-        //    ;
+        int width = format_width();
+        os
+            << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
+            << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
+            ;
     }
 };
 

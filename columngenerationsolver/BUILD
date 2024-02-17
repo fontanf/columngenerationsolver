@@ -24,6 +24,7 @@ cc_library(
         ],
         deps = [
                 "@optimizationtools//optimizationtools/utils:utils",
+                "@optimizationtools//optimizationtools/containers:containers",
         ] + CLP_DEP + CPLEX_DEP + GUROBI_DEP + XPRESS_DEP,
         copts = STDCPP + CLP_COPTS + CPLEX_COPTS + GUROBI_COPTS + XPRESS_COPTS,
         visibility = ["//visibility:public"],

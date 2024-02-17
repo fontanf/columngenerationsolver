@@ -54,8 +54,8 @@ void AlgorithmFormatter::print_column_generation_header()
 
 void AlgorithmFormatter::print_column_generation_iteration(
             Counter iteration,
-            double value,
-            ColIdx number_of_columns)
+            ColIdx number_of_columns,
+            double value)
 {
     output_.time = parameters_.timer.elapsed_time();
     if (parameters_.verbosity_level == 0)

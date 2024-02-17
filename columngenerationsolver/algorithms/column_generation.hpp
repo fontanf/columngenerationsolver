@@ -9,15 +9,11 @@ struct ColumnGenerationOutput: Output
 {
     /** Constructor. */
     ColumnGenerationOutput(const Model& model):
-        Output(model),
-        relaxation_solution(SolutionBuilder().set_model(model).build()) { }
+        Output(model) { }
 
 
-    /**
-     * Solution (fractional) found at the end of the column generation
-     * procedure, given as a list of column id from the column pool and value.
-     */
-    Solution relaxation_solution;
+    /** Value of the relaxation solution (with dummy columns). */
+    double relaxation_solution_value = 0.0;
 
     /** Number of columns in the linear subproblem. */
     ColIdx number_of_columns_in_linear_subproblem = 0;
@@ -117,7 +113,8 @@ struct ColumnGenerationParameters: Parameters
                 {"StaticDirectionalSmoothingParameter", static_directional_smoothing_parameter},
                 {"SelfAdjustingWentgesSmoothing", self_adjusting_wentges_smoothing},
                 {"AutomaticDirectionalSmoothing", automatic_directional_smoothing},
-                {"MaximumNumberOfIterations", maximum_number_of_iterations}});
+                {"MaximumNumberOfIterations", maximum_number_of_iterations},
+                });
         return json;
     }
 };

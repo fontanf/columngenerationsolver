@@ -4,6 +4,7 @@
 
 #if CLP_FOUND
 #include <ClpModel.hpp>
+#include <CbcOrClpParam.hpp>
 #include <OsiClpSolverInterface.hpp>
 #endif
 
@@ -110,16 +111,18 @@ public:
             const std::vector<Value>& row_upper_bounds)
     {
         model_.messageHandler()->setLogLevel(0);
+        //model_.setLogLevel(99);
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.setOptimizationDirection(1);
         } else {
             model_.setOptimizationDirection(-1);
         }
-        for (RowIdx i = 0; i < (RowIdx)row_lower_bounds.size(); ++i)
+        for (RowIdx i = 0; i < (RowIdx)row_lower_bounds.size(); ++i) {
             model_.addRow(
                     0, NULL, NULL,
                     (row_lower_bounds[i] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[i]: -COIN_DBL_MAX,
-                    (row_upper_bounds[i] !=  std::numeric_limits<Value>::infinity())? row_upper_bounds[i]: COIN_DBL_MAX);
+                    (row_upper_bounds[i] != std::numeric_limits<Value>::infinity())? row_upper_bounds[i]: COIN_DBL_MAX);
+        }
     }
 
     virtual ~ColumnGenerationSolverClp() { }
@@ -136,19 +139,20 @@ public:
                 row_indices.size(),
                 row_indices_int.data(),
                 row_coefficients.data(),
-                lower_bound,
-                upper_bound,
+                ((lower_bound != -std::numeric_limits<Value>::infinity())? lower_bound: -COIN_DBL_MAX),
+                ((upper_bound != std::numeric_limits<Value>::infinity())? upper_bound: COIN_DBL_MAX),
                 objective_coefficient);
     }
 
     void solve()
     {
         //model_.writeLp("output");
+        //model_.initialSolve();
         model_.primal();
     }
 
-    Value objective()        const { return model_.objectiveValue(); }
-    Value dual(RowIdx row)   const { return model_.dualRowSolution()[row]; }
+    Value objective() const { return model_.objectiveValue(); }
+    Value dual(RowIdx row) const { return model_.dualRowSolution()[row]; }
     Value primal(ColIdx col) const { return model_.getColSolution()[col]; }
 
 private:
@@ -210,7 +214,11 @@ public:
         IloNumColumn col = obj_(objective_coefficient);
         for (RowIdx i = 0; i < (RowIdx)row_indices.size(); ++i)
             col += ranges_[row_indices[i]](row_coefficients[i]);
-        vars_.push_back(IloNumVar(col, lower_bound, upper_bound, ILOFLOAT));
+        vars_.push_back(IloNumVar(
+                    col,
+                    ((lower_bound != -std::numeric_limits<Value>::infinity())? lower_bound: -IloInfinity),
+                    ((upper_bound != std::numeric_limits<Value>::infinity())? upper_bound: IloInfinity),
+                    ILOFLOAT));
         model_.add(vars_.back());
     }
 
@@ -220,8 +228,8 @@ public:
         cplex_.solve();
     }
 
-    Value objective()        const { return cplex_.getObjValue(); }
-    Value dual(RowIdx row)   const { return cplex_.getDual(ranges_[row]); }
+    Value objective() const { return cplex_.getObjValue(); }
+    Value dual(RowIdx row) const { return cplex_.getDual(ranges_[row]); }
     Value primal(ColIdx col) const { return cplex_.getValue(vars_[col]); }
 
 private:
@@ -400,8 +408,10 @@ public:
     {
         KNINT idx = -1;
         KN_add_var(kc_, &idx);
-        KN_set_var_lobnd(kc_, idx, lower_bound);
-        KN_set_var_upbnd(kc_, idx, upper_bound);
+        if (lower_bound != -std::numeric_limits<Value>::infinity())
+            KN_set_var_lobnd(kc_, idx, lower_bound);
+        if (upper_bound != std::numeric_limits<Value>::infinity())
+            KN_set_var_upbnd(kc_, idx, upper_bound);
         KN_add_obj_linear_struct(kc_, 1, &idx, &objective_coefficient);
 
         std::vector<KNINT> row_indices_kn;

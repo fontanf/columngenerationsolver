@@ -11,12 +11,37 @@ struct LimitedDiscrepancySearchParameters: Parameters
     Value discrepancy_limit = std::numeric_limits<Value>::infinity();
 
     /** Specific stop criteria for the Heuristic Tree Search algorithm. */
-    bool heuristictreesearch_stop = false;
+    bool automatic_stop = false;
 
     bool continue_until_feasible = false;
 
     /** Parameters for the column generation sub-problem. */
     ColumnGenerationParameters column_generation_parameters;
+
+
+    virtual int format_width() const override { return 41; }
+
+    virtual void format(std::ostream& os) const override
+    {
+        Parameters::format(os);
+        int width = format_width();
+        os
+            << std::setw(width) << std::left << "Discrepancy limit: " << discrepancy_limit << std::endl
+            << std::setw(width) << std::left << "Automatic stop: " << automatic_stop << std::endl
+            << std::setw(width) << std::left << "Continue until feasible: " << continue_until_feasible << std::endl
+            ;
+    }
+
+    virtual nlohmann::json to_json() const override
+    {
+        nlohmann::json json = Parameters::to_json();
+        json.merge_patch({
+                {"DiscrepancyLimit", discrepancy_limit},
+                {"AutomaticStop", automatic_stop},
+                {"ContinueUntilFeasible", continue_until_feasible},
+                });
+        return json;
+    }
 };
 
 struct LimitedDiscrepancySearchOutput: Output
@@ -33,7 +58,7 @@ struct LimitedDiscrepancySearchOutput: Output
     Value maximum_discrepancy = -1;
 
 
-    virtual int format_width() const override { return 30; }
+    virtual int format_width() const override { return 40; }
 
     virtual void format(std::ostream& os) const override
     {
