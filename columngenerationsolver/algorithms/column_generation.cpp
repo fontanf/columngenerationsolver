@@ -473,7 +473,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     all_columns_tmp = model.pricing_solver->solve_pricing(duals_sep);
                 } else {
                     std::vector<Value> row_values_tmp = row_values;
-                    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp;
+                    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = *fixed_columns;
                     for (;;) {
                         model.pricing_solver->initialize_pricing(fixed_columns_tmp);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
