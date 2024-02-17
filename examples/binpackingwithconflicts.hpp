@@ -52,18 +52,16 @@ class PricingSolver: public columngenerationsolver::PricingSolver
 public:
 
     PricingSolver(
-            const Instance& instance,
-            double dummy_column_objective_coefficient):
+            const Instance& instance):
         instance_(instance),
         packed_items_(instance.number_of_items()),
-        bpp2kp_(instance.number_of_items()),
-        dummy_column_objective_coefficient_(dummy_column_objective_coefficient)
+        bpp2kp_(instance.number_of_items())
     { }
 
-    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
+    virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -77,8 +75,6 @@ private:
     std::vector<treesearchsolver::knapsackwithconflicts::ItemId> bpp2kp_;
 
     treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
-
-    double dummy_column_objective_coefficient_;
 
 };
 
@@ -100,12 +96,9 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
         model.rows.push_back(row);
     }
 
-    // Dummy column objective coefficient.
-    model.dummy_column_objective_coefficient = 2 * instance.number_of_items();
-
     // Pricing solver.
     model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance, model.dummy_column_objective_coefficient));
+            new PricingSolver(instance));
 
     return model;
 }
@@ -183,8 +176,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             }
             columns.push_back(std::shared_ptr<const Column>(new Column(column)));
 
-            if (columngenerationsolver::compute_reduced_cost(column, duals)
-                    <= -dummy_column_objective_coefficient_ * 10e-9) {
+            if (columngenerationsolver::compute_reduced_cost(column, duals) <= 0) {
                 ok = true;
             }
         }

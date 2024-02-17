@@ -141,9 +141,6 @@ struct Model
     /** Solver of the pricing problem. */
     std::unique_ptr<PricingSolver> pricing_solver = NULL;
 
-    /** Objective coefficient of the dummy columns. */
-    Value dummy_column_objective_coefficient;
-
     /** Column which are not dynamically generated. */
     std::vector<std::shared_ptr<const Column>> columns;
 
@@ -154,10 +151,9 @@ struct Model
     {
         if (verbosity_level >= 1) {
             os
-                << "Number of constraints:               " << rows.size() << std::endl
-                << "Column lower bound:                  " << column_lower_bound << std::endl
-                << "Column upper bound:                  " << column_upper_bound << std::endl
-                << "Dummy column objective coefficient:  " << dummy_column_objective_coefficient << std::endl
+                << "Number of constraints:  " << rows.size() << std::endl
+                << "Column lower bound:     " << column_lower_bound << std::endl
+                << "Column upper bound:     " << column_upper_bound << std::endl
                 ;
         }
     }
@@ -410,6 +406,9 @@ struct Output: optimizationtools::Output
     /** Time spent solving the pricing subproblems. */
     double time_pricing = 0.0;
 
+    /** Objective coefficient of the dummy columns. */
+    Value dummy_column_objective_coefficient;
+
     /** Number of column generation iterations. */
     Counter number_of_column_generation_iterations = 0;
 
@@ -457,6 +456,7 @@ struct Output: optimizationtools::Output
             {"PricingTime", time_pricing},
             {"LpTime", time_lpsolve},
             {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
+            {"DummyColumnObjectiveCoefficient", dummy_column_objective_coefficient},
         };
     }
 
@@ -473,6 +473,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Time: " << time << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
             << std::setw(width) << std::left << "LP time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
             << std::setw(width) << std::left << "# of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
             ;
@@ -485,6 +486,9 @@ struct Parameters: optimizationtools::Parameters
 {
     /** Callback function called when a new best solution is found. */
     NewSolutionCallback new_solution_callback = [](const Output&) { };
+
+    /** Objective coefficient of the dummy columns. */
+    Value dummy_column_objective_coefficient = 1;
 
     /** Column pool. */
     std::vector<std::shared_ptr<const Column>> column_pool;
@@ -508,6 +512,7 @@ struct Parameters: optimizationtools::Parameters
     {
         nlohmann::json json = optimizationtools::Parameters::to_json();
         json.merge_patch({
+                {"DummyColumnObjectiveCoefficient", dummy_column_objective_coefficient},
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
                 {"NumberOfFixedColumns", fixed_columns.size()},
@@ -523,6 +528,7 @@ struct Parameters: optimizationtools::Parameters
         optimizationtools::Parameters::format(os);
         int width = format_width();
         os
+            << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl

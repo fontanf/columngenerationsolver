@@ -16,6 +16,7 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
             parameters,
             output);
     algorithm_formatter.start("Heuristic tree search");
+    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
 
     for (output.maximum_number_of_iterations = 0;;
             output.maximum_number_of_iterations *= parameters.growth_rate) {
@@ -32,6 +33,8 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
         //    model.columns.push_back(p.first);
         LimitedDiscrepancySearchParameters lds_parameters;
         lds_parameters.timer = parameters.timer;
+        lds_parameters.dummy_column_objective_coefficient
+            = output.dummy_column_objective_coefficient;
         lds_parameters.column_generation_parameters
             = parameters.column_generation_parameters;
         lds_parameters.column_generation_parameters.maximum_number_of_iterations
@@ -47,6 +50,9 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
         };
 
         auto lds_output = limited_discrepancy_search(model, lds_parameters);
+
+        output.dummy_column_objective_coefficient
+            = lds_output.dummy_column_objective_coefficient;
 
     }
 

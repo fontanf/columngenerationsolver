@@ -100,9 +100,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
         model.rows.push_back(row);
     }
 
-    // Dummy column objective coefficient.
-    model.dummy_column_objective_coefficient = 3 * instance.highest_distance();
-
     // Pricing solver.
     model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
             new PricingSolver(instance));

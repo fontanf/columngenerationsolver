@@ -15,6 +15,7 @@ const GreedyOutput columngenerationsolver::greedy(
             parameters,
             output);
     algorithm_formatter.start("Greedy");
+    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
@@ -31,6 +32,8 @@ const GreedyOutput columngenerationsolver::greedy(
             = parameters.column_generation_parameters;
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
+        column_generation_parameters.dummy_column_objective_coefficient
+            = output.dummy_column_objective_coefficient;
         if (parameters.internal_diving == 2
                 || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
             column_generation_parameters.internal_diving = 1;
@@ -62,6 +65,7 @@ const GreedyOutput columngenerationsolver::greedy(
         // Update output statistics.
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
+        output.dummy_column_objective_coefficient = cg_output.dummy_column_objective_coefficient;
         output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
         output.columns.insert(
                 output.columns.end(),
