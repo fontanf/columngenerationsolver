@@ -359,7 +359,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
             // Search for new columns from the column pool.
             std::vector<std::shared_ptr<const Column>> new_columns;
-            for (const std::shared_ptr<const Column>& column: parameters.column_pool) {
+            for (const std::shared_ptr<const Column>& column: column_pool) {
                 if (solver_columns_set.find(column) != solver_columns_set.end())
                     continue;
                 bool ok = true;
@@ -383,9 +383,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 Value rc = compute_reduced_cost(*column, duals_out);
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
                         && rc <= 0) {
-                    //std::cout << "rc " << rc
-                    //    << " " << -model.dummy_column_objective_coefficient * 1e-9
-                    //    << std::endl;
+                    //std::cout << "rc " << rc << std::endl;
                     new_columns.push_back(column);
                 }
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
@@ -398,9 +396,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // Search for new columns by solving the pricing problem.
 
                 duals_in = duals_sep; // The last shall be the first.
-                                      //std::cout << "alpha " << alpha << std::endl;
+                // std::cout << "alpha " << alpha << std::endl;
                 for (Counter k = 1; ; ++k) { // Mispricing number.
-                                             // Update global mispricing number.
+                    // Update global mispricing number.
                     if (k > 1)
                         output.number_of_mispricings++;
                     // Compute separation point.
@@ -509,13 +507,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                                         const std::shared_ptr<const Column>& column_1,
                                         const std::shared_ptr<const Column>& column_2)
                                     {
-                                    Value rc1 = compute_reduced_cost(*column_1, duals_out);
-                                    Value rc2 = compute_reduced_cost(*column_2, duals_out);
-                                    if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
-                                    return rc1 < rc2;
-                                    } else {
-                                    return rc1 > rc2;
-                                    }
+                                        Value rc1 = compute_reduced_cost(*column_1, duals_out);
+                                        Value rc2 = compute_reduced_cost(*column_2, duals_out);
+                                        if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
+                                            return rc1 < rc2;
+                                        } else {
+                                            return rc1 > rc2;
+                                        }
                                     });
                             // Loop through new column by order of reduced costs.
                             bool has_fixed = false;
@@ -575,14 +573,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         if (solver_columns_set.find(column) != solver_columns_set.end())
                             continue;
                         Value rc = compute_reduced_cost(*column, duals_out);
-                        //std::cout << "rc " << rc
-                        //    << " " << -model.dummy_column_objective_coefficient * 1e-9
-                        //    << std::endl;
+                        //std::cout << "rc " << rc << std::endl;
                         if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
-                                && rc <= -parameters.dummy_column_objective_coefficient * 1e-9)
+                                && rc <= 0)
                             new_columns.push_back(column);
                         if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
-                                && rc >= -parameters.dummy_column_objective_coefficient * 1e-9)
+                                && rc >= 0)
                             new_columns.push_back(column);
                     }
                     if (!new_columns.empty() || (alpha_cur == 0.0 && beta == 0.0)) {
