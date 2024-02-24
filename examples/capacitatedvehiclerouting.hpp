@@ -85,8 +85,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
-    model.column_lower_bound = 0;
-    model.column_upper_bound = 1;
 
     // Rows.
     for (LocationId location_id = 1;

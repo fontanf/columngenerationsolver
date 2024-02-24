@@ -46,6 +46,8 @@ namespace binpackingwithconflicts
 
 using namespace orproblems::binpackingwithconflicts;
 
+using Node = treesearchsolver::knapsackwithconflicts::BranchingScheme::Node;
+
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
 
@@ -83,8 +85,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
-    model.column_lower_bound = 0;
-    model.column_upper_bound = 1;
 
     // Row bounds.
     for (ItemId item_id = 0; item_id < instance.number_of_items(); ++item_id) {
@@ -139,7 +139,6 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             if (item_id_2 < item_id && bpp2kp_[item_id_2] != -1)
                 kp_instance_builder.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
     }
-    ItemId kp_n = kp2bpp_.size();
     const orproblems::knapsackwithconflicts::Instance kp_instance = kp_instance_builder.build();
 
     std::vector<std::shared_ptr<const Column>> columns;
@@ -158,17 +157,12 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
                 branching_scheme, kp_parameters);
 
         // Retrieve column.
-        ItemId i = 0;
-        for (const std::shared_ptr<treesearchsolver::knapsackwithconflicts::BranchingScheme::Node>& node:
-                kp_output.solution_pool.solutions()) {
-            if (i > 2 * kp_n)
-                break;
+        for (const std::shared_ptr<Node>& node: kp_output.solution_pool.solutions()) {
             Column column;
             column.objective_coefficient = 1;
             for (auto node_tmp = node;
                     node_tmp->parent != nullptr;
                     node_tmp = node_tmp->parent) {
-                i++;
                 LinearTerm element;
                 element.row = kp2bpp_[node_tmp->item_id];
                 element.coefficient = 1;
@@ -176,9 +170,8 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             }
             columns.push_back(std::shared_ptr<const Column>(new Column(column)));
 
-            if (columngenerationsolver::compute_reduced_cost(column, duals) <= 0) {
+            if (columngenerationsolver::compute_reduced_cost(column, duals) < 0)
                 ok = true;
-            }
         }
         if (ok) {
             break;

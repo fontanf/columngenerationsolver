@@ -84,8 +84,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Maximize;
-    model.column_lower_bound = 0;
-    model.column_upper_bound = 1;
 
     // Add knapsack constraints.
     for (KnapsackId knapsack_id = 0;

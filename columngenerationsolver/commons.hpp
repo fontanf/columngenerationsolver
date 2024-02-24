@@ -2,6 +2,7 @@
 
 #include "optimizationtools/utils/output.hpp"
 #include "optimizationtools/utils/utils.hpp"
+#include "optimizationtools/containers/indexed_map.hpp"
 
 #include <vector>
 #include <cstdint>
@@ -129,12 +130,6 @@ struct Model
     /** Objective sense. */
     optimizationtools::ObjectiveDirection objective_sense = optimizationtools::ObjectiveDirection::Minimize;
 
-    /** Lower bound of the columns to generate. */
-    Value column_lower_bound;
-
-    /** Upper bound of the columns to generate. */
-    Value column_upper_bound;
-
     /** Constraints. */
     std::vector<Row> rows;
 
@@ -152,8 +147,7 @@ struct Model
         if (verbosity_level >= 1) {
             os
                 << "Number of constraints:  " << rows.size() << std::endl
-                << "Column lower bound:     " << column_lower_bound << std::endl
-                << "Column upper bound:     " << column_upper_bound << std::endl
+                << "Number of columns:      " << columns.size() << std::endl
                 ;
         }
     }
@@ -177,7 +171,7 @@ public:
     Value objective_value() const { return objective_value_; }
 
     /** Get columns. */
-    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& columns() const { return columns_; };
+    const std::unordered_map<std::shared_ptr<const Column>, Value>& columns() const { return columns_; };
 
     /*
      * Export
@@ -238,7 +232,7 @@ private:
     std::vector<Value> row_values_;
 
     /** Columns. */
-    std::vector<std::pair<std::shared_ptr<const Column>, Value>> columns_;
+    std::unordered_map<std::shared_ptr<const Column>, Value> columns_;
 
     friend class SolutionBuilder;
 
@@ -260,7 +254,11 @@ public:
             const std::shared_ptr<const Column>& column,
             Value value)
     {
-        solution_.columns_.push_back({column, value});
+        if (solution_.columns_.find(column) == solution_.columns_.end()) {
+            solution_.columns_[column] = value;
+        } else {
+            solution_.columns_[column] = solution_.columns_[column] + value;
+        }
     }
 
     /** Build. */
@@ -376,6 +374,52 @@ inline Value norm(
     return std::sqrt(res);
 }
 
+struct ColumnHasher
+{
+    std::hash<RowIdx> hasher_row;
+    std::hash<Value> hasher_value;
+    mutable optimizationtools::IndexedMap<Value> elements_tmp;
+
+    ColumnHasher(const Model& model):
+        elements_tmp(model.rows.size(), 0) { }
+
+    inline bool operator()(
+            const std::shared_ptr<const Column>& column_1,
+            const std::shared_ptr<const Column>& column_2) const
+    {
+        if (column_1->objective_coefficient
+                != column_2->objective_coefficient)
+            return false;
+        elements_tmp.clear();
+        for (const LinearTerm& element: column_1->elements)
+            elements_tmp.set(element.row, element.coefficient);
+        for (const LinearTerm& element: column_2->elements)
+            if (elements_tmp[element.row] != element.coefficient)
+                return false;
+        elements_tmp.clear();
+        for (const LinearTerm& element: column_2->elements)
+            elements_tmp.set(element.row, element.coefficient);
+        for (const LinearTerm& element: column_1->elements)
+            if (elements_tmp[element.row] != element.coefficient)
+                return false;
+        return true;
+    }
+
+    inline std::size_t operator()(
+            const std::shared_ptr<const Column>& column) const
+    {
+        size_t hash = hasher_value(column->objective_coefficient);
+        size_t hash_tmp = 0;
+        for (const LinearTerm& element: column->elements) {
+            size_t hash_tmp_2 = hasher_row(element.row);
+            optimizationtools::hash_combine(hash_tmp_2, hasher_value(element.coefficient));
+            hash_tmp += hash_tmp_2;
+        }
+        optimizationtools::hash_combine(hash, hash_tmp);
+        return hash;
+    }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,9 +516,9 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Relative optimality gap (%): " << relative_optimality_gap() * 100 << std::endl
             << std::setw(width) << std::left << "Time: " << time << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
-            << std::setw(width) << std::left << "LP time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
             << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
-            << std::setw(width) << std::left << "# of CG iterations: " << number_of_column_generation_iterations << std::endl
+            << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
             ;
     }

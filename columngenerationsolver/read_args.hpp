@@ -70,6 +70,8 @@ inline void read_args(
     }
     parameters.initial_columns = initial_columns;
     parameters.column_pool = column_pool;
+    //if (vm.count("linear-programming-solver"))
+    //    parameters.linear_programming_solver = vm["linear-programming-solver"].as<std::string>();
     if (vm.count("internal-diving"))
         parameters.internal_diving = vm["internal-diving"].as<int>();
 }

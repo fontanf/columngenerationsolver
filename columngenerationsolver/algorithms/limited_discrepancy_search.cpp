@@ -15,20 +15,17 @@ struct LimitedDiscrepancySearchNode
     /** Parent node. */
     std::shared_ptr<LimitedDiscrepancySearchNode> parent = nullptr;
 
-    /** Column branched on. */
-    std::shared_ptr<const Column> column = nullptr;
-
-    /** Value of the column branched at this node. */
-    Value value = 0;
-
     /** Relaxation solution. */
-    std::vector<std::shared_ptr<const Column>> relaxation_solution;
+    std::shared_ptr<Solution> relaxation_solution;
+
+    /** Columns fixed at this node. */
+    std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns;
+
+    /** Column branched on at this node. */
+    std::shared_ptr<const Column> column = nullptr;
 
     /** Discrepancy of the node. */
     Value discrepancy = 0;
-
-    /** Sum of the value of each fixed column. */
-    Value value_sum = 1;
 
     /** Depth of the node. */
     ColIdx depth = 0;
@@ -51,6 +48,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
+    ColumnHasher column_hasher(model);
+
     // Nodes
     auto comp = [](
             const std::shared_ptr<LimitedDiscrepancySearchNode>& node_1,
@@ -58,7 +57,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
     {
         if (node_1->discrepancy != node_2->discrepancy)
             return node_1->discrepancy < node_2->discrepancy;
-        return node_1->value_sum > node_2->value_sum;
+        return node_1->depth > node_2->depth;
     };
     std::multiset<std::shared_ptr<LimitedDiscrepancySearchNode>, decltype(comp)> nodes(comp);
 
@@ -99,15 +98,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.maximum_discrepancy,
                 node->discrepancy);
 
-        std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns = parameters.fixed_columns;
-        auto node_tmp = node;
-        std::unordered_set<std::shared_ptr<const Column>> tabu;
-        while (node_tmp->parent != NULL) {
-            if (node_tmp->value != 0)
-                fixed_columns.push_back({node_tmp->column, node_tmp->value});
-            tabu.insert(node_tmp->column);
-            node_tmp = node_tmp->parent;
-        }
         //std::cout
         //    << "t " << parameters.info.elapsed_time()
         //    << " node " << output.number_of_nodes
@@ -145,18 +135,14 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             };
         }
         if (node->parent == nullptr) {
-            column_generation_parameters.initial_columns.insert(
-                    column_generation_parameters.initial_columns.end(),
-                    parameters.initial_columns.begin(),
-                    parameters.initial_columns.end());
+            column_generation_parameters.initial_columns = parameters.initial_columns;
         } else {
-            column_generation_parameters.initial_columns.insert(
-                    column_generation_parameters.initial_columns.end(),
-                    node->parent->relaxation_solution.begin(),
-                    node->parent->relaxation_solution.end());
+            for (const auto& p: node->parent->relaxation_solution->columns())
+                column_generation_parameters.initial_columns.push_back(p.first);
         }
         column_generation_parameters.column_pool = column_pool;
-        column_generation_parameters.fixed_columns = fixed_columns;
+        for (const auto& p: node->fixed_columns)
+            column_generation_parameters.fixed_columns.push_back({p.first, p.second});
 
         // Solve.
         auto cg_output = column_generation(
@@ -186,7 +172,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
             if (cg_it_limit == -1
                     || cg_output.number_of_column_generation_iterations < cg_it_limit) {
-                algorithm_formatter.update_bound(cg_output.relaxation_solution.objective_value());
+                algorithm_formatter.update_bound(cg_output.relaxation_solution_value);
             }
             output.relaxation_solution = cg_output.relaxation_solution;
         }
@@ -212,13 +198,64 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         }
 
         // Update node relaxation solution.
-        for (const auto& p: cg_output.relaxation_solution.columns())
-            node->relaxation_solution.push_back(p.first);
+        node->relaxation_solution = std::shared_ptr<Solution>(new Solution(cg_output.relaxation_solution));
+
+        // If the relaxation is (integer) feasible, save the solution and stop.
+        std::stringstream ss;
+        ss << "node " << output.number_of_nodes
+            << " depth " << node->depth
+            << " disc " << node->discrepancy;
+        if (cg_output.relaxation_solution.feasible()) {
+            algorithm_formatter.update_solution(cg_output.relaxation_solution);
+            algorithm_formatter.print(ss.str());
+            continue;
+        }
+
+        // Try rounded solution.
+        SolutionBuilder rounded_solution_builder;
+        rounded_solution_builder.set_model(model);
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            if (p.first->type == VariableType::Continuous) {
+                rounded_solution_builder.add_column(p.first, p.second);
+            } else {
+                if (std::round(p.second) != 0)
+                    rounded_solution_builder.add_column(p.first, std::round(p.second));
+            }
+        }
+        Solution rounded_solution = rounded_solution_builder.build();
+        if (rounded_solution.feasible())
+            algorithm_formatter.update_solution(rounded_solution);
+
+        algorithm_formatter.print(ss.str());
 
         //std::cout << "fc";
         //for (auto p: fixed_columns)
         //    std::cout << " " << *(p.first) << " " << p.second << ";";
         //std::cout << std::endl;
+
+        // Fix columns with value >= 1 to their floor value.
+        std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns = node->fixed_columns;
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            const std::shared_ptr<const Column>& column = p.first;
+            Value value = p.second;
+            if (std::floor(value) == 0)
+                continue;
+            if (fixed_columns.find(column) == fixed_columns.end()) {
+                fixed_columns[column] = std::floor(value);
+            } else {
+                if (std::floor(value) > fixed_columns[column])
+                    fixed_columns[column] = std::floor(value);
+            }
+        }
+
+        // Get the set of columns on which branching is forbidden.
+        auto node_tmp = node;
+        std::unordered_set<std::shared_ptr<const Column>> tabu;
+        for (auto node_tmp = node;
+                node_tmp->parent != NULL;
+                node_tmp = node_tmp->parent) {
+            tabu.insert(node_tmp->column);
+        }
 
         // Compute next column to branch on.
         std::shared_ptr<const Column> column_best = nullptr;
@@ -226,28 +263,28 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         Value diff_best = -1;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
+            Value value = p.second;
+
+            // Don't branch on a fixed column.
+            if (fixed_columns.find(column) != fixed_columns.end()
+                    && fixed_columns[column] == value)
+                continue;
+
+            // Don't fix a column to 0.
+            if (ceil(value) == 0)
+                continue;
+
+            // Don't branch on a column which has already been branched on.
             if (tabu.find(column) != tabu.end())
                 continue;
-            Value value = p.second;
-            if (std::abs(ceil(value)) > FFOT_TOL) {
-                if (column_best == nullptr
-                        || column_best->branching_priority < column->branching_priority
-                        || (column_best->branching_priority == column->branching_priority
-                            && diff_best > ceil(value) - value)) {
-                    column_best = column;
-                    value_best = ceil(value);
-                    diff_best = ceil(value) - value;
-                }
-            }
-            if (std::abs(floor(value)) > FFOT_TOL) {
-                if (column_best == nullptr
-                        || column_best->branching_priority < column->branching_priority
-                        || (column_best->branching_priority == column->branching_priority
-                            && diff_best > value - floor(value))) {
-                    column_best = column;
-                    value_best = floor(value);
-                    diff_best = value - floor(value);
-                }
+
+            if (column_best == nullptr
+                    || column_best->branching_priority < column->branching_priority
+                    || (column_best->branching_priority == column->branching_priority
+                        && diff_best > ceil(value) - value)) {
+                column_best = column;
+                value_best = ceil(value);
+                diff_best = ceil(value) - value;
             }
         }
         //std::cout << "col_best " << col_best
@@ -257,36 +294,22 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (column_best == nullptr)
             continue;
 
-        // Create children.
-        for (Value value = model.column_upper_bound;
-                value >= model.column_lower_bound;
-                --value) {
-
-            auto child = std::make_shared<LimitedDiscrepancySearchNode>();
-            child->parent = node;
-            child->column = column_best;
-            child->value = value;
-            child->value_sum = node->value_sum + value;
-            child->discrepancy = node->discrepancy + std::abs(value_best - value);
-            child->depth = node->depth + 1;
-            nodes.insert(child);
-
-            // Update best solution.
-            SolutionBuilder solution_builder;
-            solution_builder.set_model(model);
-            for (const auto& p: fixed_columns)
-                solution_builder.add_column(p.first, p.second);
-            solution_builder.add_column(column_best, value);
-            Solution solution = solution_builder.build();
-            algorithm_formatter.update_solution(solution);
-        }
-
-        std::stringstream ss;
-        ss << "node " << output.number_of_nodes
-            << " depth " << node->depth
-            << " disc " << node->discrepancy;
-        algorithm_formatter.print(ss.str());
-
+        // Create child nodes and add them to the queue.
+        auto child_1 = std::make_shared<LimitedDiscrepancySearchNode>();
+        auto child_2 = std::make_shared<LimitedDiscrepancySearchNode>();
+        child_1->parent = node;
+        child_2->parent = node;
+        child_1->fixed_columns = fixed_columns;
+        child_1->fixed_columns[column_best] = value_best;
+        child_2->fixed_columns = fixed_columns;
+        child_1->column = column_best;
+        child_2->column = column_best;
+        child_1->discrepancy = node->discrepancy;
+        child_2->discrepancy = node->discrepancy + 1;
+        child_1->depth = node->depth + 1;
+        child_2->depth = node->depth + 1;
+        nodes.insert(child_1);
+        nodes.insert(child_2);
     }
 
     algorithm_formatter.end();

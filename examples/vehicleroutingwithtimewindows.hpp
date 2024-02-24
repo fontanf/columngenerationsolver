@@ -89,8 +89,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
-    model.column_lower_bound = 0;
-    model.column_upper_bound = 1;
 
     // Row bounds.
     Row row;
@@ -195,6 +193,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
         }
     }
     espprctw::Instance espp_instance = espp_instance_builder.build();
+    //espp_instance.format(std::cout, 2);
 
     espprctw::BranchingScheme branching_scheme(espp_instance);
 

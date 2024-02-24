@@ -117,11 +117,13 @@ public:
         } else {
             model_.setOptimizationDirection(-1);
         }
-        for (RowIdx i = 0; i < (RowIdx)row_lower_bounds.size(); ++i) {
+        for (RowIdx row_id = 0;
+                row_id < (RowIdx)row_lower_bounds.size();
+                ++row_id) {
             model_.addRow(
                     0, NULL, NULL,
-                    (row_lower_bounds[i] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[i]: -COIN_DBL_MAX,
-                    (row_upper_bounds[i] != std::numeric_limits<Value>::infinity())? row_upper_bounds[i]: COIN_DBL_MAX);
+                    (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[row_id]: -COIN_DBL_MAX,
+                    (row_upper_bounds[row_id] != std::numeric_limits<Value>::infinity())? row_upper_bounds[row_id]: COIN_DBL_MAX);
         }
     }
 
@@ -146,8 +148,7 @@ public:
 
     void solve()
     {
-        //model_.writeLp("output");
-        //model_.initialSolve();
+        model_.writeLp("output");
         model_.primal();
     }
 

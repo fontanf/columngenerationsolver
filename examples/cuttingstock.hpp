@@ -37,6 +37,7 @@
 #include "orproblems/cuttingstock.hpp"
 
 #include "knapsacksolver/knapsack/instance_builder.hpp"
+#include "knapsacksolver/knapsack/algorithms/dynamic_programming_bellman.hpp"
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
 
 namespace columngenerationsolver
@@ -77,8 +78,6 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
-    model.column_lower_bound = 0;
-    model.column_upper_bound = instance.maximum_demand();
 
     // Rows.
     for (ItemTypeId item_type_id = 0;
@@ -139,11 +138,20 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
     knapsacksolver::knapsack::Instance kp_instance = kp_instance_builder.build();
 
     // Solve subproblem instance.
-    knapsacksolver::knapsack::DynamicProgrammingPrimalDualParameters kp_parameters;
-    kp_parameters.verbosity_level = 0;
-    auto kp_output = knapsacksolver::knapsack::dynamic_programming_primal_dual(
-            kp_instance,
-            kp_parameters);
+    knapsacksolver::knapsack::Output kp_output(kp_instance);
+    if (kp_instance.capacity() <= 1e3) {
+        knapsacksolver::knapsack::Parameters kp_parameters;
+        kp_parameters.verbosity_level = 0;
+        kp_output = knapsacksolver::knapsack::dynamic_programming_bellman_array_all(
+                kp_instance,
+                kp_parameters);
+    } else {
+        knapsacksolver::knapsack::DynamicProgrammingPrimalDualParameters kp_parameters;
+        kp_parameters.verbosity_level = 0;
+        kp_output = knapsacksolver::knapsack::dynamic_programming_primal_dual(
+                kp_instance,
+                kp_parameters);
+    }
 
     // Retrieve column.
     Column column;

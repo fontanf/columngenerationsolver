@@ -26,6 +26,8 @@
 #include "optimizationtools/utils/utils.hpp"
 #include "optimizationtools/containers//sorted_on_demand_array.hpp"
 
+#include "treesearchsolver/common.hpp"
+
 #include <memory>
 
 namespace columngenerationsolver
@@ -190,6 +192,9 @@ public:
         Demand demand = 0;
         double guide = 0;
         LocationPos next_child_pos = 0;
+
+        /** Unique id of the node. */
+        treesearchsolver::NodeId id;
     };
 
     BranchingScheme(const Instance& instance):
@@ -219,6 +224,8 @@ public:
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
+        r->id = node_id_;
+        node_id_++;
         r->available_locations.resize(instance_.number_of_locations(), true);
         r->available_locations[0] = false;
         r->guide = instance_.distance(0, neighbor(0, 0));
@@ -249,6 +256,8 @@ public:
 
         // Compute new child.
         auto child = std::shared_ptr<Node>(new BranchingScheme::Node());
+        child->id = node_id_;
+        node_id_++;
         child->parent = parent;
         child->available_locations = parent->available_locations;
         child->available_locations[next_location_id] = false;
@@ -277,7 +286,7 @@ public:
         assert(!infertile(node_2));
         if (node_1->guide != node_2->guide)
             return node_1->guide < node_2->guide;
-        return node_1.get() < node_2.get();
+        return node_1->id < node_2->id;
     }
 
     inline bool leaf(
@@ -391,6 +400,8 @@ private:
     mutable std::vector<optimizationtools::SortedOnDemandArray> sorted_locations_;
 
     mutable std::mt19937_64 generator_;
+
+    mutable treesearchsolver::NodeId node_id_ = 0;
 
 };
 

@@ -86,7 +86,7 @@ bazel build --define cplex=true -- //...
 Examples:
 
 ```shell
-./bazel-bin/examples/cuttingstock_main  --verbosity-level 1  --input "../ordata/cuttingstock/delorme2016/RG/BPP_1000_300_0.1_0.8_1.txt"  --algorithm column-generation  --internal-diving 1
+./bazel-bin/examples/cuttingstock_main  --verbosity-level 1  --input "../ordata/packing/cutting_stock/delorme2016/RG_CSP/BPP_1000_300_0.1_0.8_1.txt"  --format bpplib_csp  --algorithm greedy  --internal-diving 1
 ```
 ```
 ==========================================
@@ -95,111 +95,8 @@ Examples:
 
 Model
 -----
-Number of constraints:               1000
-Column lower bound:                  0
-Column upper bound:                  1
-Dummy column objective coefficient:  2
-
-Algorithm
----------
-Column generation
-
-Parameters
-----------
-Time limit:                              inf
-Messages
-    Verbosity level:                     1
-    Standard output:                     1
-    File path:                           
-    # streams:                           0
-Logger
-    Has logger:                          0
-    Standard error:                      0
-    File path:                           
-Number of columns in the column pool:    0
-Number of initial columns:               0
-Internal diving:                         1
-Linear programming solver:               CLP
-Static Wentges smoothing parameter:      0
-Static directional smoothing parameter:  0
-Self-adjusting Wentges smoothing:        0
-Automatic directional smoothing:         0
-Maximum number of iterations:            -1
-
-Column generation
------------------
-
-        Time   Iteration   # columns                   Value
-        ----   ---------   ---------                   -----
-       0.006           1        1000                    2000
-       0.163           2        1618                     618
-       0.287           3        1739                     618
-       0.411           4        1859                     618
-       0.521           5        2055                     559
-       0.654           6        2221                 545.333
-       0.826           7        2350                 529.083
-       1.012           8        2524                 519.362
-       1.335           9        2726                 497.642
-       1.673          10        2936                 487.687
-       2.083          11        3138                 470.041
-       2.500          12        3324                 463.345
-       2.933          13        3534                 454.035
-       3.401          14        3688                 450.498
-       3.835          15        3869                 447.984
-       4.449          16        4074                 446.407
-       5.038          17        4252                 445.558
-       5.621          18        4419                  444.91
-       6.336          19        4575                 444.423
-       7.128          20        4725                 444.142
-       7.922          21        4875                 443.927
-       8.736          22        5008                 443.789
-       9.618          23        5146                 443.665
-      10.521          24        5278                 443.597
-      11.749          25        5386                  443.55
-      12.949          26        5488                  443.52
-      14.321          27        5505                 443.507
-      15.779          28        5512                 443.503
-      17.440          29        5517                 443.497
-      18.963          30        5522                 443.494
-      20.443          31        5612                 443.493
-      21.933          32        5613                 443.493
-
-Final statistics
-----------------
-Value:                         inf
-Bound:                         443.493
-Absolute optimality gap:       inf
-Relative optimality gap (%):   inf
-Time:                          23.4118
-Pricing time:                  22.0377
-LP time:                       1.31781
-# of CG iterations:            32
-Number of pricings:            32
-Number of first-try pricings:  32
-Number of mispricings:         0
-Number of no-stab pricings:    32
-
-Solution
---------
-Feasible:           0
-Value:              0
-Number of columns:  0
-```
-
-```shell
-./bazel-bin/examples/multipleknapsack_main  --verbosity-level 1  --input "../ordata/multipleknapsack/fukunaga2011/FK_1/random10_100_4_1000_1_1.txt"  --algorithm greedy
-```
-```
-==========================================
-          ColumnGenerationSolver          
-==========================================
-
-Model
------
-Number of constraints:               110
-Column lower bound:                  0
-Column upper bound:                  1
-Dummy column objective coefficient:  -510
+Number of constraints:  209
+Number of columns:      0
 
 Algorithm
 ---------
@@ -217,59 +114,134 @@ Logger
     Has logger:                          0
     Standard error:                      0
     File path:                           
+Dummy column coef.:                      1
 Number of columns in the column pool:    0
 Number of initial columns:               0
-Internal diving:                         0
+Number of fixed columns:                 0
+Internal diving:                         1
 
 Column generation
 -----------------
 
         Time   Iteration   # columns                   Value
         ----   ---------   ---------                   -----
-       0.001           1          10                   -5100
-       0.002           2          20                     489
-       0.003           3          30                 4303.14
-       0.004           4          40                    7049
-       0.006           5          50                 10619.7
-       0.007           6          60                 14990.4
-       0.009           7          70                 17049.8
-       0.011           8          80                 22944.4
-       0.012           9          90                 25914.4
-       0.014          10         100                   26797
+       0.001           0         209                     209
+       0.012           1         234                   191.3
+       0.015           2         241                   191.3
+       0.022           3         259                 191.173
+       0.023           4         261                 191.145
+       0.023           5         262                 191.143
+       0.027           6         272                 191.128
+       0.030           7         280                 191.098
+       0.035           8         292                 191.087
+       0.048           9         307                 191.068
+       0.048          10         316                 191.064
+       0.049          11         319                 191.064
+       0.058          12         331                 191.061
+       0.059          13         338                  191.06
+       0.060          14         340                  191.06
+       0.060          15         342                  191.06
+       0.064          16         352                  191.06
+       0.068          17         362                  191.06
+       0.073          18         209                     836
+       0.075          19         398                 606.917
+       0.077          20         403                 595.684
+       0.081          21         411                 578.556
+       0.083          22         415                 570.729
+       0.087          23         425                 553.112
+       0.095          24         452                 501.425
+       0.101          25         469                 491.596
+       0.105          26         477                 481.099
+       0.109          27         485                 470.717
+       0.132          28         584                 432.913
+       0.134          29         587                 431.706
+       0.137          30         594                  427.53
+       0.145          31         613                 425.594
+       0.157          32         649                 424.966
+       0.184          33         718                 424.253
+       0.186          34         742                 424.115
+       0.187          35         744                 424.115
+       0.193          36         753                 424.036
+       0.194          37         757                 424.033
+       0.198          38         764                 424.014
+       0.200          39         765                 424.013
+       0.214          40         811                 423.963
+       0.216          41         816                 423.963
+       0.221          42         828                  423.96
+       0.225          43         838                  423.96
+       0.230          44         209                    3344
+       0.243          45         854                  628.09
+       0.252          46         864                 581.435
+       0.261          47         878                 524.335
+       0.266          48         886                 512.584
+       0.294          49         953                 450.541
+       0.297          50         967                 445.064
+       0.298          51         969                 445.062
+       0.309          52         998                 443.553
+       0.333          53        1037                 443.499
+       0.335          54        1043                 443.494
+       0.337          55        1044                 443.494
+       0.357          56        1077                 443.493
+       0.358          57        1079                 443.493
+       0.378          58        1115                 443.493
 
 Tree search
 -----------
 
         Time       Value       Bound         Gap     Gap (%)                         Comment
         ----       -----       -----         ---     -------                         -------
-       0.016        -inf       26797         inf         inf                          node 0
-       0.021        -inf       26797         inf         inf                          node 1
-       0.023        -inf       26797         inf         inf                          node 2
-       0.025        -inf       26797         inf         inf                          node 3
-       0.028        -inf       26797         inf         inf                          node 4
-       0.029        -inf       26797         inf         inf                          node 5
-       0.031        -inf       26797         inf         inf                          node 6
-       0.032        -inf       26797         inf         inf                          node 7
-       0.032        -inf       26797         inf         inf                          node 8
-       0.033       26797       26797 2.88856e-09        0.00                          node 9
+       0.397         inf     443.493         inf         inf                          node 0
+       0.402         inf     443.493         inf         inf                          node 1
+       0.405         inf     443.493         inf         inf                          node 2
+       0.407         inf     443.493         inf         inf                          node 3
+       0.409         inf     443.493         inf         inf                          node 4
+       0.411         inf     443.493         inf         inf                          node 5
+       0.413         inf     443.493         inf         inf                          node 6
+       0.415         inf     443.493         inf         inf                          node 7
+       0.417         inf     443.493         inf         inf                          node 8
+       0.418         inf     443.493         inf         inf                          node 9
+       0.420         inf     443.493         inf         inf                         node 10
+       0.422         inf     443.493         inf         inf                         node 11
+       0.424         inf     443.493         inf         inf                         node 12
+       0.428         inf     443.493         inf         inf                         node 13
+       0.430         inf     443.493         inf         inf                         node 14
+       0.432         inf     443.493         inf         inf                         node 15
+       0.434         inf     443.493         inf         inf                         node 16
+       0.435         inf     443.493         inf         inf                         node 17
+       0.439         inf     443.493         inf         inf                         node 18
+       0.440         inf     443.493         inf         inf                         node 19
+       0.442         inf     443.493         inf         inf                         node 20
+       0.443         inf     443.493         inf         inf                         node 21
+       0.443         inf     443.493         inf         inf                         node 22
+       0.445         inf     443.493         inf         inf                         node 23
+       0.446         inf     443.493         inf         inf                         node 24
+       0.448         inf     443.493         inf         inf                         node 25
+       0.450         inf     443.493         inf         inf                         node 26
+       0.452         inf     443.493         inf         inf                         node 27
+       0.452         inf     443.493         inf         inf                         node 28
+       0.453         inf     443.493         inf         inf                         node 29
+       0.454         inf     443.493         inf         inf                         node 30
+       0.454         444     443.493    0.506734        0.11                         node 31
 
 Final statistics
 ----------------
-Value:                         26797
-Bound:                         26797
-Absolute optimality gap:       2.88856e-09
-Relative optimality gap (%):   1.07794e-11
-Time:                          0.0328832
-Pricing time:                  0.0233441
-LP time:                       0.00692869
-# of CG iterations:            40
-Number of nodes:               10
+Value:                         444
+Bound:                         443.493
+Absolute optimality gap:       0.506734
+Relative optimality gap (%):   0.11426
+Time:                          0.453859
+Pricing time:                  0.287987
+Linear programming time:       0.149853
+Dummy column coef.:            16
+Number of CG iterations:       245
+Number of new columns:         1040
+Number of nodes:               31
 
 Solution
 --------
 Feasible:           1
-Value:              26797
-Number of columns:  10
+Value:              444
+Number of columns:  187
 ```
 
 ## Usage, C++ library

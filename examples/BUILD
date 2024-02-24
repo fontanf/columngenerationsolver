@@ -49,6 +49,7 @@ cc_library(
                 "//columngenerationsolver:columngenerationsolver",
                 "@orproblems//orproblems:cuttingstock",
                 "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_primal_dual",
+                "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_bellman",
         ],
         visibility = ["//visibility:public"],
 )

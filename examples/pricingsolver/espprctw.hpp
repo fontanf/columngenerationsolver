@@ -29,6 +29,8 @@
 
 #pragma once
 
+#include "treesearchsolver/common.hpp"
+
 #include "boost/dynamic_bitset.hpp"
 
 #include <cstdint>
@@ -36,6 +38,7 @@
 #include <limits>
 #include <memory>
 #include <cassert>
+#include <iomanip>
 
 namespace columngenerationsolver
 {
@@ -91,7 +94,79 @@ public:
     /** Get a location. */
     inline const Location& location(LocationId location_id) const { return locations_[location_id]; }
 
+    /** Get the capacity of the vehicle. */
     inline Demand capacity() const { return locations_[0].demand; }
+
+    /*
+     * Outputs
+     */
+
+    /** Print the instance. */
+    void format(
+            std::ostream& os,
+            int verbosity_level = 1) const
+    {
+        if (verbosity_level >= 1) {
+            os
+                << "Number of locations:  " << number_of_locations() << std::endl
+                << "Capacity:             " << capacity() << std::endl
+                ;
+        }
+
+        if (verbosity_level >= 2) {
+            os << std::endl
+                << std::setw(12) << "Location"
+                << std::setw(12) << "Demand"
+                << std::setw(12) << "Serv. time"
+                << std::setw(12) << "Rel. date"
+                << std::setw(12) << "Deadline"
+                << std::setw(12) << "Profit"
+                << std::endl
+                << std::setw(12) << "--------"
+                << std::setw(12) << "----------"
+                << std::setw(12) << "------"
+                << std::setw(12) << "---------"
+                << std::setw(12) << "--------"
+                << std::setw(12) << "------"
+                << std::endl;
+            for (LocationId location_id_1 = 0;
+                    location_id_1 < number_of_locations();
+                    ++location_id_1) {
+                os << std::setw(12) << location_id_1
+                    << std::setw(12) << location(location_id_1).demand
+                    << std::setw(12) << location(location_id_1).service_time
+                    << std::setw(12) << location(location_id_1).release_date
+                    << std::setw(12) << location(location_id_1).deadline
+                    << std::setw(12) << location(location_id_1).profit
+                    << std::endl;
+            }
+        }
+
+        if (verbosity_level >= 3) {
+            os << std::endl
+                << std::setw(12) << "Loc. 1"
+                << std::setw(12) << "Loc. 2"
+                << std::setw(12) << "Tr. time"
+                << std::endl
+                << std::setw(12) << "------"
+                << std::setw(12) << "------"
+                << std::setw(12) << "--------"
+                << std::endl;
+            for (LocationId location_id_1 = 0;
+                    location_id_1 < number_of_locations();
+                    ++location_id_1) {
+                for (LocationId location_id_2 = 0;
+                        location_id_2 < number_of_locations();
+                        ++location_id_2) {
+                    os
+                        << std::setw(12) << location_id_1
+                        << std::setw(12) << location_id_2
+                        << std::setw(12) << travel_time(location_id_1, location_id_2)
+                        << std::endl;
+                }
+            }
+        }
+    }
 
 private:
 
@@ -223,6 +298,9 @@ public:
         Demand remaining_demand = 0;
         double guide = 0;
         LocationPos next_child_pos = 1;
+
+        /** Unique id of the node. */
+        treesearchsolver::NodeId id;
     };
 
     BranchingScheme(const Instance& instance):
@@ -231,6 +309,8 @@ public:
     inline const std::shared_ptr<Node> root() const
     {
         auto r = std::shared_ptr<Node>(new BranchingScheme::Node());
+        r->id = node_id_;
+        node_id_++;
         r->available_locations.resize(instance_.number_of_locations(), true);
         r->available_locations[0] = false;
         for (LocationId j = 0; j < instance_.number_of_locations(); ++j) {
@@ -260,6 +340,8 @@ public:
 
         // Compute new child.
         auto child = std::shared_ptr<Node>(new BranchingScheme::Node());
+        child->id = node_id_;
+        node_id_++;
         child->parent = parent;
         child->available_locations = parent->available_locations;
         child->available_locations[next_location_id] = false;
@@ -306,7 +388,7 @@ public:
             return node_1->number_of_locations < node_2->number_of_locations;
         if (node_1->guide != node_2->guide)
             return node_1->guide < node_2->guide;
-        return node_1.get() < node_2.get();
+        return node_1->id < node_2->id;
     }
 
     inline bool leaf(
@@ -419,6 +501,8 @@ public:
 private:
 
     const Instance& instance_;
+
+    mutable treesearchsolver::NodeId node_id_ = 0;
 
 };
 

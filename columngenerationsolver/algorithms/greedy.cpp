@@ -19,7 +19,7 @@ const GreedyOutput columngenerationsolver::greedy(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
-    std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns = parameters.fixed_columns;
+    std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns;
 
     for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
 
@@ -55,7 +55,8 @@ const GreedyOutput columngenerationsolver::greedy(
                 initial_columns.begin(),
                 initial_columns.end());
         column_generation_parameters.column_pool = column_pool;
-        column_generation_parameters.fixed_columns = fixed_columns;
+        for (const auto& p: fixed_columns)
+            column_generation_parameters.fixed_columns.push_back({p.first, p.second});
 
         // Solve.
         auto cg_output = column_generation(
@@ -76,44 +77,15 @@ const GreedyOutput columngenerationsolver::greedy(
                 cg_output.columns.begin(),
                 cg_output.columns.end());
 
-        if (output.number_of_nodes == 0) {
+        // Print header.
+        if (output.number_of_nodes == 0)
             algorithm_formatter.print_header();
-        }
 
+        // Check time.
         if (parameters.timer.needs_to_end())
             break;
-        if (cg_output.relaxation_solution.columns().size() == 0)
-            break;
 
-        // Find column to branch on.
-        std::shared_ptr<const Column> column_best = nullptr;
-        Value value_best = -1;
-        Value diff_best = -1;
-        for (auto p: cg_output.relaxation_solution.columns()) {
-            const std::shared_ptr<const Column>& column = p.first;
-            Value value = p.second;
-            if (floor(value) != 0) {
-                if (column_best == nullptr
-                        || column_best->branching_priority < column->branching_priority
-                        || (column_best->branching_priority == column->branching_priority
-                            && diff_best > value - floor(value))) {
-                    column_best = column;
-                    value_best = floor(value);
-                    diff_best = value - floor(value);
-                }
-            }
-            if (ceil(value) != 0) {
-                if (column_best == nullptr
-                        || column_best->branching_priority < column->branching_priority
-                        || (column_best->branching_priority == column->branching_priority
-                            && diff_best > ceil(value) - value)) {
-                    column_best = column;
-                    value_best = ceil(value);
-                    diff_best = ceil(value) - value;
-                }
-            }
-        }
-        if (column_best == nullptr)
+        if (cg_output.relaxation_solution.columns().size() == 0)
             break;
 
         // Update bound.
@@ -127,22 +99,74 @@ const GreedyOutput columngenerationsolver::greedy(
             output.relaxation_solution = cg_output.relaxation_solution;
         }
 
+        // If the relaxation is (integer) feasible, save the solution and stop.
+        if (cg_output.relaxation_solution.feasible()) {
+            algorithm_formatter.update_solution(cg_output.relaxation_solution);
+            algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
+            break;
+        }
+
+        // Try rounded solution.
+        SolutionBuilder rounded_solution_builder;
+        rounded_solution_builder.set_model(model);
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            if (p.first->type == VariableType::Continuous) {
+                rounded_solution_builder.add_column(p.first, p.second);
+            } else {
+                if (std::round(p.second) != 0)
+                    rounded_solution_builder.add_column(p.first, std::round(p.second));
+            }
+        }
+        Solution rounded_solution = rounded_solution_builder.build();
+        if (rounded_solution.feasible())
+            algorithm_formatter.update_solution(rounded_solution);
+        algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
+
+        // Fix columns with value >= 1 to their floor value.
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            const std::shared_ptr<const Column>& column = p.first;
+            Value value = p.second;
+            if (std::floor(value) == 0)
+                continue;
+            if (fixed_columns.find(column) == fixed_columns.end()) {
+                fixed_columns[column] = std::floor(value);
+            } else {
+                if (std::floor(value) > fixed_columns[column])
+                    fixed_columns[column] = std::floor(value);
+            }
+        }
+
+        // Find column to branch on.
+        std::shared_ptr<const Column> column_best = nullptr;
+        Value value_best = -1;
+        Value diff_best = -1;
+        for (auto p: cg_output.relaxation_solution.columns()) {
+            const std::shared_ptr<const Column>& column = p.first;
+            Value value = p.second;
+            if (fixed_columns.find(column) != fixed_columns.end()
+                    && fixed_columns[column] == value)
+                continue;
+            if (ceil(value) == 0)
+                continue;
+            if (column_best == nullptr
+                    || column_best->branching_priority < column->branching_priority
+                    || (column_best->branching_priority == column->branching_priority
+                        && diff_best > ceil(value) - value)) {
+                column_best = column;
+                value_best = ceil(value);
+                diff_best = ceil(value) - value;
+            }
+        }
+        if (column_best == nullptr)
+            break;
+
         // Update fixed columns.
-        fixed_columns.push_back({column_best, value_best});
+        fixed_columns[column_best] = value_best;
 
         // Update initial columns for the next node.
         initial_columns.clear();
         for (const auto& p: cg_output.relaxation_solution.columns())
             initial_columns.push_back(p.first);
-
-        // Update solution.
-        SolutionBuilder solution_builder;
-        solution_builder.set_model(model);
-        for (const auto& p: fixed_columns)
-            solution_builder.add_column(p.first, p.second);
-        Solution solution = solution_builder.build();
-        algorithm_formatter.update_solution(solution);
-        algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
     }
 
     algorithm_formatter.end();
