@@ -2,7 +2,7 @@
  * Multiple knapsack problem.
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/multipleknapsack.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/multiple_knapsack.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -38,17 +38,17 @@
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "orproblems/multipleknapsack.hpp"
+#include "orproblems/packing/multiple_knapsack.hpp"
 
 #include "knapsacksolver/knapsack/instance_builder.hpp"
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
 
 namespace columngenerationsolver
 {
-namespace multipleknapsack
+namespace multiple_knapsack
 {
 
-using namespace orproblems::multipleknapsack;
+using namespace orproblems::multiple_knapsack;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {

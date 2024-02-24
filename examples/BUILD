@@ -43,11 +43,11 @@ config_setting(
 load("//columngenerationsolver:variables.bzl", "STDCPP", "ALL_COPTS", "ALL_DEP")
 
 cc_library(
-        name = "cuttingstock",
-        hdrs = ["cuttingstock.hpp"],
+        name = "cutting_stock",
+        hdrs = ["cutting_stock.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
-                "@orproblems//orproblems:cuttingstock",
+                "@orproblems//orproblems:cutting_stock",
                 "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_primal_dual",
                 "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_bellman",
         ],
@@ -55,10 +55,10 @@ cc_library(
 )
 
 cc_binary(
-        name = "cuttingstock_main",
-        srcs = ["cuttingstock_main.cpp"],
+        name = "cutting_stock_main",
+        srcs = ["cutting_stock_main.cpp"],
         deps = [
-                ":cuttingstock",
+                ":cutting_stock",
                 "//columngenerationsolver:read_args",
         ] + ALL_DEP,
         copts = ALL_COPTS,
@@ -66,21 +66,21 @@ cc_binary(
 
 
 cc_library(
-        name = "multipleknapsack",
-        hdrs = ["multipleknapsack.hpp"],
+        name = "multiple_knapsack",
+        hdrs = ["multiple_knapsack.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
-                "@orproblems//orproblems:multipleknapsack",
+                "@orproblems//orproblems:multiple_knapsack",
                 "@knapsacksolver//knapsacksolver/knapsack/algorithms:dynamic_programming_primal_dual",
         ],
         visibility = ["//visibility:public"],
 )
 
 cc_binary(
-        name = "multipleknapsack_main",
-        srcs = ["multipleknapsack_main.cpp"],
+        name = "multiple_knapsack_main",
+        srcs = ["multiple_knapsack_main.cpp"],
         deps = [
-                ":multipleknapsack",
+                ":multiple_knapsack",
                 "//columngenerationsolver:read_args",
         ] + ALL_DEP,
         copts = ALL_COPTS,
@@ -88,21 +88,21 @@ cc_binary(
 
 
 cc_library(
-        name = "binpackingwithconflicts",
-        hdrs = ["binpackingwithconflicts.hpp"],
+        name = "bin_packing_with_conflicts",
+        hdrs = ["bin_packing_with_conflicts.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
-                "@orproblems//orproblems:binpackingwithconflicts",
-                "@treesearchsolver//examples:knapsackwithconflicts",
+                "@orproblems//orproblems:bin_packing_with_conflicts",
+                "@treesearchsolver//examples:knapsack_with_conflicts",
         ],
         visibility = ["//visibility:public"],
 )
 
 cc_binary(
-        name = "binpackingwithconflicts_main",
-        srcs = ["binpackingwithconflicts_main.cpp"],
+        name = "bin_packing_with_conflicts_main",
+        srcs = ["bin_packing_with_conflicts_main.cpp"],
         deps = [
-                ":binpackingwithconflicts",
+                ":bin_packing_with_conflicts",
                 "//columngenerationsolver:read_args",
         ] + ALL_DEP,
         copts = ALL_COPTS,
@@ -110,22 +110,22 @@ cc_binary(
 
 
 cc_library(
-        name = "capacitatedvehiclerouting",
-        hdrs = ["capacitatedvehiclerouting.hpp"],
+        name = "capacitated_vehicle_routing",
+        hdrs = ["capacitated_vehicle_routing.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "@optimizationtools//optimizationtools/utils:utils",
-                "@orproblems//orproblems:capacitatedvehiclerouting",
+                "@orproblems//orproblems:capacitated_vehicle_routing",
                 "//examples/pricingsolver:espprc",
         ],
         visibility = ["//visibility:public"],
 )
 
 cc_binary(
-        name = "capacitatedvehiclerouting_main",
-        srcs = ["capacitatedvehiclerouting_main.cpp"],
+        name = "capacitated_vehicle_routing_main",
+        srcs = ["capacitated_vehicle_routing_main.cpp"],
         deps = [
-                ":capacitatedvehiclerouting",
+                ":capacitated_vehicle_routing",
                 "//columngenerationsolver:read_args",
         ] + ALL_DEP,
         copts = ALL_COPTS,
@@ -133,22 +133,22 @@ cc_binary(
 
 
 cc_library(
-        name = "vehicleroutingwithtimewindows",
-        hdrs = ["vehicleroutingwithtimewindows.hpp"],
+        name = "vehicle_routing_with_time_windows",
+        hdrs = ["vehicle_routing_with_time_windows.hpp"],
         deps = [
                 "//columngenerationsolver:columngenerationsolver",
                 "//examples/pricingsolver:espprctw",
                 "@optimizationtools//optimizationtools/utils:utils",
-                "@orproblems//orproblems:vehicleroutingwithtimewindows",
+                "@orproblems//orproblems:vehicle_routing_with_time_windows",
         ],
         visibility = ["//visibility:public"],
 )
 
 cc_binary(
-        name = "vehicleroutingwithtimewindows_main",
-        srcs = ["vehicleroutingwithtimewindows_main.cpp"],
+        name = "vehicle_routing_with_time_windows_main",
+        srcs = ["vehicle_routing_with_time_windows_main.cpp"],
         deps = [
-                ":vehicleroutingwithtimewindows",
+                ":vehicle_routing_with_time_windows",
                 "//columngenerationsolver:read_args",
         ] + ALL_DEP,
         copts = ALL_COPTS,

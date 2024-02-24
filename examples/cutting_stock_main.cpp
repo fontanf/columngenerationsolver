@@ -1,8 +1,8 @@
-#include "examples/vehicleroutingwithtimewindows.hpp"
+#include "examples/cutting_stock.hpp"
 #include "columngenerationsolver/read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace vehicleroutingwithtimewindows;
+using namespace cutting_stock;
 
 int main(int argc, char *argv[])
 {

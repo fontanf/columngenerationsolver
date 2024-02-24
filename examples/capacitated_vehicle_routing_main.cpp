@@ -1,8 +1,8 @@
-#include "examples/binpackingwithconflicts.hpp"
+#include "examples/capacitated_vehicle_routing.hpp"
 #include "columngenerationsolver/read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace binpackingwithconflicts;
+using namespace capacitated_vehicle_routing;
 
 int main(int argc, char *argv[])
 {

@@ -2,7 +2,7 @@
  * Bin packing problem with conflicts.
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/binpackingwithconflicts.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/bin_packing_with_conflicts.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -34,19 +34,19 @@
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "orproblems/binpackingwithconflicts.hpp"
-#include "external/treesearchsolver/examples/knapsackwithconflicts.hpp"
+#include "orproblems/packing/bin_packing_with_conflicts.hpp"
+#include "external/treesearchsolver/examples/knapsack_with_conflicts.hpp"
 #include "external/treesearchsolver/treesearchsolver/iterative_beam_search.hpp"
 
 namespace columngenerationsolver
 {
 
-namespace binpackingwithconflicts
+namespace bin_packing_with_conflicts
 {
 
-using namespace orproblems::binpackingwithconflicts;
+using namespace orproblems::bin_packing_with_conflicts;
 
-using Node = treesearchsolver::knapsackwithconflicts::BranchingScheme::Node;
+using Node = treesearchsolver::knapsack_with_conflicts::BranchingScheme::Node;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
@@ -74,7 +74,7 @@ private:
 
     std::vector<ItemId> kp2bpp_;
 
-    std::vector<treesearchsolver::knapsackwithconflicts::ItemId> bpp2kp_;
+    std::vector<treesearchsolver::knapsack_with_conflicts::ItemId> bpp2kp_;
 
     treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
 
@@ -122,12 +122,12 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
     // Build subproblem instance.
-    treesearchsolver::knapsackwithconflicts::InstanceBuilder kp_instance_builder;
+    treesearchsolver::knapsack_with_conflicts::InstanceBuilder kp_instance_builder;
     kp_instance_builder.set_capacity(instance_.capacity());
     kp2bpp_.clear();
     std::fill(bpp2kp_.begin(), bpp2kp_.end(), -1);
     for (ItemId item_id = 0; item_id < instance_.number_of_items(); ++item_id) {
-        treesearchsolver::knapsackwithconflicts::Profit profit = duals[item_id];
+        treesearchsolver::knapsack_with_conflicts::Profit profit = duals[item_id];
         if (profit <= 0)
             continue;
         if (packed_items_[item_id] == 1)
@@ -139,16 +139,16 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             if (item_id_2 < item_id && bpp2kp_[item_id_2] != -1)
                 kp_instance_builder.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
     }
-    const orproblems::knapsackwithconflicts::Instance kp_instance = kp_instance_builder.build();
+    const orproblems::knapsack_with_conflicts::Instance kp_instance = kp_instance_builder.build();
 
     std::vector<std::shared_ptr<const Column>> columns;
 
     // Solve subproblem instance.
-    treesearchsolver::knapsackwithconflicts::BranchingScheme branching_scheme(kp_instance, {});
+    treesearchsolver::knapsack_with_conflicts::BranchingScheme branching_scheme(kp_instance, {});
     for (;;) {
         bool ok = false;
 
-        treesearchsolver::IterativeBeamSearchParameters<treesearchsolver::knapsackwithconflicts::BranchingScheme> kp_parameters;
+        treesearchsolver::IterativeBeamSearchParameters<treesearchsolver::knapsack_with_conflicts::BranchingScheme> kp_parameters;
         kp_parameters.verbosity_level = 0;
         kp_parameters.maximum_size_of_the_solution_pool = 100;
         kp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;

@@ -2,7 +2,7 @@
  * Cutting stock problem.
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/cuttingstock.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/cutting_stock.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -34,7 +34,7 @@
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "orproblems/cuttingstock.hpp"
+#include "orproblems/packing/cutting_stock.hpp"
 
 #include "knapsacksolver/knapsack/instance_builder.hpp"
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_bellman.hpp"
@@ -42,10 +42,10 @@
 
 namespace columngenerationsolver
 {
-namespace cuttingstock
+namespace cutting_stock
 {
 
-using namespace orproblems::cuttingstock;
+using namespace orproblems::cutting_stock;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {

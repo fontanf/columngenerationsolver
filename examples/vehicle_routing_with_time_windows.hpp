@@ -2,7 +2,7 @@
  * Vehicle routing problem with time windows
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/vehicleroutingwithtimewindows.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/vehicle_routing_with_time_windows.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -40,7 +40,7 @@
 
 #include "examples/pricingsolver/espprctw.hpp"
 
-#include "orproblems/vehicleroutingwithtimewindows.hpp"
+#include "orproblems/routing/vehicle_routing_with_time_windows.hpp"
 
 #include "treesearchsolver/iterative_beam_search.hpp"
 
@@ -48,10 +48,10 @@
 
 namespace columngenerationsolver
 {
-namespace vehicleroutingwithtimewindows
+namespace vehicle_routing_with_time_windows
 {
 
-using namespace orproblems::vehicleroutingwithtimewindows;
+using namespace orproblems::vehicle_routing_with_time_windows;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {

@@ -2,7 +2,7 @@
  * Capacitated vehicle routing problem.
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/capacitatedvehiclerouting.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/capacitated_vehicle_routing.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -36,7 +36,7 @@
 
 #include "examples/pricingsolver/espprc.hpp"
 
-#include "orproblems/capacitatedvehiclerouting.hpp"
+#include "orproblems/routing/capacitated_vehicle_routing.hpp"
 
 #include "treesearchsolver/iterative_beam_search.hpp"
 
@@ -44,10 +44,10 @@
 
 namespace columngenerationsolver
 {
-namespace capacitatedvehiclerouting
+namespace capacitated_vehicle_routing
 {
 
-using namespace orproblems::capacitatedvehiclerouting;
+using namespace orproblems::capacitated_vehicle_routing;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {

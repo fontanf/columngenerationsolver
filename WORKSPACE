@@ -45,7 +45,7 @@ local_repository(
 git_repository(
     name = "orproblems",
     remote = "https://github.com/fontanf/orproblems.git",
-    commit = "82d9e15fd9b178a45cd64e78e9b22364e41a7e1d",
+    commit = "060c50ed46a3131cf0575b0612f8aedef9a0d434",
 )
 
 local_repository(
@@ -67,7 +67,7 @@ local_repository(
 git_repository(
     name = "treesearchsolver",
     remote = "https://github.com/fontanf/treesearchsolver.git",
-    commit = "2aee51c507fb28d945462f6d88ec064f35baba5d",
+    commit = "b74aee4f447f25416a438c2deafeaab79fbd2840",
 )
 
 local_repository(
@@ -78,7 +78,7 @@ local_repository(
 git_repository(
     name = "localsearchsolver",
     remote = "https://github.com/fontanf/localsearchsolver.git",
-    commit = "304993bb84d9f3d7179d7eab280bc5700e9c7930",
+    commit = "dd0581a6aed7aed485e65daed14643071f509a38",
 )
 
 local_repository(

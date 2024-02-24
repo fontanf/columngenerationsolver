@@ -1,8 +1,8 @@
-#include "examples/cuttingstock.hpp"
+#include "examples/multiple_knapsack.hpp"
 #include "columngenerationsolver/read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace cuttingstock;
+using namespace multiple_knapsack;
 
 int main(int argc, char *argv[])
 {
@@ -35,7 +35,15 @@ int main(int argc, char *argv[])
     Model model = get_model(instance);
 
     // Solve.
-    auto output = run(model, write_solution, vm);
+    auto output = run(
+            model,
+            [&instance](
+                const Solution& solution,
+                const std::string& certificate_path)
+            {
+                write_solution(instance, solution, certificate_path);
+            },
+            vm);
 
     // Run checker.
     if (vm.count("certificate")
@@ -51,3 +59,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+

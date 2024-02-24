@@ -1,8 +1,8 @@
-#include "examples/capacitatedvehiclerouting.hpp"
+#include "examples/bin_packing_with_conflicts.hpp"
 #include "columngenerationsolver/read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace capacitatedvehiclerouting;
+using namespace bin_packing_with_conflicts;
 
 int main(int argc, char *argv[])
 {
