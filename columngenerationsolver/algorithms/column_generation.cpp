@@ -321,6 +321,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         for (Counter number_of_column_generation_iterations = 1;
                 ;
                 ++number_of_column_generation_iterations) {
+            //std::cout << "number_of_column_generation_iterations " << number_of_column_generation_iterations << std::endl;
 
             // Solve LP
             auto start_lpsolve = std::chrono::high_resolution_clock::now();
@@ -379,7 +380,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // Search for new columns by solving the pricing problem.
 
                 duals_in = duals_sep; // The last shall be the first.
-                // std::cout << "alpha " << alpha << std::endl;
+                //std::cout << "alpha " << alpha << std::endl;
                 for (Counter k = 1; ; ++k) {
                     // Mispricing number.
 
@@ -392,19 +393,26 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     double beta = parameters.static_directional_smoothing_parameter;
                     //std::cout << "alpha_cur " << alpha_cur << std::endl;
                     if (number_of_column_generation_iterations == 1
-                            || norm(new_rows, duals_in, duals_out) == 0 // Shouldn't happen, but happens with Cplex.
+                            || norm(new_rows, subgradient) == 0
+                            // Shouldn't happen, but happens with Cplex.
+                            || norm(new_rows, duals_in, duals_out) == 0
                             || k > 1
-                            || (!parameters.automatic_directional_smoothing && beta == 0)) { // No directional smoothing.
+                            // No directional smoothing.
+                            || (!parameters.automatic_directional_smoothing && beta == 0)) {
+
+                        //std::cout << "compute duals_sep..." << std::endl;
                         for (RowIdx row_id: new_rows) {
+                            //std::cout << " row " << row_id
+                            //    << " dual_in " << duals_in[row_id]
+                            //    << " dual_out " << duals_out[row_id]
+                            //    << " alpha " << alpha_cur
+                            //    << " dual_sep " << duals_sep[row_id]
+                            //    << std::endl;
                             duals_sep[row_id]
                                 = alpha_cur * duals_in[row_id]
                                 + (1 - alpha_cur) * duals_out[row_id];
                         }
-                        //for (RowIdx i: new_rows)
-                        //    std::cout
-                        //        << "i " << i
-                        //        << " in " << duals_in[i]
-                        //        << " sep " << duals_sep[i] << std::endl;
+
                     } else {
                         // Directional smoothing.
 
@@ -416,6 +424,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         }
 
                         // Compute π_g.
+                        //std::cout << "compute duals_g..." << std::endl;
                         Value coef_g
                             = norm(new_rows, duals_in, duals_out)
                             / norm(new_rows, subgradient);
@@ -423,6 +432,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             duals_g[row_id]
                                 = duals_in[row_id]
                                 + coef_g * subgradient[row_id];
+                            //std::cout << " row " << row_id
+                            //    << " dual_in " << duals_in[row_id]
+                            //    << " subgradient " << subgradient[row_id]
+                            //    << " coef_g " << coef_g
+                            //    << " dual_g " << duals_g[row_id]
+                            //    << std::endl;
                         }
 
                         // Compute β.
@@ -442,31 +457,37 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         }
 
                         // Compute ρ.
+                        //std::cout << "compute rho..." << std::endl;
                         for (RowIdx row_id: new_rows) {
                             rho[row_id]
                                 = beta * duals_g[row_id]
                                 + (1 - beta) * duals_out[row_id];
+                            //std::cout << " row " << row_id
+                            //    << " beta " << beta
+                            //    << " dual_g " << duals_g[row_id]
+                            //    << " dual_out " << duals_out[row_id]
+                            //    << " rho " << rho[row_id]
+                            //    << std::endl;
                         }
 
                         // Compute π_sep.
+                        //std::cout << "compute duals_sep..." << std::endl;
                         Value coef_sep
                             = norm(new_rows, duals_in, duals_tilde)
                             / norm(new_rows, duals_in, rho);
+                        //std::cout << "norm(new_rows, duals_in, duals_tilde) " << norm(new_rows, duals_in, duals_tilde) << std::endl;
+                        //std::cout << "norm(new_rows, duals_in, rho) " << norm(new_rows, duals_in, rho) << std::endl;
                         for (RowIdx row_id: new_rows) {
+                            //std::cout << " row " << row_id
+                            //    << " dual_in " << duals_in[row_id]
+                            //    << " coef_sep " << coef_sep
+                            //    << " rho " << rho[row_id]
+                            //    << " dual_sep " << duals_sep[row_id]
+                            //    << std::endl;
                             duals_sep[row_id]
                                 = duals_in[row_id]
                                 + coef_sep * (rho[row_id] - duals_in[row_id]);
                         }
-                        //for (RowIdx i: new_rows)
-                        //    std::cout
-                        //        << "i " << i
-                        //        << " in " << duals_in[i]
-                        //        << " out " << duals_out[i]
-                        //        << " sg " << subgradient[i]
-                        //        << " g " << duals_g[i]
-                        //        << " tilde " << duals_tilde[i]
-                        //        << " rho " << rho[i]
-                        //        << " sep " << duals_sep[i] << std::endl;
                     }
 
                     // Call pricing solver on the computed separation point.
@@ -604,6 +625,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     lagrangian_constraint_values[element.row] += element.coefficient;
 
             // Compute subgradient at separation point.
+            //std::cout << "update subgradient..." << std::endl;
             for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
                 subgradient[new_rows[row_id]]
                     = std::min(
@@ -614,6 +636,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             0.0,
                             new_row_lower_bounds[row_id]
                             - lagrangian_constraint_values[new_rows[row_id]]);
+                //std::cout << " row " << row_id
+                //    << " lb " << new_row_lower_bounds[row_id]
+                //    << " ub " << new_row_upper_bounds[row_id]
+                //    << " val " << lagrangian_constraint_values[new_rows[row_id]]
+                //    << std::endl;
             }
 
             // Adjust alpha.
