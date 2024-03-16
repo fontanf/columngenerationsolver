@@ -146,6 +146,7 @@ struct Model
     {
         if (verbosity_level >= 1) {
             os
+                << "Objective sense:        " << ((objective_sense == optimizationtools::ObjectiveDirection::Minimize)? "Minimize": "Maximize") << std::endl
                 << "Number of constraints:  " << rows.size() << std::endl
                 << "Number of columns:      " << columns.size() << std::endl
                 ;

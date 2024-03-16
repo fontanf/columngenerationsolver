@@ -733,7 +733,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // restart.
         output.dummy_column_objective_coefficient *= 4;
         // Use current solution as initial columns of the next loop.
-        initial_columns.clear();
+        initial_columns = parameters.initial_columns;
         for (const auto& p: output.relaxation_solution.columns())
             initial_columns.push_back(p.first);
     }
