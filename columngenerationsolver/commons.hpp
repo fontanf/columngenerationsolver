@@ -172,7 +172,7 @@ public:
     Value objective_value() const { return objective_value_; }
 
     /** Get columns. */
-    const std::unordered_map<std::shared_ptr<const Column>, Value>& columns() const { return columns_; };
+    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& columns() const { return columns_; };
 
     /*
      * Export
@@ -233,7 +233,7 @@ private:
     std::vector<Value> row_values_;
 
     /** Columns. */
-    std::unordered_map<std::shared_ptr<const Column>, Value> columns_;
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> columns_;
 
     friend class SolutionBuilder;
 
@@ -255,10 +255,12 @@ public:
             const std::shared_ptr<const Column>& column,
             Value value)
     {
-        if (solution_.columns_.find(column) == solution_.columns_.end()) {
-            solution_.columns_[column] = value;
+        if (columns_map_.find(column) == columns_map_.end()) {
+            columns_map_[column] = solution_.columns_.size();
+            solution_.columns_.push_back({column, value});
         } else {
-            solution_.columns_[column] = solution_.columns_[column] + value;
+            Counter pos = columns_map_[column];
+            solution_.columns_[pos].second = solution_.columns_[pos].second + value;
         }
     }
 
@@ -333,6 +335,9 @@ private:
 
     /** Solution. */
     Solution solution_;
+
+    /** Map of columns to position in solution.columns_. */
+    std::unordered_map<std::shared_ptr<const Column>, Counter> columns_map_;
 
 };
 
