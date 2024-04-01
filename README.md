@@ -83,10 +83,15 @@ bazel build --define clp=true -- //...
 bazel build --define cplex=true -- //...
 ```
 
+Download data:
+```shell
+python3 scripts/download_data.py
+```
+
 Examples:
 
 ```shell
-./bazel-bin/examples/cutting_stock_main  --verbosity-level 1  --input "../ordata/packing/cutting_stock/delorme2016/RG_CSP/BPP_1000_300_0.1_0.8_1.txt"  --format bpplib_csp  --algorithm greedy  --internal-diving 1
+./bazel-bin/examples/cutting_stock_main  --verbosity-level 1  --input "./data/cutting_stock/delorme2016/RG_CSP/BPP_1000_300_0.1_0.8_1.txt"  --format bpplib_csp  --algorithm greedy  --internal-diving 1
 ```
 ```
 ==========================================
