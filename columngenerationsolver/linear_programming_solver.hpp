@@ -148,7 +148,7 @@ public:
 
     void solve()
     {
-        model_.writeLp("output");
+        //model_.writeLp("output");
         model_.primal();
     }
 
