@@ -154,6 +154,63 @@ struct Model
     }
 };
 
+class ColumnMap
+{
+
+public:
+
+    /** Get columns. */
+    const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& columns() const { return columns_; };
+
+    bool contains(
+            const std::shared_ptr<const Column>& column)
+    {
+        return (columns_map_.find(column) != columns_map_.end());
+    }
+
+    Value get_column_value(
+            const std::shared_ptr<const Column>& column,
+            Value default_value = 0) const
+    {
+        auto it = columns_map_.find(column);
+        if (it == columns_map_.end())
+            return default_value;
+        Counter pos = it->second;
+        return columns_[pos].second;
+    }
+
+    /** Add a column to the solution. */
+    void set_column_value(
+            const std::shared_ptr<const Column>& column,
+            Value value)
+    {
+        if (columns_map_.find(column) == columns_map_.end()) {
+            columns_map_[column] = columns_.size();
+            columns_.push_back({column, value});
+        } else {
+            Counter pos = columns_map_[column];
+            columns_[pos].second = value;
+        }
+    }
+
+private:
+
+    /*
+     * Private methods
+     */
+
+    /*
+     * Private attributes
+     */
+
+    /** Columns. */
+    std::vector<std::pair<std::shared_ptr<const Column>, Value>> columns_;
+
+    /** Map of columns to position in solution.columns_. */
+    std::unordered_map<std::shared_ptr<const Column>, Counter> columns_map_;
+
+};
+
 /**
  * Solution class.
  */

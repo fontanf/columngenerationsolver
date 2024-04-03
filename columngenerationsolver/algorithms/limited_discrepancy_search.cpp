@@ -19,7 +19,7 @@ struct LimitedDiscrepancySearchNode
     std::shared_ptr<Solution> relaxation_solution;
 
     /** Columns fixed at this node. */
-    std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns;
+    ColumnMap fixed_columns;
 
     /** Column branched on at this node. */
     std::shared_ptr<const Column> column = nullptr;
@@ -141,8 +141,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 column_generation_parameters.initial_columns.push_back(p.first);
         }
         column_generation_parameters.column_pool = column_pool;
-        for (const auto& p: node->fixed_columns)
-            column_generation_parameters.fixed_columns.push_back({p.first, p.second});
+        column_generation_parameters.fixed_columns = node->fixed_columns.columns();
 
         // Solve.
         auto cg_output = column_generation(
@@ -229,27 +228,20 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         algorithm_formatter.print(ss.str());
 
         //std::cout << "fc";
-        //for (auto p: fixed_columns)
+        //for (auto p: fixed_columns.columns())
         //    std::cout << " " << *(p.first) << " " << p.second << ";";
         //std::cout << std::endl;
 
         // Fix columns with value >= 1 to their floor value.
-        std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns = node->fixed_columns;
+        ColumnMap fixed_columns = node->fixed_columns;
         bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
-            Value value = p.second;
-            if (std::floor(value) == 0)
+            Value value = std::floor(p.second);
+            if (value <= fixed_columns.get_column_value(column))
                 continue;
-            if (fixed_columns.find(column) == fixed_columns.end()) {
-                fixed_columns[column] = std::floor(value);
-                fixed_found = true;
-            } else {
-                if (std::floor(value) > fixed_columns[column]) {
-                    fixed_columns[column] = std::floor(value);
-                    fixed_found = true;
-                }
-            }
+            fixed_columns.set_column_value(column, value);
+            fixed_found = true;
         }
 
         if (fixed_found) {
@@ -283,8 +275,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             Value value = p.second;
 
             // Don't branch on a fixed column.
-            if (fixed_columns.find(column) != fixed_columns.end()
-                    && fixed_columns[column] == value)
+            if (value <= fixed_columns.get_column_value(column))
                 continue;
 
             // Don't fix a column to 0.
@@ -317,7 +308,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         child_1->parent = node;
         child_2->parent = node;
         child_1->fixed_columns = fixed_columns;
-        child_1->fixed_columns[column_best] = value_best;
+        child_1->fixed_columns.set_column_value(column_best, value_best);
         child_2->fixed_columns = fixed_columns;
         child_1->column = column_best;
         child_2->column = column_best;

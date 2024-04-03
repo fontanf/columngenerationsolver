@@ -19,7 +19,7 @@ const GreedyOutput columngenerationsolver::greedy(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
-    std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns;
+    ColumnMap fixed_columns;
 
     for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
 
@@ -55,8 +55,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 initial_columns.begin(),
                 initial_columns.end());
         column_generation_parameters.column_pool = column_pool;
-        for (const auto& p: fixed_columns)
-            column_generation_parameters.fixed_columns.push_back({p.first, p.second});
+        column_generation_parameters.fixed_columns = fixed_columns.columns();
 
         // Solve.
         auto cg_output = column_generation(
@@ -126,18 +125,11 @@ const GreedyOutput columngenerationsolver::greedy(
         bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
-            Value value = p.second;
-            if (std::floor(value) == 0)
+            Value value = std::floor(p.second);
+            if (value <= fixed_columns.get_column_value(column))
                 continue;
-            if (fixed_columns.find(column) == fixed_columns.end()) {
-                fixed_columns[column] = std::floor(value);
-                fixed_found = true;
-            } else {
-                if (std::floor(value) > fixed_columns[column]) {
-                    fixed_columns[column] = std::floor(value);
-                    fixed_found = true;
-                }
-            }
+            fixed_columns.set_column_value(column, value);
+            fixed_found = true;
         }
 
         if (!fixed_found) {
@@ -148,8 +140,7 @@ const GreedyOutput columngenerationsolver::greedy(
             for (auto p: cg_output.relaxation_solution.columns()) {
                 const std::shared_ptr<const Column>& column = p.first;
                 Value value = p.second;
-                if (fixed_columns.find(column) != fixed_columns.end()
-                        && fixed_columns[column] == value)
+                if (value <= fixed_columns.get_column_value(column))
                     continue;
                 if (ceil(value) == 0)
                     continue;
@@ -166,7 +157,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 break;
 
             // Update fixed columns.
-            fixed_columns[column_best] = value_best;
+            fixed_columns.set_column_value(column_best, value_best);
         }
 
         // Update initial columns for the next node.
