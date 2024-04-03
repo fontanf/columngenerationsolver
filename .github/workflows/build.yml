@@ -30,6 +30,10 @@ jobs:
     - name: Build Windows
       run: bazel build  --cxxopt=/MT -- //...
       if: matrix.os == 'windows-latest'
+    - name: Set DYLD_LIBRARY_PATH for Darwin
+      env:
+        DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
+      if: matrix.os == 'macos-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results
     - name: Checkout main branch
