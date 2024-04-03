@@ -33,14 +33,9 @@ jobs:
     - name: Copy CLP libraries (Darwin)
       run: |
         mkdir -p "/Users/runner/work/Clp/Clp/dist/lib"
-        ls "${GITHUB_WORKSPACE}/"
-        ls "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/"
-        ls "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/"
-        ls "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/osi_darwin/"
-        ls "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/osi_darwin/lib/"
-        cp "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/osi_darwin/lib/*.dylib" "/Users/runner/work/Clp/Clp/dist/lib/"
-        cp "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/coinutils_darwin/lib/*.dylib" "/Users/runner/work/Clp/Clp/dist/lib/"
-        cp "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib/*.dylib" "/Users/runner/work/Clp/Clp/dist/lib/"
+        cp -rfT "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/osi_darwin/lib" "/Users/runner/work/Clp/Clp/dist/lib"
+        cp -rfT "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/coinutils_darwin/lib" "/Users/runner/work/Clp/Clp/dist/lib"
+        cp -rfT "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib" "/Users/runner/work/Clp/Clp/dist/lib"
         ls "/Users/runner/work/Clp/Clp/dist/lib/"
       if: matrix.os == 'macos-latest'
     - name: Run tests
