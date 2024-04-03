@@ -13,9 +13,6 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8"]
 
-    env:
-      DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -35,6 +32,8 @@ jobs:
       if: matrix.os == 'windows-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results
+      env:
+        DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
     - name: Checkout main branch
       run: |
         git remote set-branches origin '*'
@@ -48,5 +47,7 @@ jobs:
       if: matrix.os == 'windows-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results_ref
+      env:
+        DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
     - name: Process tests
       run: python3 -u ./bazel-columngenerationsolver/external/optimizationtools/scripts/process_tests.py --ref test_results_ref --new test_results
