@@ -30,11 +30,12 @@ jobs:
     - name: Build Windows
       run: bazel build  --cxxopt=/MT -- //...
       if: matrix.os == 'windows-latest'
-    - name: Set DYLD_LIBRARY_PATH for Darwin
+    - name: Copy CLP libraries (Darwin)
       run: |
-        export DYLD_LIBRARY_PATH=${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib/
-        echo ${DYLD_LIBRARY_PATH}
-        ls ${DYLD_LIBRARY_PATH}
+        mkdir -p "/Users/runner/work/Clp/Clp/dist"
+        cp "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib" "/Users/runner/work/Clp/Clp/dist/"
+        ls "/Users/runner/work/Clp/Clp/dist/"
+        ls "/Users/runner/work/Clp/Clp/dist/lib/"
       if: matrix.os == 'macos-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results
