@@ -49,14 +49,17 @@ namespace capacitated_vehicle_routing
 
 using namespace orproblems::capacitated_vehicle_routing;
 
+template <typename Distances>
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
 
 public:
 
     PricingSolver(
-            const Instance& instance):
+            const Instance& instance,
+            const Distances& distances):
         instance_(instance),
+        distances_(distances),
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
@@ -70,7 +73,11 @@ public:
 
 private:
 
+    /** Instance. */
     const Instance& instance_;
+
+    /** Distances. */
+    const Distances& distances_;
 
     std::vector<Demand> visited_customers_;
 
@@ -80,7 +87,10 @@ private:
 
 };
 
-inline columngenerationsolver::Model get_model(const Instance& instance)
+template <typename Distances>
+inline columngenerationsolver::Model get_model(
+        const Distances& distances,
+        const Instance& instance)
 {
     columngenerationsolver::Model model;
 
@@ -100,12 +110,13 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 
     // Pricing solver.
     model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver(instance));
+            new PricingSolver<Distances>(instance, distances));
 
     return model;
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
+template <typename Distances>
+std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
@@ -130,7 +141,8 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
+template <typename Distances>
+std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_pricing(
             const std::vector<Value>& duals)
 {
     std::vector<std::shared_ptr<const Column>> columns;
@@ -169,7 +181,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             espp_instance_builder.set_distance(
                     espp_location_id,
                     espp_location_id_2,
-                    instance_.distance(location_id, location_id_2));
+                    distances_.distance(location_id, location_id_2));
         }
     }
     espprc::Instance espp_instance = espp_instance_builder.build();
@@ -204,10 +216,10 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             element.row = location_id - 1;
             element.coefficient = 1;
             column.elements.push_back(element);
-            column.objective_coefficient += instance_.distance(location_id_prev, location_id);
+            column.objective_coefficient += distances_.distance(location_id_prev, location_id);
             location_id_prev = location_id;
         }
-        column.objective_coefficient += instance_.distance(location_id_prev, 0);
+        column.objective_coefficient += distances_.distance(location_id_prev, 0);
         ColumnExtra extra {solution};
         column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
         columns.push_back(std::shared_ptr<const Column>(new Column(column)));

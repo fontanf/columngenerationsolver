@@ -235,6 +235,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
         // Fix columns with value >= 1 to their floor value.
         std::unordered_map<std::shared_ptr<const Column>, Value> fixed_columns = node->fixed_columns;
+        bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
             Value value = p.second;
@@ -242,10 +243,25 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 continue;
             if (fixed_columns.find(column) == fixed_columns.end()) {
                 fixed_columns[column] = std::floor(value);
+                fixed_found = true;
             } else {
-                if (std::floor(value) > fixed_columns[column])
+                if (std::floor(value) > fixed_columns[column]) {
                     fixed_columns[column] = std::floor(value);
+                    fixed_found = true;
+                }
             }
+        }
+
+        if (fixed_found) {
+            // Create child node and add them to the queue.
+            auto child = std::make_shared<LimitedDiscrepancySearchNode>();
+            child->parent = node;
+            child->fixed_columns = fixed_columns;
+            child->column = nullptr;
+            child->discrepancy = node->discrepancy;
+            child->depth = node->depth + 1;
+            nodes.insert(child);
+            continue;
         }
 
         // Get the set of columns on which branching is forbidden.
@@ -254,7 +270,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         for (auto node_tmp = node;
                 node_tmp->parent != NULL;
                 node_tmp = node_tmp->parent) {
-            tabu.insert(node_tmp->column);
+            if (node_tmp->column != nullptr)
+                tabu.insert(node_tmp->column);
         }
 
         // Compute next column to branch on.

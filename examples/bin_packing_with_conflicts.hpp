@@ -76,7 +76,7 @@ private:
 
     std::vector<treesearchsolver::knapsack_with_conflicts::ItemId> bpp2kp_;
 
-    treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
+    treesearchsolver::NodeId bs_size_of_the_queue_ = 1024;
 
 };
 
@@ -145,43 +145,28 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
 
     // Solve subproblem instance.
     treesearchsolver::knapsack_with_conflicts::BranchingScheme branching_scheme(kp_instance, {});
-    for (;;) {
-        bool ok = false;
 
-        treesearchsolver::IterativeBeamSearchParameters<treesearchsolver::knapsack_with_conflicts::BranchingScheme> kp_parameters;
-        kp_parameters.verbosity_level = 0;
-        kp_parameters.maximum_size_of_the_solution_pool = 100;
-        kp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
-        kp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
-        auto kp_output = treesearchsolver::iterative_beam_search(
-                branching_scheme, kp_parameters);
+    treesearchsolver::IterativeBeamSearchParameters<treesearchsolver::knapsack_with_conflicts::BranchingScheme> kp_parameters;
+    kp_parameters.verbosity_level = 0;
+    kp_parameters.maximum_size_of_the_solution_pool = 1;
+    kp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
+    kp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
+    auto kp_output = treesearchsolver::iterative_beam_search(
+            branching_scheme, kp_parameters);
 
-        // Retrieve column.
-        for (const std::shared_ptr<Node>& node: kp_output.solution_pool.solutions()) {
-            Column column;
-            column.objective_coefficient = 1;
-            for (auto node_tmp = node;
-                    node_tmp->parent != nullptr;
-                    node_tmp = node_tmp->parent) {
-                LinearTerm element;
-                element.row = kp2bpp_[node_tmp->item_id];
-                element.coefficient = 1;
-                column.elements.push_back(element);
-            }
-            columns.push_back(std::shared_ptr<const Column>(new Column(column)));
-
-            if (columngenerationsolver::compute_reduced_cost(column, duals) < 0)
-                ok = true;
+    // Retrieve column.
+    for (const std::shared_ptr<Node>& node: kp_output.solution_pool.solutions()) {
+        Column column;
+        column.objective_coefficient = 1;
+        for (auto node_tmp = node;
+                node_tmp->parent != nullptr;
+                node_tmp = node_tmp->parent) {
+            LinearTerm element;
+            element.row = kp2bpp_[node_tmp->item_id];
+            element.coefficient = 1;
+            column.elements.push_back(element);
         }
-        if (ok) {
-            break;
-        } else {
-            if (bs_size_of_the_queue_ < 1024) {
-                bs_size_of_the_queue_ *= 2;
-            } else {
-                break;
-            }
-        }
+        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
     }
     return columns;
 }

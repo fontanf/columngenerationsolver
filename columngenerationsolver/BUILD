@@ -16,6 +16,7 @@ cc_library(
                 "algorithms/heuristic_tree_search.hpp",
         ],
         srcs = [
+                "commons.cpp",
                 "algorithm_formatter.cpp",
                 "algorithms/column_generation.cpp",
                 "algorithms/greedy.cpp",

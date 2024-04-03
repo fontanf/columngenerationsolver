@@ -123,6 +123,7 @@ const GreedyOutput columngenerationsolver::greedy(
         algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
 
         // Fix columns with value >= 1 to their floor value.
+        bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
             Value value = p.second;
@@ -130,38 +131,43 @@ const GreedyOutput columngenerationsolver::greedy(
                 continue;
             if (fixed_columns.find(column) == fixed_columns.end()) {
                 fixed_columns[column] = std::floor(value);
+                fixed_found = true;
             } else {
-                if (std::floor(value) > fixed_columns[column])
+                if (std::floor(value) > fixed_columns[column]) {
                     fixed_columns[column] = std::floor(value);
+                    fixed_found = true;
+                }
             }
         }
 
-        // Find column to branch on.
-        std::shared_ptr<const Column> column_best = nullptr;
-        Value value_best = -1;
-        Value diff_best = -1;
-        for (auto p: cg_output.relaxation_solution.columns()) {
-            const std::shared_ptr<const Column>& column = p.first;
-            Value value = p.second;
-            if (fixed_columns.find(column) != fixed_columns.end()
-                    && fixed_columns[column] == value)
-                continue;
-            if (ceil(value) == 0)
-                continue;
-            if (column_best == nullptr
-                    || column_best->branching_priority < column->branching_priority
-                    || (column_best->branching_priority == column->branching_priority
-                        && diff_best > ceil(value) - value)) {
-                column_best = column;
-                value_best = ceil(value);
-                diff_best = ceil(value) - value;
+        if (!fixed_found) {
+            // Find column to branch on.
+            std::shared_ptr<const Column> column_best = nullptr;
+            Value value_best = -1;
+            Value diff_best = -1;
+            for (auto p: cg_output.relaxation_solution.columns()) {
+                const std::shared_ptr<const Column>& column = p.first;
+                Value value = p.second;
+                if (fixed_columns.find(column) != fixed_columns.end()
+                        && fixed_columns[column] == value)
+                    continue;
+                if (ceil(value) == 0)
+                    continue;
+                if (column_best == nullptr
+                        || column_best->branching_priority < column->branching_priority
+                        || (column_best->branching_priority == column->branching_priority
+                            && diff_best > ceil(value) - value)) {
+                    column_best = column;
+                    value_best = ceil(value);
+                    diff_best = ceil(value) - value;
+                }
             }
-        }
-        if (column_best == nullptr)
-            break;
+            if (column_best == nullptr)
+                break;
 
-        // Update fixed columns.
-        fixed_columns[column_best] = value_best;
+            // Update fixed columns.
+            fixed_columns[column_best] = value_best;
+        }
 
         // Update initial columns for the next node.
         initial_columns.clear();
