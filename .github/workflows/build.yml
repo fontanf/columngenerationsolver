@@ -32,9 +32,10 @@ jobs:
       if: matrix.os == 'windows-latest'
     - name: Copy CLP libraries (Darwin)
       run: |
-        mkdir -p "/Users/runner/work/Clp/Clp/dist"
-        cp -r "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib" "/Users/runner/work/Clp/Clp/dist/"
-        ls "/Users/runner/work/Clp/Clp/dist/"
+        mkdir -p "/Users/runner/work/Clp/Clp/dist/lib"
+        cp -r "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/osi_darwin/lib/*" "/Users/runner/work/Clp/Clp/dist/lib/"
+        cp -r "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/coinutils_darwin/lib/*" "/Users/runner/work/Clp/Clp/dist/lib/"
+        cp -r "${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib/*" "/Users/runner/work/Clp/Clp/dist/lib/"
         ls "/Users/runner/work/Clp/Clp/dist/lib/"
       if: matrix.os == 'macos-latest'
     - name: Run tests
