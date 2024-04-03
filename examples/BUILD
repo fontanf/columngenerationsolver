@@ -16,6 +16,11 @@ selects.config_setting_group(
     match_all = [":clp_build", "@bazel_tools//src/conditions:windows"],
 )
 
+selects.config_setting_group(
+    name = "clp_darwin",
+    match_all = [":clp_build", "@bazel_tools//src/conditions:darwin"],
+)
+
 config_setting(
         name = "cplex_build",
         values = {"define": "cplex=true"},

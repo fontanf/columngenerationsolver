@@ -10,6 +10,9 @@ CLP_DEP = select({
             "//conditions:default": []
         }) + select({
             "//examples:clp_linux": ["@clp_linux//:clp"],
+            "//conditions:default": []
+        }) + select({
+            "//examples:clp_darwin": ["@clp_darwin//:clp"],
             "//conditions:default": []})
 
 CPLEX_COPTS = select({
@@ -45,4 +48,3 @@ KNITRO_DEP = select({
 
 ALL_COPTS = CLP_COPTS + XPRESS_COPTS + CPLEX_COPTS + GUROBI_COPTS + KNITRO_COPTS
 ALL_DEP = CLP_DEP + XPRESS_DEP + CPLEX_DEP + GUROBI_DEP + KNITRO_DEP
-
