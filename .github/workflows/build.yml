@@ -30,10 +30,14 @@ jobs:
     - name: Build Windows
       run: bazel build  --cxxopt=/MT -- //...
       if: matrix.os == 'windows-latest'
+    - name: Set DYLD_LIBRARY_PATH for Darwin
+      run: |
+        export DYLD_LIBRARY_PATH=${GITHUB_WORKSPACE}/bazel-columngenerationsolver/external/clp_darwin/lib/
+        echo ${DYLD_LIBRARY_PATH}
+        ls ${DYLD_LIBRARY_PATH}
+      if: matrix.os == 'macos-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results
-      env:
-        DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
     - name: Checkout main branch
       run: |
         git remote set-branches origin '*'
@@ -47,7 +51,5 @@ jobs:
       if: matrix.os == 'windows-latest'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results_ref
-      env:
-        DYLD_LIBRARY_PATH: ./bazel-columngenerationsolver/external/clp_darwin/lib/
     - name: Process tests
       run: python3 -u ./bazel-columngenerationsolver/external/optimizationtools/scripts/process_tests.py --ref test_results_ref --new test_results
