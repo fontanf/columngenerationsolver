@@ -53,7 +53,9 @@ if args.tests is None or "bin-packing-with-conflicts" in args.tests:
                 + " --internal-diving 1"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
-        os.system(command)
+        status = os.system(command)
+        if status != 0:
+            sys.exit(1)
         print()
     print()
     print()
@@ -99,7 +101,9 @@ if args.tests is None or "capacitated-vehicle-routing" in args.tests:
                 + " --automatic-stop 1"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
-        os.system(command)
+        status = os.system(command)
+        if status != 0:
+            sys.exit(1)
         print()
     print()
     print()
@@ -147,7 +151,9 @@ if args.tests is None or "cutting-stock" in args.tests:
                 + " --internal-diving 1"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
-        os.system(command)
+        status = os.system(command)
+        if status != 0:
+            sys.exit(1)
         print()
     print()
     print()
@@ -195,7 +201,9 @@ if args.tests is None or "multiple-knapsack" in args.tests:
                 + " --internal-diving 1"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
-        os.system(command)
+        status = os.system(command)
+        if status != 0:
+            sys.exit(1)
         print()
     print()
     print()
@@ -241,7 +249,9 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
                 + " --internal-diving 1"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
-        os.system(command)
+        status = os.system(command)
+        if status != 0:
+            sys.exit(1)
         print()
     print()
     print()
