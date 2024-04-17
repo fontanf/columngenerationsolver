@@ -17,7 +17,7 @@ FetchContent_MakeAvailable(Boost)
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
-    GIT_TAG 12962673bf72ab850c573d047f96dc1fe1cb8587)
+    GIT_TAG aeb79f1b9e2cc09ec4cd67a6c73f8fff065185f6)
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../mathoptsolverscmake/")
 FetchContent_MakeAvailable(mathoptsolverscmake)
 
