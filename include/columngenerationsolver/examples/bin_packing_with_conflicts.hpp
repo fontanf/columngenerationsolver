@@ -35,8 +35,8 @@
 #include "columngenerationsolver/commons.hpp"
 
 #include "orproblems/packing/bin_packing_with_conflicts.hpp"
-#include "external/treesearchsolver/examples/knapsack_with_conflicts.hpp"
-#include "external/treesearchsolver/treesearchsolver/iterative_beam_search.hpp"
+#include "treesearchsolver/examples/knapsack_with_conflicts.hpp"
+#include "treesearchsolver/iterative_beam_search.hpp"
 
 namespace columngenerationsolver
 {

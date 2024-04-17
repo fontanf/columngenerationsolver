@@ -139,7 +139,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         new_row_lower_bounds,
                         new_row_upper_bounds));
 #endif
-#if CLP_FOUND
         if (parameters.linear_programming_solver == LinearProgrammingSolver::CLP) {
             solver = std::unique_ptr<ColumnGenerationSolver>(
                     new ColumnGenerationSolverClp(
@@ -147,7 +146,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         new_row_lower_bounds,
                         new_row_upper_bounds));
         }
-#endif
 #if XPRESS_FOUND
         if (parameters.linear_programming_solver == LinearProgrammingSolver::Xpress) {
             solver = std::unique_ptr<ColumnGenerationSolver>(
