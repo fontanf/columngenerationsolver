@@ -8,6 +8,9 @@ set(CMAKE_CXX_STANDARD 14)
 # Enable output of compile commands during generation.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Set MSVC_RUNTIME_LIBRARY.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Add sub-directories.
 add_subdirectory(extern)
 add_subdirectory(src)
