@@ -1,8 +1,8 @@
 /**
- * Capacitated vehicle routing problem.
+ * Vehicle routing problem with time windows
  *
  * Problem description:
- * See https://github.com/fontanf/orproblems/blob/main/orproblems/capacitated_vehicle_routing.hpp
+ * See https://github.com/fontanf/orproblems/blob/main/orproblems/vehicle_routing_with_time_windows.hpp
  *
  * The linear programming formulation of the problem based on Dantzig–Wolfe
  * decomposition is written as follows:
@@ -17,16 +17,20 @@
  *
  * min ∑ₖ dᵏ yᵏ
  *
+ * 0 <= ∑ₖ yᵏ <= m
+ *                                                 (not more then m vehicles)
+ *                                                           Dual variable: u
  * 1 <= ∑ₖ xⱼᵏ yᵏ <= 1     for all customers j
  *                                    (each customer is visited exactly once)
  *                                                         Dual variables: vⱼ
  *
  * The pricing problem consists in finding a variable of negative reduced cost.
  * The reduced cost of a variable yᵏ is given by:
- * rc(yᵏ) = dᵏ - ∑ⱼ xⱼᵏ vⱼ
+ * rc(yᵏ) = dᵏ - u - ∑ⱼ xⱼᵏ vⱼ
  *
  * Therefore, finding a variable of minimum reduced cost reduces to solving
- * an Elementary Shortest Path Problems with Resource Constraints.
+ * an Elementary Shortest Path Problems with Resource Constraints and Time
+ * Windows.
  *
  */
 
@@ -34,9 +38,9 @@
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "examples/pricingsolver/espprc.hpp"
+#include "columngenerationsolver/examples/pricingsolver/espprctw.hpp"
 
-#include "orproblems/routing/capacitated_vehicle_routing.hpp"
+#include "orproblems/routing/vehicle_routing_with_time_windows.hpp"
 
 #include "treesearchsolver/iterative_beam_search.hpp"
 
@@ -44,59 +48,55 @@
 
 namespace columngenerationsolver
 {
-namespace capacitated_vehicle_routing
+namespace vehicle_routing_with_time_windows
 {
 
-using namespace orproblems::capacitated_vehicle_routing;
+using namespace orproblems::vehicle_routing_with_time_windows;
 
-template <typename Distances>
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
 
 public:
 
     PricingSolver(
-            const Instance& instance,
-            const Distances& distances):
+            const Instance& instance):
         instance_(instance),
-        distances_(distances),
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
-    virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
+    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
             const std::vector<Value>& duals);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
 
 private:
 
-    /** Instance. */
     const Instance& instance_;
-
-    /** Distances. */
-    const Distances& distances_;
 
     std::vector<Demand> visited_customers_;
 
-    std::vector<LocationId> espp2vrp_;
+    std::vector<LocationId> espp2cvrp_;
 
-    treesearchsolver::NodeId bs_size_of_the_queue_ = 128;
+    treesearchsolver::NodeId bs_size_of_the_queue_ = 64;
 
 };
 
-template <typename Distances>
-inline columngenerationsolver::Model get_model(
-        const Distances& distances,
-        const Instance& instance)
+inline columngenerationsolver::Model get_model(const Instance& instance)
 {
     columngenerationsolver::Model model;
 
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
 
-    // Rows.
+    // Row bounds.
+    Row row;
+    row.lower_bound = 0;
+    row.upper_bound = instance.number_of_vehicles();
+    row.coefficient_lower_bound = 1;
+    row.coefficient_upper_bound = 1;
+    model.rows.push_back(row);
     for (LocationId location_id = 1;
             location_id < instance.number_of_locations();
             ++location_id) {
@@ -110,13 +110,12 @@ inline columngenerationsolver::Model get_model(
 
     // Pricing solver.
     model.pricing_solver = std::unique_ptr<columngenerationsolver::PricingSolver>(
-            new PricingSolver<Distances>(instance, distances));
+            new PricingSolver(instance));
 
     return model;
 }
 
-template <typename Distances>
-std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::initialize_pricing(
+std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
@@ -126,11 +125,11 @@ std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::initialize_
         if (value < 0.5)
             continue;
         for (const LinearTerm& element: column.elements) {
+            if (element.row == 0)
+                continue;
             if (element.coefficient < 0.5)
                 continue;
-            // row_index + 1 since there is not constraint for location 0 which
-            // is the depot.
-            visited_customers_[element.row + 1] = 1;
+            visited_customers_[element.row] = 1;
         }
     }
     return {};
@@ -141,54 +140,65 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
-template <typename Distances>
-std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_pricing(
+std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
     std::vector<std::shared_ptr<const Column>> columns;
 
     // Build subproblem instance.
-    espp2vrp_.clear();
-    espp2vrp_.push_back(0);
+    espp2cvrp_.clear();
+    espp2cvrp_.push_back(0);
     for (LocationId location_id = 1;
             location_id < instance_.number_of_locations();
             ++location_id) {
         if (visited_customers_[location_id] == 1)
             continue;
-        espp2vrp_.push_back(location_id);
+        espp2cvrp_.push_back(location_id);
     }
-
-    LocationId espp_number_of_locations = espp2vrp_.size();
+    LocationId espp_number_of_locations = espp2cvrp_.size();
     if (espp_number_of_locations == 1)
         return columns;
-    espprc::InstanceBuilder espp_instance_builder(espp_number_of_locations);
+    espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
+    double multiplier = 1000;
     for (LocationId espp_location_id = 0;
             espp_location_id < espp_number_of_locations;
             ++espp_location_id) {
-        LocationId location_id = espp2vrp_[espp_location_id];
-        espp_instance_builder.set_demand(
+        LocationId location_id = espp2cvrp_[espp_location_id];
+        const Location& location = instance_.location(location_id);
+        espp_instance_builder.set_location_demand(
                 espp_location_id,
-                instance_.demand(location_id));
-        espp_instance_builder.set_profit(
+                location.demand);
+        espp_instance_builder.set_location_profit(
                 espp_location_id,
-                ((location_id != 0)? duals[location_id - 1]: 0));
+                ((location_id != 0)? std::round(multiplier * duals[location_id]): 0));
+        espp_instance_builder.set_location_release_date(
+                espp_location_id,
+                std::round(multiplier * location.release_date));
+        espp_instance_builder.set_location_deadline(
+                espp_location_id,
+                std::round(multiplier * location.deadline));
+        espp_instance_builder.set_location_service_time(
+                espp_location_id,
+                std::round(multiplier * location.service_time));
         for (LocationId espp_location_id_2 = 0;
                 espp_location_id_2 < espp_number_of_locations;
                 ++espp_location_id_2) {
             if (espp_location_id_2 == espp_location_id)
                 continue;
-            LocationId location_id_2 = espp2vrp_[espp_location_id_2];
-            espp_instance_builder.set_distance(
+            LocationId location_id_2 = espp2cvrp_[espp_location_id_2];
+            espp_instance_builder.set_travel_time(
                     espp_location_id,
                     espp_location_id_2,
-                    distances_.distance(location_id, location_id_2));
+                    std::round(multiplier * instance_.travel_time(location_id, location_id_2)));
         }
     }
-    espprc::Instance espp_instance = espp_instance_builder.build();
+    espprctw::Instance espp_instance = espp_instance_builder.build();
+    //espp_instance.format(std::cout, 2);
+
+    espprctw::BranchingScheme branching_scheme(espp_instance);
 
     // Solve subproblem instance.
-    espprc::BranchingScheme branching_scheme(espp_instance);
-    treesearchsolver::IterativeBeamSearchParameters<espprc::BranchingScheme> espp_parameters;
+    treesearchsolver::IterativeBeamSearchParameters<espprctw::BranchingScheme> espp_parameters;
     espp_parameters.maximum_size_of_the_solution_pool = 1;
     espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
     espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
@@ -197,29 +207,36 @@ std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_prici
             branching_scheme, espp_parameters);
 
     // Retrieve column.
-    for (const std::shared_ptr<espprc::BranchingScheme::Node>& node:
+    for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
             espp_output.solution_pool.solutions()) {
         if (node->last_location_id == 0)
             continue;
+
         std::vector<LocationId> solution; // Without the depot.
         for (auto node_tmp = node;
                 node_tmp->parent != nullptr;
                 node_tmp = node_tmp->parent) {
-            solution.push_back(espp2vrp_[node_tmp->last_location_id]);
+            solution.push_back(espp2cvrp_[node_tmp->last_location_id]);
         }
         std::reverse(solution.begin(), solution.end());
 
         Column column;
+        LinearTerm element;
+        element.row = 0;
+        element.coefficient = 1;
+        column.elements.push_back(element);
         LocationId location_id_prev = 0;
         for (LocationId location_id: solution) {
             LinearTerm element;
-            element.row = location_id - 1;
+            element.row = location_id;
             element.coefficient = 1;
             column.elements.push_back(element);
-            column.objective_coefficient += distances_.distance(location_id_prev, location_id);
+            column.objective_coefficient += instance_.travel_time(location_id_prev, location_id);
             location_id_prev = location_id;
         }
-        column.objective_coefficient += distances_.distance(location_id_prev, 0);
+        column.objective_coefficient += instance_.travel_time(location_id_prev, 0);
+
+        // Extra.
         ColumnExtra extra {solution};
         column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
         columns.push_back(std::shared_ptr<const Column>(new Column(column)));

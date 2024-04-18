@@ -42,10 +42,10 @@ When the sub-problems are more difficult to solve, their resolution become the b
 
 ### Packing
 
-[Cutting stock problem](examples/cutting_stock.hpp)
+[Cutting stock problem](include/columngenerationsolver/examples/cutting_stock.hpp)
 * Pricing problem: bounded knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-[Multiple knapsack problem](examples/multiple_knapsack.hpp)
+[Multiple knapsack problem](include/columngenerationsolver/examples/multiple_knapsack.hpp)
 * Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
 [Generalized assignment problem](https://github.com/fontanf/generalizedassignmentsolver/blob/master/generalizedassignmentsolver/algorithms/columngeneration.cpp) from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver)
@@ -54,16 +54,16 @@ When the sub-problems are more difficult to solve, their resolution become the b
 [Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/packingsolver/algorithms/column_generation.hpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
 * Pricing problem: geometrical knapsack problems solved with the algorithms from the same repository
 
-[Bin packing problem with conflicts](examples/bin_packing_with_conflicts.hpp)
-* Pricing problem: knapsack problem with conflicts solved with the [heuristic tree search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsack_with_conflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Bin packing problem with conflicts](include/columngenerationsolver/examples/bin_packing_with_conflicts.hpp)
+* Pricing problem: knapsack problem with conflicts solved with the [heuristic tree search](https://github.com/fontanf/treesearchsolver/blob/main/include/columngenerationsolver/examples/knapsack_with_conflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Routing
 
-[Capacitated vehicle routing problem](examples/capacitated_vehicle_routing.hpp)
-* Pricing problem: elementary shortest path problem with resource constraint [solved by heuristic tree search](examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Capacitated vehicle routing problem](include/columngenerationsolver/examples/capacitated_vehicle_routing.hpp)
+* Pricing problem: elementary shortest path problem with resource constraint [solved by heuristic tree search](include/columngenerationsolver/examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
-[Vehicle routing problem with time windows](examples/vehicle_routing_with_time_windows.hpp)
-* Pricing problem: elementary shortest path problem with resource constraint and time windows [solved by heuristic tree search](examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Vehicle routing problem with time windows](include/columngenerationsolver/examples/vehicle_routing_with_time_windows.hpp)
+* Pricing problem: elementary shortest path problem with resource constraint and time windows [solved by heuristic tree search](include/columngenerationsolver/examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Scheduling
 
@@ -77,10 +77,11 @@ When the sub-problems are more difficult to solve, their resolution become the b
 
 ## Usage, running examples from command line
 
-You need to have a linear programming solver already installed. Then update the corresponding entry in the `WORKSPACE` file. You may only need to update the `path` attribute of the solver you are using. Then, compile with one of the following command:
+Compile:
 ```shell
-bazel build --define clp=true -- //...
-bazel build --define cplex=true -- //...
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel
+cmake --install build --config Release --prefix install
 ```
 
 Download data:
@@ -91,7 +92,7 @@ python3 scripts/download_data.py
 Examples:
 
 ```shell
-./bazel-bin/examples/cutting_stock_main  --verbosity-level 1  --input "./data/cutting_stock/delorme2016/RG_CSP/BPP_1000_300_0.1_0.8_1.txt"  --format bpplib_csp  --algorithm greedy  --internal-diving 1
+./install/bin/columngenerationsolver_cutting_stock  --verbosity-level 1  --input "./data/cutting_stock/delorme2016/RG_CSP/BPP_1000_300_0.1_0.8_1.txt"  --format bpplib_csp  --algorithm greedy  --internal-diving 1
 ```
 ```
 ==========================================

@@ -18,7 +18,8 @@ if args.tests is None or "bin-packing-with-conflicts" in args.tests:
     print("----------------------------------")
     print()
 
-    bin_packing_with_conflicts_data = [
+    data_dir = os.environ['BIN_PACKING_WITH_CONFLICTS_DATA']
+    data = [
             (os.path.join("muritiba2010", "BPPC_1_0_1.txt"), "default"),
             (os.path.join("muritiba2010", "BPPC_1_1_2.txt"), "default"),
             (os.path.join("muritiba2010", "BPPC_1_2_3.txt"), "default"),
@@ -29,14 +30,13 @@ if args.tests is None or "bin-packing-with-conflicts" in args.tests:
             (os.path.join("muritiba2010", "BPPC_1_7_8.txt"), "default"),
             (os.path.join("muritiba2010", "BPPC_1_8_9.txt"), "default"),
             (os.path.join("muritiba2010", "BPPC_1_9_10.txt"), "default")]
-    bin_packing_with_conflicts_main = os.path.join(
-            "bazel-bin",
-            "examples",
-            "bin_packing_with_conflicts_main")
-    for instance, instance_format in bin_packing_with_conflicts_data:
+    main = os.path.join(
+            "install",
+            "bin",
+            "columngenerationsolver_bin_packing_with_conflicts")
+    for instance, instance_format in data:
         instance_path = os.path.join(
-                "data",
-                "bin_packing_with_conflicts",
+                data_dir,
                 instance)
         json_output_path = os.path.join(
                 args.directory,
@@ -45,7 +45,7 @@ if args.tests is None or "bin-packing-with-conflicts" in args.tests:
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
         command = (
-                bin_packing_with_conflicts_main
+                main
                 + "  --verbosity-level 1"
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
@@ -66,7 +66,8 @@ if args.tests is None or "capacitated-vehicle-routing" in args.tests:
     print("-----------------------------------")
     print()
 
-    capacitated_vehicle_routing_data = [
+    data_dir = os.environ['CAPACITATED_VEHICLE_ROUTING_DATA']
+    data = [
             (os.path.join("uchoa2014", "X", "X-n101-k25.vrp"), "cvrplib"),
             (os.path.join("uchoa2014", "X", "X-n106-k14.vrp"), "cvrplib"),
             (os.path.join("uchoa2014", "X", "X-n110-k13.vrp"), "cvrplib"),
@@ -77,14 +78,13 @@ if args.tests is None or "capacitated-vehicle-routing" in args.tests:
             (os.path.join("uchoa2014", "X", "X-n134-k13.vrp"), "cvrplib"),
             (os.path.join("uchoa2014", "X", "X-n139-k10.vrp"), "cvrplib"),
             (os.path.join("uchoa2014", "X", "X-n143-k7.vrp"), "cvrplib")]
-    capacitated_vehicle_routing_main = os.path.join(
-            "bazel-bin",
-            "examples",
-            "capacitated_vehicle_routing_main")
-    for instance, instance_format in capacitated_vehicle_routing_data:
+    main = os.path.join(
+            "install",
+            "bin",
+            "columngenerationsolver_capacitated_vehicle_routing")
+    for instance, instance_format in data:
         instance_path = os.path.join(
-                "data",
-                "capacitated_vehicle_routing",
+                data_dir,
                 instance)
         json_output_path = os.path.join(
                 args.directory,
@@ -93,7 +93,7 @@ if args.tests is None or "capacitated-vehicle-routing" in args.tests:
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
         command = (
-                capacitated_vehicle_routing_main
+                main
                 + "  --verbosity-level 1"
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
@@ -114,7 +114,8 @@ if args.tests is None or "cutting-stock" in args.tests:
     print("---------------------")
     print()
 
-    cutting_stock_data = [
+    data_dir = os.environ['CUTTING_STOCK_DATA']
+    data = [
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_50_0.1_0.7_0.txt"), "bpplib_csp"),
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_50_0.1_0.8_1.txt"), "bpplib_csp"),
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_50_0.2_0.7_2.txt"), "bpplib_csp"),
@@ -127,14 +128,13 @@ if args.tests is None or "cutting-stock" in args.tests:
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_100_0.1_0.8_9.txt"), "bpplib_csp"),
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_100_0.2_0.7_0.txt"), "bpplib_csp"),
             (os.path.join("delorme2016", "RG_CSP", "BPP_50_100_0.2_0.8_1.txt"), "bpplib_csp")]
-    cutting_stock_main = os.path.join(
-            "bazel-bin",
-            "examples",
-            "cutting_stock_main")
-    for instance, instance_format in cutting_stock_data:
+    main = os.path.join(
+            "install",
+            "bin",
+            "columngenerationsolver_cutting_stock")
+    for instance, instance_format in data:
         instance_path = os.path.join(
-                "data",
-                "cutting_stock",
+                data_dir,
                 instance)
         json_output_path = os.path.join(
                 args.directory,
@@ -143,7 +143,7 @@ if args.tests is None or "cutting-stock" in args.tests:
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
         command = (
-                cutting_stock_main
+                main
                 + "  --verbosity-level 1"
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
@@ -164,7 +164,8 @@ if args.tests is None or "multiple-knapsack" in args.tests:
     print("-------------------------")
     print()
 
-    multiple_knapsack_data = [
+    data_dir = os.environ['MULTIPLE_KNAPSACK_DATA']
+    data = [
             (os.path.join("fukunaga2011", "FK_1", "random10_60_1_1000_1_1.txt"), ""),
             (os.path.join("fukunaga2011", "FK_1", "random10_60_2_1000_1_2.txt"), ""),
             (os.path.join("fukunaga2011", "FK_1", "random10_100_3_1000_1_3.txt"), ""),
@@ -177,14 +178,13 @@ if args.tests is None or "multiple-knapsack" in args.tests:
             (os.path.join("fukunaga2011", "FK_1", "random15_75_2_1000_1_10.txt"), ""),
             (os.path.join("fukunaga2011", "FK_1", "random30_60_3_1000_1_11.txt"), ""),
             (os.path.join("fukunaga2011", "FK_1", "random30_60_4_1000_1_12.txt"), "")]
-    multiple_knapsack_main = os.path.join(
-            "bazel-bin",
-            "examples",
-            "multiple_knapsack_main")
-    for instance, instance_format in multiple_knapsack_data:
+    main = os.path.join(
+            "install",
+            "bin",
+            "columngenerationsolver_multiple_knapsack")
+    for instance, instance_format in data:
         instance_path = os.path.join(
-                "data",
-                "multiple_knapsack",
+                data_dir,
                 instance)
         json_output_path = os.path.join(
                 args.directory,
@@ -193,7 +193,7 @@ if args.tests is None or "multiple-knapsack" in args.tests:
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
         command = (
-                multiple_knapsack_main
+                main
                 + "  --verbosity-level 1"
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
@@ -214,7 +214,8 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
     print("-----------------------------------------")
     print()
 
-    vehicle_routing_with_time_windows_data = [
+    data_dir = os.environ['VEHICLE_ROUTING_WITH_TIME_WINDOWS_DATA']
+    data = [
             (os.path.join("solomon1987", "C101.txt"), ""),
             (os.path.join("solomon1987", "C102.txt"), ""),
             (os.path.join("solomon1987", "C103.txt"), ""),
@@ -224,14 +225,13 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
             (os.path.join("solomon1987", "RC101.txt"), ""),
             (os.path.join("solomon1987", "RC102.txt"), ""),
             (os.path.join("solomon1987", "RC103.txt"), "")]
-    vehicle_routing_with_time_windows_main = os.path.join(
-            "bazel-bin",
-            "examples",
-            "vehicle_routing_with_time_windows_main")
-    for instance, instance_format in vehicle_routing_with_time_windows_data:
+    main = os.path.join(
+            "install",
+            "bin",
+            "columngenerationsolver_vehicle_routing_with_time_windows")
+    for instance, instance_format in data:
         instance_path = os.path.join(
-                "data",
-                "vehicle_routing_with_time_windows",
+                data_dir,
                 instance)
         json_output_path = os.path.join(
                 args.directory,
@@ -240,7 +240,7 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
         command = (
-                vehicle_routing_with_time_windows_main
+                main
                 + "  --verbosity-level 1"
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""

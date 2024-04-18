@@ -1,5 +1,5 @@
-#include "examples/cutting_stock.hpp"
-#include "columngenerationsolver/read_args.hpp"
+#include "columngenerationsolver/examples/cutting_stock.hpp"
+#include "read_args.hpp"
 
 using namespace columngenerationsolver;
 using namespace cutting_stock;

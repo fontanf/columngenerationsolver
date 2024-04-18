@@ -1,8 +1,8 @@
-#include "examples/vehicle_routing_with_time_windows.hpp"
-#include "columngenerationsolver/read_args.hpp"
+#include "columngenerationsolver/examples/capacitated_vehicle_routing.hpp"
+#include "read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace vehicle_routing_with_time_windows;
+using namespace capacitated_vehicle_routing;
 
 int main(int argc, char *argv[])
 {
@@ -32,7 +32,10 @@ int main(int argc, char *argv[])
     const Instance instance = instance_builder.build();
 
     // Create model.
-    Model model = get_model(instance);
+    Model model = FUNCTION_WITH_DISTANCES(
+            get_model,
+            instance.distances(),
+            instance);
 
     // Solve.
     auto output = run(model, write_solution, vm);
@@ -51,3 +54,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+

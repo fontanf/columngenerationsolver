@@ -1,8 +1,8 @@
-#include "examples/capacitated_vehicle_routing.hpp"
-#include "columngenerationsolver/read_args.hpp"
+#include "columngenerationsolver/examples/bin_packing_with_conflicts.hpp"
+#include "read_args.hpp"
 
 using namespace columngenerationsolver;
-using namespace capacitated_vehicle_routing;
+using namespace bin_packing_with_conflicts;
 
 int main(int argc, char *argv[])
 {
@@ -32,10 +32,7 @@ int main(int argc, char *argv[])
     const Instance instance = instance_builder.build();
 
     // Create model.
-    Model model = FUNCTION_WITH_DISTANCES(
-            get_model,
-            instance.distances(),
-            instance);
+    Model model = get_model(instance);
 
     // Solve.
     auto output = run(model, write_solution, vm);
