@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15.0)
 
 project(ColumnGenerationSolver LANGUAGES CXX)
 
+option(COLUMNGENERATIONSOLVER_USE_CLP "Use CLP" ON)
+option(COLUMNGENERATIONSOLVER_USE_CPLEX "Use CPLEX" OFF)
+option(COLUMNGENERATIONSOLVER_USE_XPRESS "Use Xpress" OFF)
+
 # Require C++14.
 set(CMAKE_CXX_STANDARD 14)
 

@@ -14,10 +14,19 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Boost)
 
 # Fetch fontanf/mathoptsolverscmake.
+if(COLUMNGENERATIONSOLVER_USE_CLP)
+    set(MATHOPTSOLVERSCMAKE_USE_CLP ON)
+endif()
+if(COLUMNGENERATIONSOLVER_USE_CPLEX)
+    set(MATHOPTSOLVERSCMAKE_USE_CPLEX ON)
+endif()
+if(COLUMNGENERATIONSOLVER_USE_XPRESS)
+    set(MATHOPTSOLVERSCMAKE_USE_XPRESS ON)
+endif()
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
-    GIT_TAG c5160bd6ad88a1ed136d49cee9265b209d6a2795)
+    GIT_TAG 56190725f424249a3acd8fce3ff50e08fe675cc6)
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../mathoptsolverscmake/")
 FetchContent_MakeAvailable(mathoptsolverscmake)
 
