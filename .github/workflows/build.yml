@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-13]
         python-version: ["3.8"]
 
     env:
@@ -45,7 +45,7 @@ jobs:
         cp -rf "${GITHUB_WORKSPACE}/build/_deps/mathoptsolverscmake-build/extern/CoinUtils-prefix/src/CoinUtils/lib/" "/Users/runner/work/CoinUtils/CoinUtils/dist/lib"
         mkdir -p "/Users/runner/work/Clp/Clp/dist/lib"
         cp -rf "${GITHUB_WORKSPACE}/build/_deps/mathoptsolverscmake-build/extern/Clp-prefix/src/Clp/lib/" "/Users/runner/work/Clp/Clp/dist/lib"
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-13'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results
     - name: Checkout main branch
@@ -66,7 +66,7 @@ jobs:
         cp -rf "${GITHUB_WORKSPACE}/build/_deps/mathoptsolverscmake-build/extern/CoinUtils-prefix/src/CoinUtils/lib/" "/Users/runner/work/CoinUtils/CoinUtils/dist/lib"
         mkdir -p "/Users/runner/work/Clp/Clp/dist/lib"
         cp -rf "${GITHUB_WORKSPACE}/build/_deps/mathoptsolverscmake-build/extern/Clp-prefix/src/Clp/lib/" "/Users/runner/work/Clp/Clp/dist/lib"
-      if: matrix.os == 'macos-latest'
+      if: matrix.os == 'macos-13'
     - name: Run tests
       run: python3 -u scripts/run_tests.py test_results_ref
     - name: Process tests
