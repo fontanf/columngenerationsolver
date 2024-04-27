@@ -11,22 +11,22 @@ target_include_directories(ColumnGenerationSolver_columngenerationsolver PUBLIC
 target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
     OptimizationTools::containers
     OptimizationTools::utils)
-if(COLORINGSOLVER_USE_CLP)
+if(COLUMNGENERATIONSOLVER_USE_CLP)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
         CLP_FOUND=1)
-    target_link_libraries(ColoringSolver_main PUBLIC
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::clp)
 endif()
-if(COLORINGSOLVER_USE_XPRESS)
+if(COLUMNGENERATIONSOLVER_USE_XPRESS)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
         XPRESS_FOUND=1)
-    target_link_libraries(ColoringSolver_main PUBLIC
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::xpress)
 endif()
-if(COLORINGSOLVER_USE_CPLEX)
+if(COLUMNGENERATIONSOLVER_USE_CPLEX)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
         CPLEX_FOUND=1)
-    target_link_libraries(ColoringSolver_main PUBLIC
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::cplex)
 endif()
 add_library(ColumnGenerationSolver::columngenerationsolver ALIAS ColumnGenerationSolver_columngenerationsolver)
