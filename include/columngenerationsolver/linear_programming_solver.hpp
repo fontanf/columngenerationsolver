@@ -2,9 +2,11 @@
 
 #include "columngenerationsolver/commons.hpp"
 
+#if CLP_FOUND
 #include <coin/ClpModel.hpp>
 #include <coin/CbcOrClpParam.hpp>
 #include <coin/OsiClpSolverInterface.hpp>
+#endif
 
 #if CPLEX_FOUND
 #include <ilcplex/ilocplex.h>
@@ -96,6 +98,8 @@ public:
     virtual Value primal(ColIdx col) const = 0;
 };
 
+#if CLP_FOUND
+
 class ColumnGenerationSolverClp: public ColumnGenerationSolver
 {
 
@@ -157,6 +161,8 @@ private:
     ClpSimplex model_;
 
 };
+
+#endif
 
 #if CPLEX_FOUND
 
