@@ -204,8 +204,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         {row_id},
                         {new_row_upper_bounds[row_id]},
                         (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                        -output.dummy_column_objective_coefficient:
-                        +output.dummy_column_objective_coefficient,
+                        +output.dummy_column_objective_coefficient:
+                        -output.dummy_column_objective_coefficient,
                         0,
                         std::numeric_limits<Value>::infinity());
                 output.number_of_columns_in_linear_subproblem++;
