@@ -255,8 +255,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     row_ids,
                     row_coefficients,
                     column->objective_coefficient,
-                    0,
-                    std::numeric_limits<Value>::infinity());
+                    column->lower_bound,
+                    column->upper_bound);
             output.number_of_columns_in_linear_subproblem++;
         }
 
