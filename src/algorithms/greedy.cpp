@@ -140,10 +140,19 @@ const GreedyOutput columngenerationsolver::greedy(
             for (auto p: cg_output.relaxation_solution.columns()) {
                 const std::shared_ptr<const Column>& column = p.first;
                 Value value = p.second;
+
+                // Don't branch on continuous variables.
+                if (p.first->type == VariableType::Continuous)
+                    continue;
+
+                // Don't branch on a fixed column.
                 if (value <= fixed_columns.get_column_value(column))
                     continue;
+
+                // Don't fix a column to 0.
                 if (ceil(value) == 0)
                     continue;
+
                 if (column_best == nullptr
                         || column_best->branching_priority < column->branching_priority
                         || (column_best->branching_priority == column->branching_priority

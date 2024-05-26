@@ -274,6 +274,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             const std::shared_ptr<const Column>& column = p.first;
             Value value = p.second;
 
+            // Don't branch on continuous variables.
+            if (p.first->type == VariableType::Continuous)
+                continue;
+
             // Don't branch on a fixed column.
             if (value <= fixed_columns.get_column_value(column))
                 continue;
