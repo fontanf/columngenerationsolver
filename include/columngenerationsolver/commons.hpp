@@ -151,6 +151,29 @@ struct Model
                 << "Number of columns:      " << columns.size() << std::endl
                 ;
         }
+
+        if (verbosity_level >= 2) {
+            os
+                << std::endl
+                << std::setw(12) << "Row"
+                << std::setw(12) << "Lower"
+                << std::setw(12) << "Upper"
+                << std::endl
+                << std::setw(12) << "---"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::endl;
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)rows.size();
+                    ++row_id) {
+                const Row& row = this->rows[row_id];
+                os
+                    << std::setw(12) << row_id
+                    << std::setw(12) << row.lower_bound
+                    << std::setw(12) << row.upper_bound
+                    << std::endl;
+            }
+        }
     }
 };
 
@@ -251,25 +274,57 @@ public:
                 ;
         }
 
-        //if (verbosity_level >= 2) {
-        //    os << std::endl
-        //        << std::setw(12) << "Set"
-        //        << std::setw(12) << "Cost"
-        //        << std::endl
-        //        << std::setw(12) << "--------"
-        //        << std::setw(12) << "---"
-        //        << std::endl;
-        //    for (SetId set_id = 0;
-        //            set_id < instance().number_of_sets();
-        //            ++set_id) {
-        //        if (contains(set_id)) {
-        //            os
-        //                << std::setw(12) << set_id
-        //                << std::setw(12) << instance().set(set_id).cost
-        //                << std::endl;
-        //        }
-        //    }
-        //}
+        if (verbosity_level >= 2) {
+            os << std::endl
+                << std::setw(12) << "Row"
+                << std::setw(12) << "Lower"
+                << std::setw(12) << "Value"
+                << std::setw(12) << "Upper"
+                << std::setw(12) << "Feasible"
+                << std::endl
+                << std::setw(12) << "---"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "--------"
+                << std::endl;
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)this->model().rows.size();
+                    ++row_id) {
+                const Row& row = this->model().rows[row_id];
+                bool infeasible = (row_values_[row_id] > model_->rows[row_id].upper_bound + FFOT_TOL)
+                    || (row_values_[row_id] < model_->rows[row_id].lower_bound - FFOT_TOL);
+                os
+                    << std::setw(12) << row_id
+                    << std::setw(12) << row.lower_bound
+                    << std::setw(12) << row_values_[row_id]
+                    << std::setw(12) << row.upper_bound
+                    << std::setw(12) << !infeasible
+                    << std::endl;
+            }
+
+            os
+                << std::endl
+                << std::setw(12) << "Type"
+                << std::setw(12) << "Value"
+                << std::setw(12) << "Integral"
+                << std::endl
+                << std::setw(12) << "----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "--------"
+                << std::endl;
+            for (const auto& p: this->columns()) {
+                Value value = p.second;
+                Value fractionality = std::fabs(value - std::round(value));
+                bool integral = (p.first->type == VariableType::Continuous)
+                    || !(fractionality > FFOT_TOL);
+                os
+                    << std::setw(12) << ((p.first->type == VariableType::Continuous)? "C": "I")
+                    << std::setw(12) << p.second
+                    << std::setw(12) << integral
+                    << std::endl;
+            }
+        }
     }
 
 private:
