@@ -237,6 +237,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
+            if (p.first->type == VariableType::Continuous)
+                continue;
             Value value = std::floor(p.second);
             if (value <= fixed_columns.get_column_value(column))
                 continue;
