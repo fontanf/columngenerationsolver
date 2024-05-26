@@ -352,12 +352,20 @@ private:
         for (RowIdx row = 0;
                 row < (RowIdx)solution_.model_->rows.size();
                 ++row) {
-            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound) {
-                // TODO tolerance.
+            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound + FFOT_TOL) {
+                //std::cout << "row " << row
+                //    << " lb " << solution_.model_->rows[row].lower_bound
+                //    << " val " << solution_.row_values_[row]
+                //    << " ub " << solution_.model_->rows[row].upper_bound
+                //    << std::endl;
                 solution_.feasible_ = false;
             }
-            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound) {
-                // TODO tolerance.
+            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - FFOT_TOL) {
+                //std::cout << "row " << row
+                //    << " lb " << solution_.model_->rows[row].lower_bound
+                //    << " val " << solution_.row_values_[row]
+                //    << " ub " << solution_.model_->rows[row].upper_bound
+                //    << std::endl;
                 solution_.feasible_ = false;
             }
         }
@@ -367,8 +375,7 @@ private:
             Value value = p.second;
             if (column.type == VariableType::Integer) {
                 Value fractionality = std::fabs(value - std::round(value));
-                if (fractionality > 0) {
-                    // TODO tolerance
+                if (fractionality > FFOT_TOL) {
                     solution_.feasible_ = false;
                 }
             }
