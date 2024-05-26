@@ -150,6 +150,10 @@ public:
     {
         //model_.writeLp("output");
         model_.primal();
+        if (model_.isProvenPrimalInfeasible()) {
+            model_.writeLp("output");
+            throw std::runtime_error("Infeasible model");
+        }
     }
 
     Value objective() const { return model_.objectiveValue(); }
