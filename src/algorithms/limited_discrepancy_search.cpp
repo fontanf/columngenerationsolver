@@ -137,8 +137,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (node->parent == nullptr) {
             column_generation_parameters.initial_columns = parameters.initial_columns;
         } else {
-            for (const auto& p: node->parent->relaxation_solution->columns())
+            for (const auto& p: node->parent->relaxation_solution->columns()) {
+                bool ok = true;
+                for (const auto& column: model.columns)
+                    if (p.first.get() == column.get())
+                        ok = false;
+                if (!ok)
+                    continue;
                 column_generation_parameters.initial_columns.push_back(p.first);
+            }
         }
         column_generation_parameters.column_pool = column_pool;
         column_generation_parameters.fixed_columns = node->fixed_columns.columns();

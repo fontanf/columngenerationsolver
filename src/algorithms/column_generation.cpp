@@ -214,6 +214,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Add model columns.
         for (const std::shared_ptr<const Column>& column: model.columns) {
+            model.check_column(column);
 
             // Don't add the column if it has already been fixed.
             bool is_fixed = false;
@@ -262,6 +263,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Add initial columns.
         for (const std::shared_ptr<const Column>& column: initial_columns) {
+            model.check_generated_column(column);
 
             // Check column feasibility.
             if (std::find(infeasible_columns.begin(), infeasible_columns.end(), column)
@@ -494,6 +496,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     std::vector<std::shared_ptr<const Column>> all_columns;
                     if (!parameters.internal_diving) {
                         all_columns = model.pricing_solver->solve_pricing(duals_sep);
+                        for (const auto& column: all_columns)
+                            model.check_generated_column(column);
                     } else {
                         std::vector<Value> row_values_tmp = row_values;
                         std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = parameters.fixed_columns;
@@ -501,6 +505,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             model.pricing_solver->initialize_pricing(fixed_columns_tmp);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                                 = model.pricing_solver->solve_pricing(duals_sep);
+                            for (const auto& column: all_columns_tmp_0)
+                                model.check_generated_column(column);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_1;
                             for (const auto& column: all_columns_tmp_0) {
                                 if (column->elements.empty())
@@ -716,6 +722,14 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             if (solver_columns[column_id] == nullptr) {
                 has_dummy_column = true;
             } else {
+                if (solver->primal(column_id) > solver_columns[column_id]->upper_bound + FFOT_TOL) {
+                    std::stringstream ss;
+                    ss << "column_id " << column_id << std::endl;
+                    ss << "solver->primal(column_id) " << solver->primal(column_id) << std::endl;
+                    ss << "*solver_columns[column_id] " << *solver_columns[column_id] << std::endl;
+                    ss << "solver_columns[column_id]->upper_bound " << solver_columns[column_id]->upper_bound << std::endl;
+                    throw std::runtime_error(ss.str());
+                }
                 solution_builder.add_column(
                         solver_columns[column_id],
                         solver->primal(column_id));
@@ -733,7 +747,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // Use current solution as initial columns of the next loop.
         initial_columns = parameters.initial_columns;
         for (const auto& p: output.relaxation_solution.columns())
-            initial_columns.push_back(p.first);
+            if (column_pool.find(p.first) != column_pool.end())
+                initial_columns.push_back(p.first);
     }
 
     // Update bound.

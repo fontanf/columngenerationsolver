@@ -39,7 +39,7 @@ struct Column
     Value lower_bound = 0.0;
 
     /** Upper bound. */
-    Value upper_bound = 1.0;
+    Value upper_bound = std::numeric_limits<Value>::infinity();
 
     /** Coefficient in the objective. */
     Value objective_coefficient = 0;
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(
         const Column& column)
 {
     os << "objective coefficient: " << column.objective_coefficient << std::endl;
+    os << "lower bound: " << column.lower_bound << std::endl;
+    os << "upper bound: " << column.upper_bound << std::endl;
     os << "row indices:";
     for (RowIdx row_pos = 0;
             row_pos < (RowIdx)column.elements.size();
@@ -138,6 +140,41 @@ struct Model
 
     /** Column which are not dynamically generated. */
     std::vector<std::shared_ptr<const Column>> columns;
+
+
+    void check_column(
+            const std::shared_ptr<const Column>& column) const
+    {
+        for (const LinearTerm& element: column->elements) {
+            if (element.row < 0 || element.row >= rows.size()) {
+                std::stringstream ss;
+                ss << "Column check failed." << std::endl
+                    << "Column:" << std::endl << *column << std::endl
+                    << "Invalid row index." << std::endl;
+                throw std::runtime_error(ss.str());
+            }
+        }
+    }
+
+    void check_generated_column(
+            const std::shared_ptr<const Column>& column) const
+    {
+        if (column->lower_bound != 0) {
+            std::stringstream ss;
+            ss << "Generated column check failed." << std::endl
+                << "Column:" << std::endl << *column << std::endl
+                << "A generated column must have a zero lower bound." << std::endl;
+            throw std::runtime_error(ss.str());
+        }
+        if (column->upper_bound != std::numeric_limits<Value>::infinity()) {
+            std::stringstream ss;
+            ss << "Generated column check failed." << std::endl
+                << "Column:" << std::endl << *column << std::endl
+                << "A generated column must have an infinite upper bound." << std::endl;
+            throw std::runtime_error(ss.str());
+        }
+        check_column(column);
+    }
 
 
     virtual void format(
