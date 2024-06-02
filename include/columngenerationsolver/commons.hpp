@@ -39,7 +39,7 @@ struct Column
     Value lower_bound = 0.0;
 
     /** Upper bound. */
-    Value upper_bound = 1.0;
+    Value upper_bound = std::numeric_limits<Value>::infinity();
 
     /** Coefficient in the objective. */
     Value objective_coefficient = 0;
@@ -65,6 +65,8 @@ inline std::ostream& operator<<(
         const Column& column)
 {
     os << "objective coefficient: " << column.objective_coefficient << std::endl;
+    os << "lower bound: " << column.lower_bound << std::endl;
+    os << "upper bound: " << column.upper_bound << std::endl;
     os << "row indices:";
     for (RowIdx row_pos = 0;
             row_pos < (RowIdx)column.elements.size();
@@ -140,6 +142,41 @@ struct Model
     std::vector<std::shared_ptr<const Column>> columns;
 
 
+    void check_column(
+            const std::shared_ptr<const Column>& column) const
+    {
+        for (const LinearTerm& element: column->elements) {
+            if (element.row < 0 || element.row >= rows.size()) {
+                std::stringstream ss;
+                ss << "Column check failed." << std::endl
+                    << "Column:" << std::endl << *column << std::endl
+                    << "Invalid row index." << std::endl;
+                throw std::runtime_error(ss.str());
+            }
+        }
+    }
+
+    void check_generated_column(
+            const std::shared_ptr<const Column>& column) const
+    {
+        if (column->lower_bound != 0) {
+            std::stringstream ss;
+            ss << "Generated column check failed." << std::endl
+                << "Column:" << std::endl << *column << std::endl
+                << "A generated column must have a zero lower bound." << std::endl;
+            throw std::runtime_error(ss.str());
+        }
+        if (column->upper_bound != std::numeric_limits<Value>::infinity()) {
+            std::stringstream ss;
+            ss << "Generated column check failed." << std::endl
+                << "Column:" << std::endl << *column << std::endl
+                << "A generated column must have an infinite upper bound." << std::endl;
+            throw std::runtime_error(ss.str());
+        }
+        check_column(column);
+    }
+
+
     virtual void format(
             std::ostream& os,
             int verbosity_level = 1) const
@@ -150,6 +187,29 @@ struct Model
                 << "Number of constraints:  " << rows.size() << std::endl
                 << "Number of columns:      " << columns.size() << std::endl
                 ;
+        }
+
+        if (verbosity_level >= 2) {
+            os
+                << std::endl
+                << std::setw(12) << "Row"
+                << std::setw(12) << "Lower"
+                << std::setw(12) << "Upper"
+                << std::endl
+                << std::setw(12) << "---"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::endl;
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)rows.size();
+                    ++row_id) {
+                const Row& row = this->rows[row_id];
+                os
+                    << std::setw(12) << row_id
+                    << std::setw(12) << row.lower_bound
+                    << std::setw(12) << row.upper_bound
+                    << std::endl;
+            }
         }
     }
 };
@@ -251,25 +311,57 @@ public:
                 ;
         }
 
-        //if (verbosity_level >= 2) {
-        //    os << std::endl
-        //        << std::setw(12) << "Set"
-        //        << std::setw(12) << "Cost"
-        //        << std::endl
-        //        << std::setw(12) << "--------"
-        //        << std::setw(12) << "---"
-        //        << std::endl;
-        //    for (SetId set_id = 0;
-        //            set_id < instance().number_of_sets();
-        //            ++set_id) {
-        //        if (contains(set_id)) {
-        //            os
-        //                << std::setw(12) << set_id
-        //                << std::setw(12) << instance().set(set_id).cost
-        //                << std::endl;
-        //        }
-        //    }
-        //}
+        if (verbosity_level >= 2) {
+            os << std::endl
+                << std::setw(12) << "Row"
+                << std::setw(12) << "Lower"
+                << std::setw(12) << "Value"
+                << std::setw(12) << "Upper"
+                << std::setw(12) << "Feasible"
+                << std::endl
+                << std::setw(12) << "---"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "--------"
+                << std::endl;
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)this->model().rows.size();
+                    ++row_id) {
+                const Row& row = this->model().rows[row_id];
+                bool infeasible = (row_values_[row_id] > model_->rows[row_id].upper_bound + FFOT_TOL)
+                    || (row_values_[row_id] < model_->rows[row_id].lower_bound - FFOT_TOL);
+                os
+                    << std::setw(12) << row_id
+                    << std::setw(12) << row.lower_bound
+                    << std::setw(12) << row_values_[row_id]
+                    << std::setw(12) << row.upper_bound
+                    << std::setw(12) << !infeasible
+                    << std::endl;
+            }
+
+            os
+                << std::endl
+                << std::setw(12) << "Type"
+                << std::setw(12) << "Value"
+                << std::setw(12) << "Integral"
+                << std::endl
+                << std::setw(12) << "----"
+                << std::setw(12) << "-----"
+                << std::setw(12) << "--------"
+                << std::endl;
+            for (const auto& p: this->columns()) {
+                Value value = p.second;
+                Value fractionality = std::fabs(value - std::round(value));
+                bool integral = (p.first->type == VariableType::Continuous)
+                    || !(fractionality > FFOT_TOL);
+                os
+                    << std::setw(12) << ((p.first->type == VariableType::Continuous)? "C": "I")
+                    << std::setw(12) << p.second
+                    << std::setw(12) << integral
+                    << std::endl;
+            }
+        }
     }
 
 private:
@@ -352,12 +444,20 @@ private:
         for (RowIdx row = 0;
                 row < (RowIdx)solution_.model_->rows.size();
                 ++row) {
-            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound) {
-                // TODO tolerance.
+            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound + FFOT_TOL) {
+                //std::cout << "row " << row
+                //    << " lb " << solution_.model_->rows[row].lower_bound
+                //    << " val " << solution_.row_values_[row]
+                //    << " ub " << solution_.model_->rows[row].upper_bound
+                //    << std::endl;
                 solution_.feasible_ = false;
             }
-            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound) {
-                // TODO tolerance.
+            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - FFOT_TOL) {
+                //std::cout << "row " << row
+                //    << " lb " << solution_.model_->rows[row].lower_bound
+                //    << " val " << solution_.row_values_[row]
+                //    << " ub " << solution_.model_->rows[row].upper_bound
+                //    << std::endl;
                 solution_.feasible_ = false;
             }
         }
@@ -367,8 +467,7 @@ private:
             Value value = p.second;
             if (column.type == VariableType::Integer) {
                 Value fractionality = std::fabs(value - std::round(value));
-                if (fractionality > 0) {
-                    // TODO tolerance
+                if (fractionality > FFOT_TOL) {
                     solution_.feasible_ = false;
                 }
             }

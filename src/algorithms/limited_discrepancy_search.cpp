@@ -137,8 +137,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (node->parent == nullptr) {
             column_generation_parameters.initial_columns = parameters.initial_columns;
         } else {
-            for (const auto& p: node->parent->relaxation_solution->columns())
+            for (const auto& p: node->parent->relaxation_solution->columns()) {
+                bool ok = true;
+                for (const auto& column: model.columns)
+                    if (p.first.get() == column.get())
+                        ok = false;
+                if (!ok)
+                    continue;
                 column_generation_parameters.initial_columns.push_back(p.first);
+            }
         }
         column_generation_parameters.column_pool = column_pool;
         column_generation_parameters.fixed_columns = node->fixed_columns.columns();
@@ -237,6 +244,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         bool fixed_found = false;
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
+            if (p.first->type == VariableType::Continuous)
+                continue;
             Value value = std::floor(p.second);
             if (value <= fixed_columns.get_column_value(column))
                 continue;
@@ -273,6 +282,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         for (auto p: cg_output.relaxation_solution.columns()) {
             const std::shared_ptr<const Column>& column = p.first;
             Value value = p.second;
+
+            // Don't branch on continuous variables.
+            if (p.first->type == VariableType::Continuous)
+                continue;
 
             // Don't branch on a fixed column.
             if (value <= fixed_columns.get_column_value(column))
