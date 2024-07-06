@@ -4,12 +4,9 @@ include(FetchContent)
 # Fetch boost.
 set(BOOST_INCLUDE_LIBRARIES thread filesystem system program_options dynamic_bitset)
 set(BOOST_ENABLE_CMAKE ON)
-include(FetchContent)
 FetchContent_Declare(
     Boost
-    GIT_REPOSITORY https://github.com/boostorg/boost.git
-    GIT_TAG boost-1.84.0
-    GIT_SHALLOW TRUE
+    URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(Boost)
 
@@ -26,7 +23,7 @@ endif()
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
-    GIT_TAG 38d50d4bfe2f7fb2a0c505c398ae3ab3837c57d5
+    GIT_TAG 80cd13a843e2c10684abbfe76cf9aae0d71ff79d
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../mathoptsolverscmake/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(mathoptsolverscmake)
@@ -35,7 +32,7 @@ FetchContent_MakeAvailable(mathoptsolverscmake)
 FetchContent_Declare(
     knapsacksolver
     GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
-    GIT_TAG edd1332fa2578c2633b6f790a999d1f07ef0978c
+    GIT_TAG 5115e4db582c97e2e1ade8ea3ab5e678a921b223
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(knapsacksolver)
@@ -44,7 +41,7 @@ FetchContent_MakeAvailable(knapsacksolver)
 FetchContent_Declare(
     treesearchsolver
     GIT_REPOSITORY https://github.com/fontanf/treesearchsolver.git
-    GIT_TAG df1a0a1d041b3bc73bf97590dc31ad5e912fd877
+    GIT_TAG 8e2d5190d4005a753a815641b1e3f8753a9d7095
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../treesearchsolver/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(treesearchsolver)
