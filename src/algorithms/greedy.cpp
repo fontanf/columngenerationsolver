@@ -84,7 +84,7 @@ const GreedyOutput columngenerationsolver::greedy(
         if (parameters.timer.needs_to_end())
             break;
 
-        if (cg_output.relaxation_solution.columns().size() == 0)
+        if (!cg_output.relaxation_solution.feasible_relaxation())
             break;
 
         // Update bound.

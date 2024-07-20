@@ -285,6 +285,12 @@ public:
     /** Return 'true' iff the solution is feasible. */
     bool feasible() const { return feasible_; }
 
+    /**
+     * Return 'true' iff the solution is feasible for the constraints (but not
+     * necessarily for the variable integrality).
+     */
+    bool feasible_relaxation() const { return feasible_relaxation_; }
+
     /** Get the objective value of the solution. */
     Value objective_value() const { return objective_value_; }
 
@@ -375,6 +381,12 @@ private:
     /** Feasible. */
     bool feasible_;
 
+    /**
+     * Feasible regarding the constraints but the regarding the column
+     * integrality.
+     */
+    bool feasible_relaxation_;
+
     /** Objective value. */
     Value objective_value_;
 
@@ -441,6 +453,7 @@ private:
         }
 
         solution_.feasible_ = true;
+        solution_.feasible_relaxation_ = true;
         for (RowIdx row = 0;
                 row < (RowIdx)solution_.model_->rows.size();
                 ++row) {
@@ -459,6 +472,7 @@ private:
                 //    << " ub " << solution_.model_->rows[row].upper_bound
                 //    << std::endl;
                 solution_.feasible_ = false;
+                solution_.feasible_relaxation_ = false;
             }
         }
 

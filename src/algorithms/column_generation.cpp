@@ -93,6 +93,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::unordered_set<std::shared_ptr<const Column>,
                        const ColumnHasher&,
                        const ColumnHasher&> column_pool(0, column_hasher, column_hasher);
+    Value column_highest_objective_coefficient = 0;
     // We first add to it the columns from the input column pool.
     for (const auto& column: parameters.column_pool) {
 
@@ -116,6 +117,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (!ok)
             continue;
 
+        column_highest_objective_coefficient = (std::max)(
+                column_highest_objective_coefficient,
+                std::abs(column->objective_coefficient));
         column_pool.insert(column);
     }
 
@@ -590,6 +594,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
                       // Store these new columns.
                       column_pool.insert(column);
+                      column_highest_objective_coefficient = (std::max)(
+                              column_highest_objective_coefficient,
+                              std::abs(column->objective_coefficient));
                       output.columns.push_back(column);
 
                       // Only add the ones with negative reduced cost.
@@ -741,6 +748,18 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             output.relaxation_solution = solution_builder.build();
             break;
         }
+
+        // If the final solution contains some dummy columns, and the dummy
+        // column objective coefficient is significantly larger than the
+        // largest generated column objective coefficient, then we consider the
+        // problem infeasible.
+        if (column_highest_objective_coefficient > 0
+                && std::abs(output.dummy_column_objective_coefficient)
+                > 100 * column_highest_objective_coefficient) {
+            output.relaxation_solution = solution_builder.build();
+            break;
+        }
+
         // Otherwise, increase the dummy column objective coefficient and
         // restart.
         output.dummy_column_objective_coefficient *= 4;
