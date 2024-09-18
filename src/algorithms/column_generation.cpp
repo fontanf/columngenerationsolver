@@ -19,6 +19,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     algorithm_formatter.start("Column generation");
     algorithm_formatter.print_column_generation_header();
 
+    if (parameters.dummy_column_objective_coefficient == 0) {
+        throw std::invalid_argument(
+                "columngenerationsolver::column_generation:"
+                " input parameter 'dummy_column_objective_coefficient'"
+                " must be non-null.");
+    }
+
     RowIdx number_of_rows = model.rows.size();
     //std::cout << "m " << m << std::endl;
     //std::cout << "fixed_columns.size() " << fixed_columns.size() << std::endl;
