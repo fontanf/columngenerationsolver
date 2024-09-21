@@ -100,7 +100,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::unordered_set<std::shared_ptr<const Column>,
                        const ColumnHasher&,
                        const ColumnHasher&> column_pool(0, column_hasher, column_hasher);
-    Value column_highest_objective_coefficient = 0;
+    Value column_highest_cost = 0;
     // We first add to it the columns from the input column pool.
     for (const auto& column: parameters.column_pool) {
 
@@ -124,9 +124,19 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (!ok)
             continue;
 
-        column_highest_objective_coefficient = (std::max)(
-                column_highest_objective_coefficient,
-                std::abs(column->objective_coefficient));
+        Value value_max = std::numeric_limits<Value>::infinity();
+        for (const LinearTerm& element: column->elements) {
+            if (element.coefficient > 0) {
+                Value v = model.rows[element.row].upper_bound / element.coefficient;
+                value_max = (std::min)(value_max, v);
+            } else {
+                Value v = model.rows[element.row].lower_bound / element.coefficient;
+                value_max = (std::min)(value_max, v);
+            }
+        }
+        column_highest_cost = (std::max)(
+                column_highest_cost,
+                std::abs(column->objective_coefficient * value_max));
         column_pool.insert(column);
     }
 
@@ -599,11 +609,21 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                       if (column_pool.find(column) != column_pool.end())
                           continue;
 
-                      // Store these new columns.
-                      column_pool.insert(column);
-                      column_highest_objective_coefficient = (std::max)(
-                              column_highest_objective_coefficient,
-                              std::abs(column->objective_coefficient));
+                        // Store these new columns.
+                        column_pool.insert(column);
+                        Value value_max = std::numeric_limits<Value>::infinity();
+                        for (const LinearTerm& element: column->elements) {
+                            if (element.coefficient > 0) {
+                                Value v = model.rows[element.row].upper_bound / element.coefficient;
+                                value_max = (std::min)(value_max, v);
+                            } else {
+                                Value v = model.rows[element.row].lower_bound / element.coefficient;
+                                value_max = (std::min)(value_max, v);
+                            }
+                        }
+                        column_highest_cost = (std::max)(
+                                column_highest_cost,
+                                std::abs(column->objective_coefficient * value_max));
                       output.columns.push_back(column);
 
                       // Only add the ones with negative reduced cost.
@@ -760,9 +780,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // column objective coefficient is significantly larger than the
         // largest generated column objective coefficient, then we consider the
         // problem infeasible.
-        if (column_highest_objective_coefficient > 0
+        if (column_highest_cost > 0
                 && std::abs(output.dummy_column_objective_coefficient)
-                > 100 * column_highest_objective_coefficient) {
+                > 100 * column_highest_cost) {
             output.relaxation_solution = solution_builder.build();
             break;
         }
