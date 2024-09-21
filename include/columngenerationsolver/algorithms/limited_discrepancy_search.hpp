@@ -15,6 +15,8 @@ struct LimitedDiscrepancySearchParameters: Parameters
 
     bool continue_until_feasible = false;
 
+    bool bound = false;
+
     /** Parameters for the column generation sub-problem. */
     ColumnGenerationParameters column_generation_parameters;
 
