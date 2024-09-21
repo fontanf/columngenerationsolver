@@ -188,19 +188,21 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         }
 
         //std::cout << "x";
-        //for (auto p: cg_output.solution)
+        //for (auto p: cg_output.relaxation_solution.columns())
         //    std::cout << " " << p.first << " " << p.second << ";";
         //std::cout << std::endl;
 
         // Check bound
-        if (output.solution.feasible()) {
-            // TODO add a parameter to not cut.
+        if (output.solution.feasible()
+                && parameters.bound) {
             if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
-                    && output.solution.objective_value() <= cg_output.solution.objective_value() + FFOT_TOL)
+                    && output.solution.objective_value() <= cg_output.relaxation_solution.objective_value() + FFOT_TOL) {
                 continue;
+            }
             if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
-                    && output.solution.objective_value() >= cg_output.solution.objective_value() - FFOT_TOL)
+                    && output.solution.objective_value() >= cg_output.relaxation_solution.objective_value() - FFOT_TOL) {
                 continue;
+            }
         }
 
         // Update node relaxation solution.
