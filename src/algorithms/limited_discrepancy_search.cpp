@@ -88,8 +88,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
         if (parameters.automatic_stop
-                && output.number_of_nodes > 2
-                && output.number_of_nodes > 2 * output.maximum_depth)
+                && output.number_of_nodes >= 2
+                && output.number_of_nodes > 4 * output.maximum_depth)
             break;
 
         // Update output statistics.
@@ -335,6 +335,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         nodes.insert(child_2);
     }
 
+    std::cout << output.maximum_depth << std::endl;
     algorithm_formatter.end();
     return output;
 }
