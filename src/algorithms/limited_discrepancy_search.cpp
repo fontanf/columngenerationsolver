@@ -335,7 +335,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         nodes.insert(child_2);
     }
 
-    std::cout << output.maximum_depth << std::endl;
     algorithm_formatter.end();
     return output;
 }
