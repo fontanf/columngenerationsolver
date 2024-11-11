@@ -770,6 +770,19 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             }
         }
 
+        // Check time.
+        if (parameters.timer.needs_to_end()) {
+            algorithm_formatter.end();
+            return output;
+        }
+        // Check iteration limit.
+        if (parameters.maximum_number_of_iterations != -1
+                && output.number_of_column_generation_iterations
+                > parameters.maximum_number_of_iterations) {
+            algorithm_formatter.end();
+            return output;
+        }
+
         // If the final solution doesn't contain any dummy column, then stop.
         if (!has_dummy_column) {
             output.relaxation_solution = solution_builder.build();
