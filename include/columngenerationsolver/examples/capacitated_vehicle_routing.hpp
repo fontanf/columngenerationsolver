@@ -66,7 +66,7 @@ public:
     virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual inline PricingOutput solve_pricing(
             const std::vector<Value>& duals);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
@@ -142,10 +142,10 @@ struct ColumnExtra
 };
 
 template <typename Distances>
-std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_pricing(
+typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve_pricing(
             const std::vector<Value>& duals)
 {
-    std::vector<std::shared_ptr<const Column>> columns;
+    PricingOutput output;
 
     // Build subproblem instance.
     espp2vrp_.clear();
@@ -160,7 +160,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_prici
 
     LocationId espp_number_of_locations = espp2vrp_.size();
     if (espp_number_of_locations == 1)
-        return columns;
+        return output;
     espprc::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     for (LocationId espp_location_id = 0;
             espp_location_id < espp_number_of_locations;
@@ -222,10 +222,10 @@ std::vector<std::shared_ptr<const Column>> PricingSolver<Distances>::solve_prici
         column.objective_coefficient += distances_.distance(location_id_prev, 0);
         ColumnExtra extra {solution};
         column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
     }
 
-    return columns;
+    return output;
 }
 
 inline void write_solution(

@@ -140,6 +140,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         column_pool.insert(column);
     }
 
+    Value overcost = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+        -std::numeric_limits<Value>::infinity():
+        +std::numeric_limits<Value>::infinity();
+
     // Loop for dummy columns.
     // If the final solution contains dummy columns, then the dummy column
     // objective value is increased and the algorithm is started again. The loop
@@ -187,6 +191,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (solver == NULL) {
             throw std::runtime_error("ERROR, no linear programming solver found");
         }
+
+        overcost = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+            -std::numeric_limits<Value>::infinity():
+            +std::numeric_limits<Value>::infinity();
+
 
         // This array is used to retrieve the corresponding column from a
         // variable id in the LP solver solution.
@@ -352,11 +361,21 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             output.time_lpsolve += time_span_lpsolve.count();
             output.relaxation_solution_value = c0 + solver->objective();
 
+            // Update bound.
+            Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                -std::numeric_limits<Value>::infinity():
+                +std::numeric_limits<Value>::infinity();
+            if (overcost != std::numeric_limits<Value>::infinity()) {
+                bound = output.relaxation_solution_value + overcost;
+            }
+            algorithm_formatter.update_bound(bound);
+
             // Display.
             algorithm_formatter.print_column_generation_iteration(
                     output.number_of_column_generation_iterations,
                     output.number_of_columns_in_linear_subproblem,
-                    output.relaxation_solution_value);
+                    output.relaxation_solution_value,
+                    output.bound);
             parameters.iteration_callback(output);
             output.number_of_column_generation_iterations++;
 
@@ -516,16 +535,21 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
                     std::vector<std::shared_ptr<const Column>> all_columns;
                     if (!parameters.internal_diving) {
-                        all_columns = model.pricing_solver->solve_pricing(duals_sep);
+                        auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
+                        all_columns = pricing_output.columns;
+                        overcost = pricing_output.overcost;
                         for (const auto& column: all_columns)
                             model.check_generated_column(column);
                     } else {
                         std::vector<Value> row_values_tmp = row_values;
                         std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = parameters.fixed_columns;
-                        for (;;) {
+                        for (int i = 0;; ++i) {
                             model.pricing_solver->initialize_pricing(fixed_columns_tmp);
+                            auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
-                                = model.pricing_solver->solve_pricing(duals_sep);
+                                = pricing_output.columns;
+                            if (i == 0)
+                                overcost = pricing_output.overcost;
                             for (const auto& column: all_columns_tmp_0)
                                 model.check_generated_column(column);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_1;
@@ -811,7 +835,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
 
     // Update bound.
-    algorithm_formatter.update_bound(output.relaxation_solution.objective_value());
+    Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+        -std::numeric_limits<Value>::infinity():
+        +std::numeric_limits<Value>::infinity();
+    if (overcost != std::numeric_limits<Value>::infinity()) {
+        bound = output.relaxation_solution_value + overcost;
+    }
+    algorithm_formatter.update_bound(bound);
 
     algorithm_formatter.end();
     return output;

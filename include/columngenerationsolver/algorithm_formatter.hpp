@@ -31,7 +31,8 @@ public:
     void print_column_generation_iteration(
             Counter iteration,
             ColIdx number_of_columns,
-            double value);
+            double value,
+            double bound);
 
     /** Print the header. */
     void print_header();

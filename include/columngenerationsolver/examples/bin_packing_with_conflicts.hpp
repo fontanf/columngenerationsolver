@@ -63,7 +63,7 @@ public:
     virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual inline PricingOutput solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -118,9 +118,11 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
     return {};
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
+    PricingOutput output;
+
     // Build subproblem instance.
     treesearchsolver::knapsack_with_conflicts::InstanceBuilder kp_instance_builder;
     kp_instance_builder.set_capacity(instance_.capacity());
@@ -140,8 +142,6 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
                 kp_instance_builder.add_conflict(bpp2kp_[item_id], bpp2kp_[item_id_2]);
     }
     const orproblems::knapsack_with_conflicts::Instance kp_instance = kp_instance_builder.build();
-
-    std::vector<std::shared_ptr<const Column>> columns;
 
     // Solve subproblem instance.
     treesearchsolver::knapsack_with_conflicts::BranchingScheme branching_scheme(kp_instance, {});
@@ -166,9 +166,9 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             element.coefficient = 1;
             column.elements.push_back(element);
         }
-        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
     }
-    return columns;
+    return output;
 }
 
 inline void write_solution(
