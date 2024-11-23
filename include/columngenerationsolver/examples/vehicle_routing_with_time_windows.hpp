@@ -64,10 +64,10 @@ public:
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
-    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
+    inline virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
+    inline virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
@@ -140,10 +140,10 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    std::vector<std::shared_ptr<const Column>> columns;
+    PricingOutput output;
 
     // Build subproblem instance.
     espp2cvrp_.clear();
@@ -157,7 +157,7 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
     }
     LocationId espp_number_of_locations = espp2cvrp_.size();
     if (espp_number_of_locations == 1)
-        return columns;
+        return output;
     espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     double multiplier = 1000;
     for (LocationId espp_location_id = 0;
@@ -239,10 +239,10 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
         // Extra.
         ColumnExtra extra {solution};
         column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
     }
 
-    return columns;
+    return output;
 }
 
 inline void write_solution(

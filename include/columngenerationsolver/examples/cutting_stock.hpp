@@ -60,7 +60,7 @@ public:
     inline virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    inline virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
+    inline virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -114,9 +114,12 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
     return {};
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
+    PricingOutput output;
+    Value reduced_cost_bound = 0.0;
+
     // Build subproblem instance.
     kp2csp_.clear();
     knapsacksolver::knapsack::InstanceFromFloatProfitsBuilder kp_instance_builder;
@@ -173,7 +176,9 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
             column.elements.push_back(element);
         }
     }
-    return {std::shared_ptr<const Column>(new Column(column))};
+    output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+    output.overcost = instance_.total_demand() * std::min(0.0, columngenerationsolver::compute_reduced_cost(*output.columns.front(), duals));
+    return output;
 }
 
 inline void write_solution(

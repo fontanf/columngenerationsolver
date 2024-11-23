@@ -117,10 +117,17 @@ public:
 
     virtual ~PricingSolver() { }
 
+    struct PricingOutput
+    {
+        std::vector<std::shared_ptr<const Column>> columns;
+
+        Value overcost = std::numeric_limits<Value>::infinity();
+    };
+
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns) = 0;
 
-    virtual std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals) = 0;
 };
 
@@ -706,6 +713,9 @@ struct Parameters: optimizationtools::Parameters
 {
     /** Callback function called when a new best solution is found. */
     NewSolutionCallback new_solution_callback = [](const Output&) { };
+
+    /** Callback function called when a new best bound is found. */
+    NewSolutionCallback new_bound_callback = [](const Output&) { };
 
     /** Objective coefficient of the dummy columns. */
     Value dummy_column_objective_coefficient = 1;

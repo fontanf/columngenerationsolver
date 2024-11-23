@@ -47,7 +47,13 @@ const GreedyOutput columngenerationsolver::greedy(
                 algorithm_formatter.print_column_generation_iteration(
                         cg_output.number_of_column_generation_iterations,
                         cg_output.number_of_columns_in_linear_subproblem,
-                        cg_output.relaxation_solution_value);
+                        cg_output.relaxation_solution_value,
+                        cg_output.bound);
+            };
+            column_generation_parameters.new_bound_callback = [&algorithm_formatter](
+                    const Output& cg_output)
+            {
+                algorithm_formatter.update_bound(cg_output.bound);
             };
         }
         column_generation_parameters.initial_columns.insert(
@@ -90,11 +96,7 @@ const GreedyOutput columngenerationsolver::greedy(
         // Update bound.
         if (output.number_of_nodes == 0) {
             Counter cg_it_limit = parameters.column_generation_parameters.maximum_number_of_iterations;
-            if (cg_it_limit == -1
-                    || (cg_output.number_of_column_generation_iterations < cg_it_limit)) {
-                algorithm_formatter.update_bound(
-                        cg_output.relaxation_solution.objective_value());
-            }
+            algorithm_formatter.update_bound(cg_output.bound);
             output.relaxation_solution = cg_output.relaxation_solution;
         }
 

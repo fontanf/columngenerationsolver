@@ -44,10 +44,12 @@ void AlgorithmFormatter::print_column_generation_header()
         << std::setw(12) << "Iteration"
         << std::setw(12) << "# columns"
         << std::setw(24) << "Value"
+        << std::setw(24) << "Bound"
         << std::endl
         << std::setw(12) << "----"
         << std::setw(12) << "---------"
         << std::setw(12) << "---------"
+        << std::setw(24) << "-----"
         << std::setw(24) << "-----"
         << std::endl;
 }
@@ -55,7 +57,8 @@ void AlgorithmFormatter::print_column_generation_header()
 void AlgorithmFormatter::print_column_generation_iteration(
             Counter iteration,
             ColIdx number_of_columns,
-            double value)
+            double value,
+            double bound)
 {
     output_.time = parameters_.timer.elapsed_time();
     if (parameters_.verbosity_level == 0)
@@ -66,6 +69,7 @@ void AlgorithmFormatter::print_column_generation_iteration(
         << std::setw(12) << iteration
         << std::setw(12) << number_of_columns
         << std::setw(24) << value
+        << std::setw(24) << bound
         << std::endl;
 }
 
@@ -137,7 +141,7 @@ void AlgorithmFormatter::update_bound(
         output_.time = parameters_.timer.elapsed_time();
         output_.bound = bound;
         output_.json["IntermediaryOutputs"].push_back(output_.to_json());
-        parameters_.new_solution_callback(output_);
+        parameters_.new_bound_callback(output_);
     }
 }
 

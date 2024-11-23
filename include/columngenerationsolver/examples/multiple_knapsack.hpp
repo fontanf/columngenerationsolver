@@ -64,7 +64,7 @@ public:
     virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
 
-    virtual inline std::vector<std::shared_ptr<const Column>> solve_pricing(
+    virtual inline PricingOutput solve_pricing(
             const std::vector<Value>& duals);
 
 private:
@@ -139,10 +139,12 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
     return {};
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
             const std::vector<Value>& duals)
 {
-    std::vector<std::shared_ptr<const Column>> columns;
+    PricingOutput output;
+    Value reduced_cost_bound = 0.0;
+
     for (KnapsackId knapsack_id = 0;
             knapsack_id < instance_.number_of_knapsacks();
             ++knapsack_id) {
@@ -189,9 +191,14 @@ std::vector<std::shared_ptr<const Column>> PricingSolver::solve_pricing(
                 column.objective_coefficient += instance_.item(item_id).profit;
             }
         }
-        columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        reduced_cost_bound = (std::max)(
+                reduced_cost_bound,
+                columngenerationsolver::compute_reduced_cost(column, duals));
     }
-    return columns;
+
+    output.overcost = instance_.number_of_knapsacks() * reduced_cost_bound;
+    return output;
 }
 
 inline void write_solution(
