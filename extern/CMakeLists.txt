@@ -14,7 +14,7 @@ FetchContent_MakeAvailable(Boost)
 FetchContent_Declare(
     optimizationtools
     GIT_REPOSITORY https://github.com/fontanf/optimizationtools.git
-    GIT_TAG a0973a7dfa64b9d305f75879c80d252e714ce2cf
+    GIT_TAG 4037a1a03f97ea0c388baa4f3f74c3ba55baec08
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../optimizationtools/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(optimizationtools)
@@ -41,7 +41,7 @@ FetchContent_MakeAvailable(mathoptsolverscmake)
 FetchContent_Declare(
     knapsacksolver
     GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
-    GIT_TAG 5115e4db582c97e2e1ade8ea3ab5e678a921b223
+    GIT_TAG abd1acf0704744f5e975e75a1f09cb5a9679e7e8
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(knapsacksolver)
