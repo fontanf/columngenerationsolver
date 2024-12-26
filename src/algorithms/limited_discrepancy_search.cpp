@@ -2,7 +2,6 @@
 
 #include "columngenerationsolver/algorithm_formatter.hpp"
 
-#include <unordered_set>
 #include <set>
 
 using namespace columngenerationsolver;
@@ -143,7 +142,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         }
 
         if (node->parent != nullptr
-                && node->value <= node->value_frac) {
+                && node->value <= node->value_frac
+                && !node->tabu) {
 
             node->relaxation_solution = node->parent->relaxation_solution;
 
@@ -192,6 +192,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             }
             column_generation_parameters.column_pool = column_pool;
             column_generation_parameters.fixed_columns = fixed_columns.columns();
+            column_generation_parameters.tabu = &tabu;
 
             // Solve.
             auto cg_output = column_generation(

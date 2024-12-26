@@ -2,6 +2,8 @@
 
 #include "columngenerationsolver/linear_programming_solver.hpp"
 
+#include <unordered_set>
+
 namespace columngenerationsolver
 {
 
@@ -83,6 +85,15 @@ struct ColumnGenerationParameters: Parameters
 
     /** Enable automatic directional smoothing. */
     bool automatic_directional_smoothing = false;
+
+
+    /**
+     * Tabu columns.
+     *
+     * These columns are never added to the LP solver and therefore won't be
+     * part of the returned solution.
+     */
+    std::unordered_set<std::shared_ptr<const Column>>* tabu = nullptr;
 
 
     virtual int format_width() const override { return 41; }
