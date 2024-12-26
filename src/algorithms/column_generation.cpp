@@ -300,6 +300,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     != infeasible_columns.end())
                 continue;
 
+            // Don't add a tabu column.
+            if (parameters.tabu != nullptr
+                    && parameters.tabu->find(column) != parameters.tabu->end())
+                continue;
+
             std::vector<RowIdx> row_ids;
             std::vector<Value> row_coefficients;
             bool ok = true;
@@ -401,6 +406,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
                 // Don't add a column which is already in the LP.
                 if (solver_generated_columns.find(column) != solver_generated_columns.end())
+                    continue;
+
+                // Don't add a tabu column.
+                if (parameters.tabu != nullptr
+                        && parameters.tabu->find(column) != parameters.tabu->end())
                     continue;
 
                 // Add the column if its reduced cost is negative.
@@ -626,12 +636,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     // Look for negative reduced cost columns.
                     for (const std::shared_ptr<const Column>& column: all_columns) {
 
-                      // Discard columns which have already been generated.
-                      // If they were worth adding to the LP, then they would
-                      // have been added at the previous step (looking for
-                      // column from the pool).
-                      if (column_pool.find(column) != column_pool.end())
-                          continue;
+                        // Discard columns which have already been generated.
+                        // If they were worth adding to the LP, then they would
+                        // have been added at the previous step (looking for
+                        // column from the pool).
+                        if (column_pool.find(column) != column_pool.end())
+                            continue;
 
                         // Store these new columns.
                         column_pool.insert(column);
@@ -738,6 +748,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
             // Add new columns to the linear program.
             for (const std::shared_ptr<const Column>& column: new_columns) {
+
                 //std::cout << column << std::endl;
                 std::vector<RowIdx> ri;
                 std::vector<Value> rc;
