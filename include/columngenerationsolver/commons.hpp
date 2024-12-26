@@ -260,6 +260,20 @@ public:
         }
     }
 
+    void max_column_value(
+            const std::shared_ptr<const Column>& column,
+            Value value)
+    {
+        if (columns_map_.find(column) == columns_map_.end()) {
+            columns_map_[column] = columns_.size();
+            columns_.push_back({column, value});
+        } else {
+            Counter pos = columns_map_[column];
+            if (columns_[pos].second < value)
+                columns_[pos].second = value;
+        }
+    }
+
 private:
 
     /*
