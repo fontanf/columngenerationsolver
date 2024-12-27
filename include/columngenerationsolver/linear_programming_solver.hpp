@@ -23,22 +23,22 @@
 namespace columngenerationsolver
 {
 
-enum class LinearProgrammingSolver { CLP, CPLEX, Xpress, Knitro };
+enum class SolverName { CLP, CPLEX, Xpress, Knitro };
 
 inline std::istream& operator>>(
         std::istream& in,
-        LinearProgrammingSolver& linear_programming_solver)
+        SolverName& solver_name)
 {
     std::string token;
     in >> token;
     if (token == "clp" || token == "CLP") {
-        linear_programming_solver = LinearProgrammingSolver::CLP;
+        solver_name = SolverName::CLP;
     } else if (token == "cplex" || token == "Cplex" || token == "CPLEX") {
-        linear_programming_solver = LinearProgrammingSolver::CPLEX;
+        solver_name = SolverName::CPLEX;
     } else if (token == "xpress" || token == "Xpress" || token == "XPRESS") {
-        linear_programming_solver = LinearProgrammingSolver::Xpress;
+        solver_name = SolverName::Xpress;
     } else if (token == "knitro" || token == "Knitro") {
-        linear_programming_solver = LinearProgrammingSolver::Knitro;
+        solver_name = SolverName::Knitro;
     } else  {
         in.setstate(std::ios_base::failbit);
     }
@@ -47,19 +47,19 @@ inline std::istream& operator>>(
 
 inline std::ostream& operator<<(
         std::ostream& os,
-        LinearProgrammingSolver linear_programming_solver)
+        SolverName solver_name)
 {
-    switch (linear_programming_solver) {
-    case LinearProgrammingSolver::CLP: {
+    switch (solver_name) {
+    case SolverName::CLP: {
         os << "CLP";
         break;
-    } case LinearProgrammingSolver::CPLEX: {
+    } case SolverName::CPLEX: {
         os << "CPLEX";
         break;
-    } case LinearProgrammingSolver::Xpress: {
+    } case SolverName::Xpress: {
         os << "Xpress";
         break;
-    } case LinearProgrammingSolver::Knitro: {
+    } case SolverName::Knitro: {
         os << "Knitro";
         break;
     }
@@ -67,25 +67,25 @@ inline std::ostream& operator<<(
     return os;
 }
 
-inline LinearProgrammingSolver s2lps(const std::string& s)
+inline SolverName s2lps(const std::string& s)
 {
     if (s == "clp" || s == "CLP") {
-        return LinearProgrammingSolver::CLP;
+        return SolverName::CLP;
     } else if (s == "cplex" || s == "Cplex" || s == "CPLEX") {
-        return LinearProgrammingSolver::CPLEX;
+        return SolverName::CPLEX;
     } else if (s == "xpress" || s == "Xpress" || s == "XPRESS") {
-        return LinearProgrammingSolver::Xpress;
+        return SolverName::Xpress;
     } else if (s == "knitro" || s == "Knitro") {
-        return LinearProgrammingSolver::Knitro;
+        return SolverName::Knitro;
     } else  {
-        return LinearProgrammingSolver::CLP;
+        return SolverName::CLP;
     }
 }
 
-class ColumnGenerationSolver
+class LinearProgrammingSolver
 {
 public:
-    virtual ~ColumnGenerationSolver() { }
+    virtual ~LinearProgrammingSolver() { }
     virtual void add_column(
             const std::vector<RowIdx>& row_indices,
             const std::vector<Value>& row_coefficients,
@@ -100,12 +100,12 @@ public:
 
 #if CLP_FOUND
 
-class ColumnGenerationSolverClp: public ColumnGenerationSolver
+class LinearProgrammingSolverClp: public LinearProgrammingSolver
 {
 
 public:
 
-    ColumnGenerationSolverClp(
+    LinearProgrammingSolverClp(
             optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
@@ -127,7 +127,7 @@ public:
         }
     }
 
-    virtual ~ColumnGenerationSolverClp() { }
+    virtual ~LinearProgrammingSolverClp() { }
 
     void add_column(
             const std::vector<RowIdx>& row_indices,
@@ -172,12 +172,12 @@ private:
 
 ILOSTLBEGIN
 
-class ColumnGenerationSolverCplex: public ColumnGenerationSolver
+class LinearProgrammingSolverCplex: public LinearProgrammingSolver
 {
 
 public:
 
-    ColumnGenerationSolverCplex(
+    LinearProgrammingSolverCplex(
             optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds):
@@ -204,7 +204,7 @@ public:
         //cplex_.setParam(IloCplex::Param::Preprocessing::Presolve, 0);
     }
 
-    virtual ~ColumnGenerationSolverCplex()
+    virtual ~LinearProgrammingSolverCplex()
     {
         env_.end();
     }
@@ -252,17 +252,17 @@ private:
 
 #if XPRESS_FOUND
 
-class ColumnGenerationSolverXpress: public ColumnGenerationSolver
+class LinearProgrammingSolverXpress: public LinearProgrammingSolver
 {
 
 public:
 
-    ColumnGenerationSolverXpress(
+    LinearProgrammingSolverXpress(
             optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
     {
-        //std::cout << "ColumnGenerationSolverXpress::ColumnGenerationSolverXpress" << std::endl;
+        //std::cout << "LinearProgrammingSolverXpress::LinearProgrammingSolverXpress" << std::endl;
         XPRScreateprob(&problem_);
         XPRSsetintcontrol(problem_, XPRS_THREADS, 1);
         //XPRSsetlogfile(problem_, "xpress.log");
@@ -298,7 +298,7 @@ public:
                 NULL);
     }
 
-    virtual ~ColumnGenerationSolverXpress()
+    virtual ~LinearProgrammingSolverXpress()
     {
         XPRSdestroyprob(problem_);
     }
@@ -310,7 +310,7 @@ public:
             Value lower_bound,
             Value upper_bound)
     {
-        //std::cout << "ColumnGenerationSolverXpress::add_column" << std::endl;
+        //std::cout << "LinearProgrammingSolverXpress::add_column" << std::endl;
         primals_.push_back(0.0);
         basis_cols_.push_back(0);
         int start[] = {0};
@@ -330,7 +330,7 @@ public:
 
     void solve()
     {
-        //std::cout << "ColumnGenerationSolverXpress::solve" << std::endl;
+        //std::cout << "LinearProgrammingSolverXpress::solve" << std::endl;
         if (primals_.empty())
             return;
         if (has_basis_)
@@ -373,12 +373,12 @@ private:
 
 #if KNITRO_FOUND
 
-class ColumnGenerationSolverKnitro: public ColumnGenerationSolver
+class LinearProgrammingSolverKnitro: public LinearProgrammingSolver
 {
 
 public:
 
-    ColumnGenerationSolverKnitro(
+    LinearProgrammingSolverKnitro(
             optimizationtools::ObjectiveDirection objective_sense,
             const std::vector<Value>& row_lower_bounds,
             const std::vector<Value>& row_upper_bounds)
@@ -399,7 +399,7 @@ public:
         }
     }
 
-    virtual ~ColumnGenerationSolverKnitro()
+    virtual ~LinearProgrammingSolverKnitro()
     {
         KN_free(&kc_);
     }
