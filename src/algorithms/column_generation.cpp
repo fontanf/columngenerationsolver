@@ -155,35 +155,35 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Initialize solver
         //std::cout << "Initialize solver..." << std::endl;
-        std::unique_ptr<ColumnGenerationSolver> solver = NULL;
+        std::unique_ptr<LinearProgrammingSolver> solver = NULL;
 #if CPLEX_FOUND
-        if (parameters.linear_programming_solver == LinearProgrammingSolver::CPLEX)
-            solver = std::unique_ptr<ColumnGenerationSolver>(
-                    new ColumnGenerationSolverCplex(
+        if (parameters.solver_name == SolverName::CPLEX)
+            solver = std::unique_ptr<LinearProgrammingSolver>(
+                    new LinearProgrammingSolverCplex(
                         model.objective_sense,
                         new_row_lower_bounds,
                         new_row_upper_bounds));
 #endif
-        if (parameters.linear_programming_solver == LinearProgrammingSolver::CLP) {
-            solver = std::unique_ptr<ColumnGenerationSolver>(
-                    new ColumnGenerationSolverClp(
+        if (parameters.solver_name == SolverName::CLP) {
+            solver = std::unique_ptr<LinearProgrammingSolver>(
+                    new LinearProgrammingSolverClp(
                         model.objective_sense,
                         new_row_lower_bounds,
                         new_row_upper_bounds));
         }
 #if XPRESS_FOUND
-        if (parameters.linear_programming_solver == LinearProgrammingSolver::Xpress) {
-            solver = std::unique_ptr<ColumnGenerationSolver>(
-                    new ColumnGenerationSolverXpress(
+        if (parameters.solver_name == SolverName::Xpress) {
+            solver = std::unique_ptr<LinearProgrammingSolver>(
+                    new LinearProgrammingSolverXpress(
                         model.objective_sense,
                         new_row_lower_bounds,
                         new_row_upper_bounds));
         }
 #endif
 #if KNITRO_FOUND
-        if (parameters.linear_programming_solver == LinearProgrammingSolver::Knitro)
-            solver = std::unique_ptr<ColumnGenerationSolver>(
-                    new ColumnGenerationSolverKnitro(
+        if (parameters.solver_name == SolverName::Knitro)
+            solver = std::unique_ptr<LinearProgrammingSolver>(
+                    new LinearProgrammingSolverKnitro(
                         model.objective_sense,
                         new_row_lower_bounds,
                         new_row_upper_bounds));

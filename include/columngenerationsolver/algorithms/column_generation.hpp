@@ -62,7 +62,7 @@ using ColumnGenerationIterationCallback = std::function<void(const ColumnGenerat
 struct ColumnGenerationParameters: Parameters
 {
     /** Linear programming solver. */
-    LinearProgrammingSolver linear_programming_solver = LinearProgrammingSolver::CLP;
+    SolverName solver_name = SolverName::CLP;
 
     /** Maximum number of iterations. */
     Counter maximum_number_of_iterations = -1;
@@ -103,7 +103,7 @@ struct ColumnGenerationParameters: Parameters
         Parameters::format(os);
         int width = format_width();
         os
-            << std::setw(width) << std::left << "Linear programming solver: " << linear_programming_solver << std::endl
+            << std::setw(width) << std::left << "Linear programming solver: " << solver_name << std::endl
             << std::setw(width) << std::left << "Static Wentges smoothing parameter: " << static_wentges_smoothing_parameter << std::endl
             << std::setw(width) << std::left << "Static directional smoothing parameter: " << static_directional_smoothing_parameter << std::endl
             << std::setw(width) << std::left << "Self-adjusting Wentges smoothing: " << self_adjusting_wentges_smoothing << std::endl
@@ -116,7 +116,7 @@ struct ColumnGenerationParameters: Parameters
     {
         nlohmann::json json = Parameters::to_json();
         json.merge_patch({
-                {"LinearProgrammingSolver", linear_programming_solver},
+                {"SolverName", solver_name},
                 {"StaticWentgesSmoothingParameter", static_wentges_smoothing_parameter},
                 {"StaticDirectionalSmoothingParameter", static_directional_smoothing_parameter},
                 {"SelfAdjustingWentgesSmoothing", self_adjusting_wentges_smoothing},
