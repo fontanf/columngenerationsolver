@@ -23,6 +23,9 @@ FetchContent_MakeAvailable(optimizationtools)
 if(COLUMNGENERATIONSOLVER_USE_CLP)
     set(MATHOPTSOLVERSCMAKE_USE_CLP ON)
 endif()
+if(COLUMNGENERATIONSOLVER_USE_CBC)
+    set(MATHOPTSOLVERSCMAKE_USE_CBC ON)
+endif()
 if(COLUMNGENERATIONSOLVER_USE_CPLEX)
     set(MATHOPTSOLVERSCMAKE_USE_CPLEX ON)
 endif()
@@ -32,7 +35,7 @@ endif()
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
-    GIT_TAG 80cd13a843e2c10684abbfe76cf9aae0d71ff79d
+    GIT_TAG 4472814a28a40f4d861ccd757e140835c3a31bd0
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../mathoptsolverscmake/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(mathoptsolverscmake)
