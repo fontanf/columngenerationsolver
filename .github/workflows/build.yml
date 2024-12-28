@@ -35,6 +35,9 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get -y install liblapack-dev libbz2-dev
       if: matrix.os == 'ubuntu-latest'
+    - name: Install nauty
+      run: sudo apt-get install -y libnauty2-dev
+      if: matrix.os == 'ubuntu-latest'
     - name: Build
       run: |
         cmake -S . -B build -DCMAKE_BUILD_TYPE=Release

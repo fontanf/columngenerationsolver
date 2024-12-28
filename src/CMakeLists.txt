@@ -25,6 +25,7 @@ if(COLUMNGENERATIONSOLVER_USE_CBC)
         CBC_FOUND=1)
     target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::cbc)
+endif()
 if(COLUMNGENERATIONSOLVER_USE_HIGHS)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
         HIGHS_FOUND=1)
