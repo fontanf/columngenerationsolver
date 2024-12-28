@@ -3,6 +3,7 @@ target_sources(ColumnGenerationSolver_columngenerationsolver PRIVATE
     commons.cpp
     algorithm_formatter.cpp
     algorithms/column_generation.cpp
+    algorithms/restricted_master.cpp
     algorithms/greedy.cpp
     algorithms/limited_discrepancy_search.cpp
     algorithms/heuristic_tree_search.cpp)
@@ -19,6 +20,11 @@ if(COLUMNGENERATIONSOLVER_USE_CLP)
     target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::clp)
 endif()
+if(COLUMNGENERATIONSOLVER_USE_CBC)
+    target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        CBC_FOUND=1)
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        MathOptSolversCMake::cbc)
 if(COLUMNGENERATIONSOLVER_USE_HIGHS)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
         HIGHS_FOUND=1)
