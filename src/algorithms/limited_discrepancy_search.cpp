@@ -85,8 +85,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             break;
 
         if (output.solution.feasible()
-                && std::abs(output.solution.objective_value() - output.bound) < FFOT_TOL)
+                && std::abs(output.solution.objective_value() - output.bound) < FFOT_TOL) {
             break;
+        }
 
         // Get node
         node_prev = node;
@@ -108,15 +109,17 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
         // Check discrepancy limit.
         if (!parameters.continue_until_feasible
-                || !output.solution.columns().empty())
+                || !output.solution.columns().empty()) {
             if (node->discrepancy > parameters.discrepancy_limit)
                 break;
+        }
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
         if (parameters.automatic_stop
                 && output.number_of_nodes >= 2
-                && output.number_of_nodes > 4 * output.maximum_depth)
+                && output.number_of_nodes > 4 * output.maximum_depth) {
             break;
+        }
 
         // Update output statistics.
         output.number_of_nodes++;

@@ -77,7 +77,7 @@ inline SolverName s2lps(const std::string& s)
         return SolverName::Xpress;
     } else if (s == "knitro" || s == "Knitro") {
         return SolverName::Knitro;
-    } else  {
+    } else {
         return SolverName::CLP;
     }
 }
