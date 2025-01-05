@@ -600,13 +600,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                                             = (model.rows[element.row].upper_bound
                                                     - row_values_tmp[element.row])
                                             / element.coefficient;
-                                        value = (std::min)(value, v);
+                                        value = (std::min)(value, std::floor(v));
                                     } else {
                                         Value v
                                             = (row_values_tmp[element.row]
                                                     - model.rows[element.row].lower_bound)
                                             / (-element.coefficient);
-                                        value = (std::min)(value, v);
+                                        value = (std::min)(value, std::floor(v));
                                     }
                                 }
                                 //std::cout << "value " << value << std::endl;
