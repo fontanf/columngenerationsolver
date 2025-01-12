@@ -17,11 +17,10 @@ struct LimitedDiscrepancySearchNode
     /** Relaxation solution. */
     std::shared_ptr<Solution> relaxation_solution;
 
+    bool skip_relaxation = false;
+
     /** Column branched on at this node. */
     std::shared_ptr<const Column> column = nullptr;
-
-    /** Value of the column in the relaxation solution. */
-    Value value_frac;
 
     /** Value on which the column is branched on. */
     Value value;
@@ -144,9 +143,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             //    << std::endl;
         }
 
-        if (node->parent != nullptr
-                && node->value <= node->value_frac
-                && !node->tabu) {
+        if (node->skip_relaxation) {
 
             node->relaxation_solution = node->parent->relaxation_solution;
 
@@ -315,9 +312,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
         // Compute next column to branch on.
         std::shared_ptr<const Column> column_best = nullptr;
-        Value value_frac_best = -1;
         Value value_best = -1;
         Value diff_best = -1;
+        ColIdx n = 0;
         for (auto p: node->relaxation_solution->columns()) {
             const std::shared_ptr<const Column>& column = p.first;
             Value value = p.second;
@@ -331,8 +328,11 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 continue;
 
             Value main_branch_value = std::floor(value);
-            if (main_branch_value <= fixed_columns.get_column_value(column, 0))
+            if (main_branch_value <= fixed_columns.get_column_value(column, 0)) {
                 main_branch_value = fixed_columns.get_column_value(column, 0) + 1;
+            } else {
+                n++;
+            }
             // 'diff' might be negative.
             Value diff = main_branch_value - value;
 
@@ -341,7 +341,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     || (column_best->branching_priority == column->branching_priority
                         && diff_best > diff)) {
                 column_best = column;
-                value_frac_best = value;
                 value_best = main_branch_value;
                 diff_best = diff;
             }
@@ -359,7 +358,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         auto child_1 = std::make_shared<LimitedDiscrepancySearchNode>();
         child_1->parent = node;
         child_1->column = column_best;
-        child_1->value_frac = value_frac_best;
+        child_1->skip_relaxation = (n >= 2);
         child_1->value = value_best;
         child_1->tabu = false;
         child_1->discrepancy = node->discrepancy;
@@ -369,7 +368,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         auto child_2 = std::make_shared<LimitedDiscrepancySearchNode>();
         child_2->parent = node;
         child_2->column = column_best;
-        child_2->value_frac = value_frac_best;
+        child_2->skip_relaxation = false;
         child_2->value = value_best - 1;
         child_2->tabu = true;
         child_2->discrepancy = node->discrepancy + 1;
@@ -380,12 +379,24 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             auto child_3 = std::make_shared<LimitedDiscrepancySearchNode>();
             child_3->parent = node;
             child_3->column = column_best;
-            child_3->value_frac = value_frac_best;
+            child_3->skip_relaxation = false;
             child_3->value = value_best - 2;
             child_3->tabu = true;
             child_3->discrepancy = node->discrepancy + 2;
             child_3->depth = node->depth + 1;
             nodes.insert(child_3);
+        }
+
+        if (value_best - 3 >= fixed_columns.get_column_value(column_best, 0)) {
+            auto child_4 = std::make_shared<LimitedDiscrepancySearchNode>();
+            child_4->parent = node;
+            child_4->column = column_best;
+            child_4->skip_relaxation = false;
+            child_4->value = value_best - 3;
+            child_4->tabu = true;
+            child_4->discrepancy = node->discrepancy + 3;
+            child_4->depth = node->depth + 1;
+            nodes.insert(child_4);
         }
     }
 
