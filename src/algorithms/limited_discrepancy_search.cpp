@@ -34,6 +34,8 @@ struct LimitedDiscrepancySearchNode
     /** Discrepancy of the node. */
     Value discrepancy = 0;
 
+    Value discrepancy_2 = 0;
+
     /** Depth of the node. */
     ColIdx depth = 0;
 };
@@ -62,8 +64,21 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             const std::shared_ptr<LimitedDiscrepancySearchNode>& node_1,
             const std::shared_ptr<LimitedDiscrepancySearchNode>& node_2)
     {
-        if (node_1->discrepancy != node_2->discrepancy)
-            return node_1->discrepancy < node_2->discrepancy;
+        if (node_1->discrepancy <= 1.5) {
+            if (node_2->discrepancy <= 1.5) {
+                if (node_1->discrepancy != node_2->discrepancy)
+                    return node_1->discrepancy < node_2->discrepancy;
+            } else {
+                return true;
+            }
+        } else {
+            if (node_2->discrepancy <= 1.5) {
+                return false;
+            } else {
+                if (node_1->discrepancy_2 != node_2->discrepancy_2)
+                    return node_1->discrepancy_2 < node_2->discrepancy_2;
+            }
+        }
         return node_1->depth > node_2->depth;
     };
     std::multiset<std::shared_ptr<LimitedDiscrepancySearchNode>, decltype(comp)> nodes(comp);
@@ -136,11 +151,11 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             //    << "t " << parameters.timer.elapsed_time()
             //    << " node " << output.number_of_nodes
             //    << " / " << nodes.size()
-            //    << " diff " << node->discrepancy
+            //    << " disc " << node->discrepancy
             //    << " depth " << node->depth
-            //    //<< " col " << *node->column
             //    << " value " << node->value
             //    << std::endl;
+            //std::cout << " col " << *node->column << std::endl;
         }
 
         if (node->skip_relaxation) {
@@ -313,6 +328,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         // Compute next column to branch on.
         std::shared_ptr<const Column> column_best = nullptr;
         Value value_best = -1;
+        Value value_frac_best = -1;
         Value diff_best = -1;
         ColIdx n = 0;
         for (auto p: node->relaxation_solution->columns()) {
@@ -342,6 +358,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                         && diff_best > diff)) {
                 column_best = column;
                 value_best = main_branch_value;
+                value_frac_best = value;
                 diff_best = diff;
             }
         }
@@ -351,8 +368,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         //    << " value_best " << value_best
         //    << " diff_best " << diff_best
         //    << std::endl;
-        if (column_best == nullptr)
+        if (column_best == nullptr) {
+            //std::cout << "No column to branch on." << std::endl;
             continue;
+        }
 
         // Create child nodes and add them to the queue.
         auto child_1 = std::make_shared<LimitedDiscrepancySearchNode>();
@@ -362,6 +381,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         child_1->value = value_best;
         child_1->tabu = false;
         child_1->discrepancy = node->discrepancy;
+        child_1->discrepancy_2 = node->discrepancy_2;
+        if (value_best > value_frac_best)
+            child_1->discrepancy_2 += value_best - value_frac_best;
         child_1->depth = node->depth + 1;
         nodes.insert(child_1);
 
@@ -372,6 +394,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         child_2->value = value_best - 1;
         child_2->tabu = true;
         child_2->discrepancy = node->discrepancy + 1;
+        child_2->discrepancy_2 = node->discrepancy_2 + (value_frac_best - child_2->value);
         child_2->depth = node->depth + 1;
         nodes.insert(child_2);
 
@@ -383,6 +406,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             child_3->value = value_best - 2;
             child_3->tabu = true;
             child_3->discrepancy = node->discrepancy + 2;
+            child_3->discrepancy_2 = node->discrepancy_2 + (value_frac_best - child_3->value);
             child_3->depth = node->depth + 1;
             nodes.insert(child_3);
         }
@@ -395,6 +419,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             child_4->value = value_best - 3;
             child_4->tabu = true;
             child_4->discrepancy = node->discrepancy + 3;
+            child_4->discrepancy_2 = node->discrepancy_2 + (value_frac_best - child_4->value);
             child_4->depth = node->depth + 1;
             nodes.insert(child_4);
         }
