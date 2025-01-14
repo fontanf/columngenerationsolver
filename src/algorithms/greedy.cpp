@@ -90,7 +90,7 @@ const GreedyOutput columngenerationsolver::greedy(
         if (parameters.timer.needs_to_end())
             break;
 
-        if (!cg_output.relaxation_solution.feasible_relaxation())
+        if (!cg_output.feasible)
             break;
 
         // Update bound.

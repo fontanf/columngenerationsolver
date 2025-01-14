@@ -820,6 +820,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // If the final solution doesn't contain any dummy column, then stop.
         if (!has_dummy_column) {
+            output.feasible = true;
             output.relaxation_solution = solution_builder.build();
             break;
         }
