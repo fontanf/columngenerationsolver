@@ -17,6 +17,8 @@ struct ColumnGenerationOutput: Output
     /** Value of the relaxation solution (with dummy columns). */
     double relaxation_solution_value = 0.0;
 
+    bool feasible = false;
+
     /** Number of columns in the linear subproblem. */
     ColIdx number_of_columns_in_linear_subproblem = 0;
 
