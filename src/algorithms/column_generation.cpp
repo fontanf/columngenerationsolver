@@ -2,7 +2,7 @@
 
 #include "columngenerationsolver/algorithm_formatter.hpp"
 
-#include <unordered_set>
+#include "linear_programming_solver.hpp"
 
 using namespace columngenerationsolver;
 
@@ -154,7 +154,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         //std::cout << "dummy_column_objective_coefficient " << output.dummy_column_objective_coefficient << std::endl;
 
         // Initialize solver
-        //std::cout << "Initialize solver..." << std::endl;
+        //std::cout << "Initialize solver... " << parameters.solver_name << std::endl;
         std::unique_ptr<LinearProgrammingSolver> solver = NULL;
 #if CPLEX_FOUND
         if (parameters.solver_name == SolverName::CPLEX)
@@ -164,6 +164,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         new_row_lower_bounds,
                         new_row_upper_bounds));
 #endif
+#if CLP_FOUND
         if (parameters.solver_name == SolverName::CLP) {
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverClp(
@@ -171,6 +172,16 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         new_row_lower_bounds,
                         new_row_upper_bounds));
         }
+#endif
+#if HIGHS_FOUND
+        if (parameters.solver_name == SolverName::Highs) {
+            solver = std::unique_ptr<LinearProgrammingSolver>(
+                    new LinearProgrammingSolverHighs(
+                        model.objective_sense,
+                        new_row_lower_bounds,
+                        new_row_upper_bounds));
+        }
+#endif
 #if XPRESS_FOUND
         if (parameters.solver_name == SolverName::Xpress) {
             solver = std::unique_ptr<LinearProgrammingSolver>(

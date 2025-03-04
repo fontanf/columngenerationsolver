@@ -1,6 +1,6 @@
 #pragma once
 
-#include "columngenerationsolver/linear_programming_solver.hpp"
+#include "columngenerationsolver/commons.hpp"
 
 #include <unordered_set>
 

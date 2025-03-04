@@ -8,6 +8,8 @@ target_sources(ColumnGenerationSolver_columngenerationsolver PRIVATE
     algorithms/heuristic_tree_search.cpp)
 target_include_directories(ColumnGenerationSolver_columngenerationsolver PUBLIC
     ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(ColumnGenerationSolver_columngenerationsolver PRIVATE
+    ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
     OptimizationTools::containers
     OptimizationTools::utils)
@@ -16,6 +18,12 @@ if(COLUMNGENERATIONSOLVER_USE_CLP)
         CLP_FOUND=1)
     target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::clp)
+endif()
+if(COLUMNGENERATIONSOLVER_USE_HIGHS)
+    target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        HIGHS_FOUND=1)
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        highs)
 endif()
 if(COLUMNGENERATIONSOLVER_USE_XPRESS)
     target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
