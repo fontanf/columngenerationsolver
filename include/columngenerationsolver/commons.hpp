@@ -723,6 +723,72 @@ struct Output: optimizationtools::Output
 
 using NewSolutionCallback = std::function<void(const Output&)>;
 
+enum class SolverName { CLP, Highs, CPLEX, Xpress, Knitro };
+
+inline std::istream& operator>>(
+        std::istream& in,
+        SolverName& solver_name)
+{
+    std::string token;
+    in >> token;
+    if (token == "clp" || token == "CLP") {
+        solver_name = SolverName::CLP;
+    } else if (token == "highs" || token == "Highs" || token == "HIGHS") {
+        solver_name = SolverName::Highs;
+    } else if (token == "cplex" || token == "Cplex" || token == "CPLEX") {
+        solver_name = SolverName::CPLEX;
+    } else if (token == "xpress" || token == "Xpress" || token == "XPRESS") {
+        solver_name = SolverName::Xpress;
+    } else if (token == "knitro" || token == "Knitro") {
+        solver_name = SolverName::Knitro;
+    } else  {
+        in.setstate(std::ios_base::failbit);
+    }
+    return in;
+}
+
+inline std::ostream& operator<<(
+        std::ostream& os,
+        SolverName solver_name)
+{
+    switch (solver_name) {
+    case SolverName::CLP: {
+        os << "CLP";
+        break;
+    } case SolverName::Highs: {
+        os << "Highs";
+        break;
+    } case SolverName::CPLEX: {
+        os << "CPLEX";
+        break;
+    } case SolverName::Xpress: {
+        os << "Xpress";
+        break;
+    } case SolverName::Knitro: {
+        os << "Knitro";
+        break;
+    }
+    }
+    return os;
+}
+
+inline SolverName s2lps(const std::string& s)
+{
+    if (s == "clp" || s == "CLP") {
+        return SolverName::CLP;
+    } else if (s == "highs" || s == "Highs" || s == "HIGHS") {
+        return SolverName::Highs;
+    } else if (s == "cplex" || s == "Cplex" || s == "CPLEX") {
+        return SolverName::CPLEX;
+    } else if (s == "xpress" || s == "Xpress" || s == "XPRESS") {
+        return SolverName::Xpress;
+    } else if (s == "knitro" || s == "Knitro") {
+        return SolverName::Knitro;
+    } else {
+        return SolverName::CLP;
+    }
+}
+
 struct Parameters: optimizationtools::Parameters
 {
     /** Callback function called when a new best solution is found. */

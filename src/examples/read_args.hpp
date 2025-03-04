@@ -25,7 +25,7 @@ inline boost::program_options::options_description setup_args()
         ("log-to-stderr", "write log to stderr")
         ("print-checker", boost::program_options::value<int>()->default_value(1), "print checker")
 
-        ("linear-programming-solver", boost::program_options::value<std::string>(), "set linear programming solver")
+        ("linear-programming-solver", boost::program_options::value<SolverName>(), "set linear programming solver")
         ("internal-diving", boost::program_options::value<int>(), "set internal diving")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
@@ -70,8 +70,6 @@ inline void read_args(
     }
     parameters.initial_columns = initial_columns;
     parameters.column_pool = column_pool;
-    //if (vm.count("linear-programming-solver"))
-    //    parameters.linear_programming_solver = vm["linear-programming-solver"].as<std::string>();
     if (vm.count("internal-diving"))
         parameters.internal_diving = vm["internal-diving"].as<int>();
 }
@@ -100,8 +98,8 @@ inline const Output run_column_generation(
 {
     ColumnGenerationParameters parameters;
     read_args(parameters, write_solution, vm, column_pool, initial_columns);
-    //if (vm.count("maximum-number-of-nodes"))
-    //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
+    if (vm.count("linear-programming-solver"))
+        parameters.solver_name = vm["linear-programming-solver"].as<SolverName>();
     const Output output = column_generation(model, parameters);
     write_output(write_solution, vm, output);
     return output;
@@ -116,8 +114,10 @@ inline const Output run_greedy(
 {
     GreedyParameters parameters;
     read_args(parameters, write_solution, vm, column_pool, initial_columns);
-    //if (vm.count("maximum-number-of-nodes"))
-    //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
+    if (vm.count("linear-programming-solver")) {
+        parameters.column_generation_parameters.solver_name
+            = vm["linear-programming-solver"].as<SolverName>();
+    }
     const Output output = greedy(model, parameters);
     write_output(write_solution, vm, output);
     return output;
@@ -132,6 +132,10 @@ inline const Output run_limited_discrepancy_search(
 {
     LimitedDiscrepancySearchParameters parameters;
     read_args(parameters, write_solution, vm, column_pool, initial_columns);
+    if (vm.count("linear-programming-solver")) {
+        parameters.column_generation_parameters.solver_name
+            = vm["linear-programming-solver"].as<SolverName>();
+    }
     if (vm.count("discrepancy-limit"))
         parameters.discrepancy_limit = vm["discrepancy-limit"].as<int>();
     if (vm.count("automatic-stop"))
@@ -150,8 +154,10 @@ inline const Output run_heuristic_tree_search(
 {
     HeuristicTreeSearchParameters parameters;
     read_args(parameters, write_solution, vm, column_pool, initial_columns);
-    //if (vm.count("maximum-number-of-nodes"))
-    //    parameters.maximum_number_of_nodes = vm["maximum-number-of-nodes"].as<int>();
+    if (vm.count("linear-programming-solver")) {
+        parameters.column_generation_parameters.solver_name
+            = vm["linear-programming-solver"].as<SolverName>();
+    }
     const Output output = heuristic_tree_search(model, parameters);
     write_output(write_solution, vm, output);
     return output;
