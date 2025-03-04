@@ -3,9 +3,7 @@
 #include "columngenerationsolver/commons.hpp"
 
 #if CLP_FOUND
-#include <coin/ClpModel.hpp>
-#include <coin/CbcOrClpParam.hpp>
-#include <coin/OsiClpSolverInterface.hpp>
+#include <coin/ClpSimplex.hpp>
 #endif
 
 #if CPLEX_FOUND
