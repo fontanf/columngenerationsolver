@@ -789,6 +789,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         SolutionBuilder solution_builder;
         solution_builder.set_model(model);
         for (const auto& p: parameters.fixed_columns) {
+            if (p.second == 0)
+                continue;
             solution_builder.add_column(
                     p.first,
                     p.second);
