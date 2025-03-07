@@ -108,19 +108,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         node = *nodes.begin();
         nodes.erase(nodes.begin());
 
-        // Compute fixed_columns.
-        if (node->parent != nullptr
-                && node_prev == node->parent) {
-            fixed_columns.max_column_value(node->column, node->value);
-        } else {
-            fixed_columns = ColumnMap();
-            for (auto node_tmp = node;
-                    node_tmp->parent != NULL;
-                    node_tmp = node_tmp->parent) {
-                fixed_columns.max_column_value(node_tmp->column, node_tmp->value);
-            }
-        }
-
         // Check discrepancy limit.
         if (!parameters.continue_until_feasible
                 || !output.solution.columns().empty()) {
@@ -133,6 +120,24 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 && output.number_of_nodes >= 2
                 && output.number_of_nodes > 4 * output.maximum_depth) {
             break;
+        }
+
+        // Compute fixed_columns and tabu.
+        if (node->parent != nullptr
+                && node_prev == node->parent) {
+            fixed_columns.max_column_value(node->column, node->value);
+            if (node->tabu)
+                tabu.insert(node->column);
+        } else {
+            fixed_columns = ColumnMap();
+            tabu.clear();
+            for (auto node_tmp = node;
+                    node_tmp->parent != NULL;
+                    node_tmp = node_tmp->parent) {
+                fixed_columns.max_column_value(node_tmp->column, node_tmp->value);
+                if (node_tmp->tabu)
+                    tabu.insert(node_tmp->column);
+            }
         }
 
         // Update output statistics.
@@ -309,21 +314,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         //for (auto p: fixed_columns.columns())
         //    std::cout << " " << *(p.first) << " " << p.second << ";";
         //std::cout << std::endl;
-
-        // Get the set of columns on which branching is forbidden.
-        if (node->parent != nullptr
-                && node_prev == node->parent) {
-            if (node->tabu)
-                tabu.insert(node->column);
-        } else {
-            tabu.clear();
-            for (auto node_tmp = node;
-                    node_tmp->parent != NULL;
-                    node_tmp = node_tmp->parent) {
-                if (node_tmp->tabu)
-                    tabu.insert(node_tmp->column);
-            }
-        }
 
         // Compute next column to branch on.
         std::shared_ptr<const Column> column_best = nullptr;
