@@ -437,6 +437,8 @@ public:
             const std::shared_ptr<const Column>& column,
             Value value)
     {
+        if (value == 0)
+            return;
         if (columns_map_.find(column) == columns_map_.end()) {
             columns_map_[column] = solution_.columns_.size();
             solution_.columns_.push_back({column, value});
