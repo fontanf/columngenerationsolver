@@ -8,19 +8,19 @@ A solver based on column generation.
 
 ## Description
 
-The goal of this repository is to provide a simple framework to quickly implement heuristic algorithms based on column generation.
+The goal of this package is to provide a simple framework to quickly implement heuristic algorithms based on column generation.
 
 It is only required to provide the description of the linear program of the Dantzig–Wolfe decomposition of the master problem as well as the algorithm solving the pricing problem.
 No branching rule implementation is required.
 
 The currently implemented algorithms are based on the algorithms from "Primal Heuristics for Branch and Price: The Assets of Diving Methods" (Sadykov et al., 2019).
 
-This package does not implement any exact algorithm. However, if the pricing algorithm is exact, it provides a valid dual bound.
-If the pricing algorithm is heuristic, the primal algorithms still works, but then the dual bound is not valid.
+This package does not implement any exact algorithm. However, it provides a dual bound if the pricing algorithm provides provides a bound.
+If the pricing algorithm doesn't provide a bound, the primal algorithms still works, but no dual bound is provided.
 
 Solving a problem only requires a couple hundred lines of code (see examples).
 
-A linear programming solver is required. Currently, CLP, Xpress and CPLEX are supported.
+A linear programming solver is required. Currently, CLP, Highs, Xpress and CPLEX are supported.
 
 Features:
 * Algorithms:
@@ -42,10 +42,10 @@ When the sub-problems are more difficult to solve, their resolution become the b
 
 ### Packing
 
-[Cutting stock problem](include/columngenerationsolver/examples/cutting_stock.hpp)
+[Cutting stock problem](examples/cutting_stock_main.cpp)
 * Pricing problem: bounded knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
-[Multiple knapsack problem](include/columngenerationsolver/examples/multiple_knapsack.hpp)
+[Multiple knapsack problem](examples/multiple_knapsack_main.cpp)
 * Pricing problem: knapsck problem solved with the `minknap` algorithm from [fontanf/knapsacksolver](https://github.com/fontanf/knapsacksolver)
 
 [Generalized assignment problem](https://github.com/fontanf/generalizedassignmentsolver/blob/master/src/algorithms/column_generation.cpp) from [fontanf/generalizedassignmentsolver](https://github.com/fontanf/generalizedassignmentsolver)
@@ -54,16 +54,16 @@ When the sub-problems are more difficult to solve, their resolution become the b
 [Geometrical cutting stock, variable-sized bin packing and multiple knapsack problems](https://github.com/fontanf/packingsolver/blob/master/src/algorithms/column_generation.hpp) from [fontanf/packingsolver](https://github.com/fontanf/packingsolver)
 * Pricing problem: geometrical knapsack problems solved with the algorithms from the same repository
 
-[Bin packing problem with conflicts](include/columngenerationsolver/examples/bin_packing_with_conflicts.hpp)
-* Pricing problem: knapsack problem with conflicts solved with the [heuristic tree search](https://github.com/fontanf/treesearchsolver/blob/main/include/columngenerationsolver/examples/knapsack_with_conflicts.hpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Bin packing problem with conflicts](examples/bin_packing_with_conflicts_main.cpp)
+* Pricing problem: knapsack problem with conflicts solved with the [heuristic tree search](https://github.com/fontanf/treesearchsolver/blob/main/examples/knapsack_with_conflicts_main.cpp) algorithm from [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Routing
 
-[Capacitated vehicle routing problem](include/columngenerationsolver/examples/capacitated_vehicle_routing.hpp)
-* Pricing problem: elementary shortest path problem with resource constraint [solved by heuristic tree search](include/columngenerationsolver/examples/pricingsolver/espprc.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Capacitated vehicle routing problem](examples/capacitated_vehicle_routing_main.cpp)
+* Pricing problem: elementary shortest path problem with resource constraint [solved by heuristic tree search](examples/pricingsolver/espprc_main.cpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
-[Vehicle routing problem with time windows](include/columngenerationsolver/examples/vehicle_routing_with_time_windows.hpp)
-* Pricing problem: elementary shortest path problem with resource constraint and time windows [solved by heuristic tree search](include/columngenerationsolver/examples/pricingsolver/espprctw.hpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
+[Vehicle routing problem with time windows](examples/vehicle_routing_with_time_windows_main.cpp)
+* Pricing problem: elementary shortest path problem with resource constraint and time windows [solved by heuristic tree search](examples/pricingsolver/espprctw_main.cpp) using [fontanf/treesearchsolver](https://github.com/fontanf/treesearchsolver)
 
 ### Scheduling
 

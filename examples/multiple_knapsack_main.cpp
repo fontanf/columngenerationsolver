@@ -1,5 +1,5 @@
 /**
- * Multiple knapsack problem.
+ * Multiple knapsack problem
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/multiple_knapsack.hpp
@@ -34,7 +34,7 @@
  *
  */
 
-#pragma once
+#include "read_args.hpp"
 
 #include "columngenerationsolver/commons.hpp"
 
@@ -43,12 +43,11 @@
 #include "knapsacksolver/knapsack/instance_builder.hpp"
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
 
-namespace columngenerationsolver
-{
-namespace multiple_knapsack
-{
-
 using namespace orproblems::multiple_knapsack;
+
+using Value = columngenerationsolver::Value;
+using ColIdx = columngenerationsolver::ColIdx;
+using RowIdx = columngenerationsolver::RowIdx;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
@@ -61,8 +60,8 @@ public:
         fixed_knapsacks_(instance.number_of_knapsacks())
     {  }
 
-    virtual inline std::vector<std::shared_ptr<const Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
+    virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
 
     virtual inline PricingOutput solve_pricing(
             const std::vector<Value>& duals);
@@ -89,7 +88,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     for (KnapsackId knapsack_id = 0;
             knapsack_id < instance.number_of_knapsacks();
             ++knapsack_id) {
-        Row row;
+        columngenerationsolver::Row row;
         row.lower_bound = 1;
         row.upper_bound = 1;
         row.coefficient_lower_bound = 0;
@@ -101,7 +100,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     for (ItemId item_id = 0;
             item_id < instance.number_of_items();
             ++item_id) {
-        Row row;
+        columngenerationsolver::Row row;
         row.lower_bound = 0;
         row.upper_bound = 1;
         row.coefficient_lower_bound = 0;
@@ -116,17 +115,17 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     return model;
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
+std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
 {
     std::fill(fixed_items_.begin(), fixed_items_.end(), -1);
     std::fill(fixed_knapsacks_.begin(), fixed_knapsacks_.end(), -1);
     for (const auto& p: fixed_columns) {
-        const Column& column = *(p.first);
+        const columngenerationsolver::Column& column = *(p.first);
         Value value = p.second;
         if (value < 0.5)
             continue;
-        for (const LinearTerm& element: column.elements) {
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
             if (element.coefficient < 0.5)
                 continue;
             if (element.row < instance_.number_of_knapsacks()) {
@@ -177,21 +176,21 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         auto kp_output = knapsacksolver::knapsack::dynamic_programming_primal_dual(kp_instance, kp_parameters);
 
         // Retrieve column.
-        Column column;
+        columngenerationsolver::Column column;
         column.elements.push_back({knapsack_id, 1});
         for (knapsacksolver::knapsack::ItemId kp_item_id = 0;
                 kp_item_id < kp_instance.number_of_items();
                 ++kp_item_id) {
             if (kp_output.solution.contains(kp_item_id)) {
                 ItemId item_id = kp2mkp_[kp_item_id];
-                LinearTerm element;
+                columngenerationsolver::LinearTerm element;
                 element.row = instance_.number_of_knapsacks() + item_id;
                 element.coefficient = 1;
                 column.elements.push_back(element);
                 column.objective_coefficient += instance_.item(item_id).profit;
             }
         }
-        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
         reduced_cost_bound = (std::max)(
                 reduced_cost_bound,
                 columngenerationsolver::compute_reduced_cost(column, duals));
@@ -203,7 +202,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
 
 inline void write_solution(
         const Instance& instance,
-        const Solution& solution,
+        const columngenerationsolver::Solution& solution,
         const std::string& certificate_path)
 {
     std::ofstream file(certificate_path);
@@ -214,18 +213,18 @@ inline void write_solution(
 
     std::vector<std::vector<ItemId>> sol(instance.number_of_knapsacks());
     for (auto colval: solution.columns()) {
-        const Column& column = *(colval.first);
+        const columngenerationsolver::Column& column = *(colval.first);
         //Value value = colval.second;
         // Get the knapsack id.
         KnapsackId knapsack_id = -1;
-        for (const LinearTerm& element: column.elements) {
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
             if (element.coefficient > 0.5
                     && element.row < instance.number_of_knapsacks()) {
                 knapsack_id = element.row;
             }
         }
         // Get the items.
-        for (const LinearTerm& element: column.elements) {
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
             if (element.coefficient > 0.5
                     && element.row >= instance.number_of_knapsacks()) {
                 ItemId item_id = element.row - instance.number_of_knapsacks();
@@ -244,5 +243,58 @@ inline void write_solution(
     }
 }
 
-}
+int main(int argc, char *argv[])
+{
+    // Setup options.
+    boost::program_options::options_description desc = columngenerationsolver::setup_args();
+    desc.add_options()
+        //("guide,g", boost::program_options::value<GuideId>(), "")
+        ;
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+    try {
+        boost::program_options::notify(vm);
+    } catch (const boost::program_options::required_option& e) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+
+    // Create instance.
+    InstanceBuilder instance_builder;
+    instance_builder.read(
+            vm["input"].as<std::string>(),
+            vm["format"].as<std::string>());
+    const Instance instance = instance_builder.build();
+
+    // Create model.
+    columngenerationsolver::Model model = get_model(instance);
+
+    // Solve.
+    auto output = run(
+            model,
+            [&instance](
+                const columngenerationsolver::Solution& solution,
+                const std::string& certificate_path)
+            {
+                write_solution(instance, solution, certificate_path);
+            },
+            vm);
+
+    // Run checker.
+    if (vm.count("certificate")
+            && vm["print-checker"].as<int>() > 0) {
+        std::cout << std::endl
+            << "Checker" << std::endl
+            << "-------" << std::endl;
+        instance.check(
+                vm["certificate"].as<std::string>(),
+                std::cout,
+                vm["print-checker"].as<int>());
+    }
+
+    return 0;
 }

@@ -1,0 +1,67 @@
+add_executable(ColumnGenerationSolver_example_bin_packing_with_conflicts_main)
+target_sources(ColumnGenerationSolver_example_bin_packing_with_conflicts_main PRIVATE
+    bin_packing_with_conflicts_main.cpp)
+target_include_directories(ColumnGenerationSolver_example_bin_packing_with_conflicts_main INTERFACE
+    ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(ColumnGenerationSolver_example_bin_packing_with_conflicts_main PUBLIC
+    ColumnGenerationSolver_columngenerationsolver
+    ORProblems::bin_packing_with_conflicts
+    TreeSearchSolver::treesearchsolver
+    Boost::program_options)
+set_target_properties(ColumnGenerationSolver_example_bin_packing_with_conflicts_main PROPERTIES OUTPUT_NAME "columngenerationsolver_bin_packing_with_conflicts")
+install(TARGETS ColumnGenerationSolver_example_bin_packing_with_conflicts_main)
+
+add_executable(ColumnGenerationSolver_example_capacitated_vehicle_routing_main)
+target_sources(ColumnGenerationSolver_example_capacitated_vehicle_routing_main PRIVATE
+    capacitated_vehicle_routing_main.cpp)
+target_include_directories(ColumnGenerationSolver_example_capacitated_vehicle_routing_main INTERFACE
+    ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(ColumnGenerationSolver_example_capacitated_vehicle_routing_main PUBLIC
+    ColumnGenerationSolver_columngenerationsolver
+    ORProblems::capacitated_vehicle_routing
+    TreeSearchSolver::treesearchsolver
+    Boost::program_options)
+set_target_properties(ColumnGenerationSolver_example_capacitated_vehicle_routing_main PROPERTIES OUTPUT_NAME "columngenerationsolver_capacitated_vehicle_routing")
+install(TARGETS ColumnGenerationSolver_example_capacitated_vehicle_routing_main)
+
+add_executable(ColumnGenerationSolver_example_cutting_stock_main)
+target_sources(ColumnGenerationSolver_example_cutting_stock_main PRIVATE
+    cutting_stock_main.cpp)
+target_include_directories(ColumnGenerationSolver_example_cutting_stock_main INTERFACE
+    ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(ColumnGenerationSolver_example_cutting_stock_main PUBLIC
+    ColumnGenerationSolver_columngenerationsolver
+    ORProblems::cutting_stock
+    KnapsackSolver::knapsack::dynamic_programming_bellman
+    KnapsackSolver::knapsack::dynamic_programming_primal_dual
+    Boost::program_options)
+set_target_properties(ColumnGenerationSolver_example_cutting_stock_main PROPERTIES OUTPUT_NAME "columngenerationsolver_cutting_stock")
+install(TARGETS ColumnGenerationSolver_example_cutting_stock_main)
+
+add_executable(ColumnGenerationSolver_example_multiple_knapsack_main)
+target_sources(ColumnGenerationSolver_example_multiple_knapsack_main PRIVATE
+    multiple_knapsack_main.cpp)
+target_include_directories(ColumnGenerationSolver_example_multiple_knapsack_main INTERFACE
+    ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(ColumnGenerationSolver_example_multiple_knapsack_main PUBLIC
+    ColumnGenerationSolver_columngenerationsolver
+    ORProblems::multiple_knapsack
+    KnapsackSolver::knapsack::dynamic_programming_bellman
+    KnapsackSolver::knapsack::dynamic_programming_primal_dual
+    Boost::program_options)
+set_target_properties(ColumnGenerationSolver_example_multiple_knapsack_main PROPERTIES OUTPUT_NAME "columngenerationsolver_multiple_knapsack")
+install(TARGETS ColumnGenerationSolver_example_multiple_knapsack_main)
+
+add_executable(ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main)
+target_sources(ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main PRIVATE
+    vehicle_routing_with_time_windows_main.cpp)
+target_include_directories(ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main INTERFACE
+    ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main PUBLIC
+    ColumnGenerationSolver_columngenerationsolver
+    ORProblems::vehicle_routing_with_time_windows
+    TreeSearchSolver::treesearchsolver
+    Boost::program_options
+    Boost::dynamic_bitset)
+set_target_properties(ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main PROPERTIES OUTPUT_NAME "columngenerationsolver_vehicle_routing_with_time_windows")
+install(TARGETS ColumnGenerationSolver_example_vehicle_routing_with_time_windows_main)

@@ -1,5 +1,5 @@
 /**
- * Cutting stock problem.
+ * Cutting stock problem
  *
  * Problem description:
  * See https://github.com/fontanf/orproblems/blob/main/orproblems/cutting_stock.hpp
@@ -30,7 +30,7 @@
  *
  */
 
-#pragma once
+#include "read_args.hpp"
 
 #include "columngenerationsolver/commons.hpp"
 
@@ -40,12 +40,11 @@
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_bellman.hpp"
 #include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
 
-namespace columngenerationsolver
-{
-namespace cutting_stock
-{
-
 using namespace orproblems::cutting_stock;
+
+using Value = columngenerationsolver::Value;
+using ColIdx = columngenerationsolver::ColIdx;
+using RowIdx = columngenerationsolver::RowIdx;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
@@ -57,8 +56,8 @@ public:
         filled_demands_(instance.number_of_item_types())
     { }
 
-    inline virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
+    inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
 
     inline virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals);
@@ -84,7 +83,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
             item_type_id < instance.number_of_item_types();
             ++item_type_id) {
         const ItemType& item_type = instance.item_type(item_type_id);
-        Row row;
+        columngenerationsolver::Row row;
         row.lower_bound = item_type.demand;
         row.upper_bound = item_type.demand;
         row.coefficient_lower_bound = 0;
@@ -99,16 +98,16 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     return model;
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
+std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
 {
     std::fill(filled_demands_.begin(), filled_demands_.end(), 0);
     for (const auto& p: fixed_columns) {
-        const Column& column = *(p.first);
+        const columngenerationsolver::Column& column = *(p.first);
         Value value = p.second;
         if (value < 0.5)
             continue;
-        for (const LinearTerm& element: column.elements)
+        for (const columngenerationsolver::LinearTerm& element: column.elements)
             filled_demands_[element.row] += value * element.coefficient;
     }
     return {};
@@ -157,7 +156,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
     }
 
     // Retrieve column.
-    Column column;
+    columngenerationsolver::Column column;
     column.objective_coefficient = 1;
     std::vector<Demand> demands(instance_.number_of_item_types(), 0);
     for (knapsacksolver::knapsack::ItemId kp_item_id = 0;
@@ -170,19 +169,19 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             item_type_id < instance_.number_of_item_types();
             ++item_type_id) {
         if (demands[item_type_id] > 0) {
-            LinearTerm element;
+            columngenerationsolver::LinearTerm element;
             element.row = item_type_id;
             element.coefficient = demands[item_type_id];
             column.elements.push_back(element);
         }
     }
-    output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+    output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
     output.overcost = instance_.total_demand() * std::min(0.0, columngenerationsolver::compute_reduced_cost(*output.columns.front(), duals));
     return output;
 }
 
 inline void write_solution(
-        const Solution& solution,
+        const columngenerationsolver::Solution& solution,
         const std::string& certificate_path)
 {
     std::ofstream file(certificate_path);
@@ -193,11 +192,11 @@ inline void write_solution(
 
     file << solution.columns().size() << std::endl;
     for (auto colval: solution.columns()) {
-        const Column& column = *(colval.first);
+        const columngenerationsolver::Column& column = *(colval.first);
         Value value = colval.second;
         file << std::round(value)
             << " " << column.elements.size() << "  ";
-        for (const LinearTerm& element: column.elements) {
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
             file << "  " << element.row
                 << " " << std::round(element.coefficient);
         }
@@ -205,5 +204,50 @@ inline void write_solution(
     }
 }
 
-}
+int main(int argc, char *argv[])
+{
+    // Setup options.
+    boost::program_options::options_description desc = columngenerationsolver::setup_args();
+    desc.add_options()
+        //("guide,g", boost::program_options::value<GuideId>(), "")
+        ;
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+    try {
+        boost::program_options::notify(vm);
+    } catch (const boost::program_options::required_option& e) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+
+    // Create instance.
+    InstanceBuilder instance_builder;
+    instance_builder.read(
+            vm["input"].as<std::string>(),
+            vm["format"].as<std::string>());
+    const Instance instance = instance_builder.build();
+
+    // Create model.
+    columngenerationsolver::Model model = get_model(instance);
+
+    // Solve.
+    auto output = run(model, write_solution, vm);
+
+    // Run checker.
+    if (vm.count("certificate")
+            && vm["print-checker"].as<int>() > 0) {
+        std::cout << std::endl
+            << "Checker" << std::endl
+            << "-------" << std::endl;
+        instance.check(
+                vm["certificate"].as<std::string>(),
+                std::cout,
+                vm["print-checker"].as<int>());
+    }
+
+    return 0;
 }
