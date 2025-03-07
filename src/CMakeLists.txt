@@ -40,5 +40,3 @@ endif()
 add_library(ColumnGenerationSolver::columngenerationsolver ALIAS ColumnGenerationSolver_columngenerationsolver)
 set_target_properties(ColumnGenerationSolver_columngenerationsolver PROPERTIES OUTPUT_NAME "columngenerationsolver")
 install(TARGETS ColumnGenerationSolver_columngenerationsolver)
-
-add_subdirectory(examples)

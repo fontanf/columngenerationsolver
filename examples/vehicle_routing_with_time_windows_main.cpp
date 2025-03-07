@@ -34,11 +34,11 @@
  *
  */
 
-#pragma once
+#include "read_args.hpp"
 
 #include "columngenerationsolver/commons.hpp"
 
-#include "columngenerationsolver/examples/pricingsolver/espprctw.hpp"
+#include "pricingsolver/espprctw.hpp"
 
 #include "orproblems/routing/vehicle_routing_with_time_windows.hpp"
 
@@ -46,12 +46,11 @@
 
 #include "optimizationtools/utils/utils.hpp"
 
-namespace columngenerationsolver
-{
-namespace vehicle_routing_with_time_windows
-{
-
 using namespace orproblems::vehicle_routing_with_time_windows;
+
+using Value = columngenerationsolver::Value;
+using ColIdx = columngenerationsolver::ColIdx;
+using RowIdx = columngenerationsolver::RowIdx;
 
 class PricingSolver: public columngenerationsolver::PricingSolver
 {
@@ -64,8 +63,8 @@ public:
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
-    inline virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns);
+    inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
 
     inline virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals);
@@ -91,7 +90,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     model.objective_sense = optimizationtools::ObjectiveDirection::Minimize;
 
     // Row bounds.
-    Row row;
+    columngenerationsolver::Row row;
     row.lower_bound = 0;
     row.upper_bound = instance.number_of_vehicles();
     row.coefficient_lower_bound = 1;
@@ -100,7 +99,7 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     for (LocationId location_id = 1;
             location_id < instance.number_of_locations();
             ++location_id) {
-        Row row;
+        columngenerationsolver::Row row;
         row.lower_bound = 1;
         row.upper_bound = 1;
         row.coefficient_lower_bound = 0;
@@ -115,16 +114,16 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     return model;
 }
 
-std::vector<std::shared_ptr<const Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns)
+std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
     for (const auto& p: fixed_columns) {
-        const Column& column = *(p.first);
+        const columngenerationsolver::Column& column = *(p.first);
         Value value = p.second;
         if (value < 0.5)
             continue;
-        for (const LinearTerm& element: column.elements) {
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
             if (element.row == 0)
                 continue;
             if (element.coefficient < 0.5)
@@ -158,7 +157,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
     LocationId espp_number_of_locations = espp2cvrp_.size();
     if (espp_number_of_locations == 1)
         return output;
-    espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
+    columngenerationsolver::espprctw::InstanceBuilder espp_instance_builder(espp_number_of_locations);
     double multiplier = 1000;
     for (LocationId espp_location_id = 0;
             espp_location_id < espp_number_of_locations;
@@ -192,13 +191,13 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
                     std::round(multiplier * instance_.travel_time(location_id, location_id_2)));
         }
     }
-    espprctw::Instance espp_instance = espp_instance_builder.build();
+    columngenerationsolver::espprctw::Instance espp_instance = espp_instance_builder.build();
     //espp_instance.format(std::cout, 2);
 
-    espprctw::BranchingScheme branching_scheme(espp_instance);
+    columngenerationsolver::espprctw::BranchingScheme branching_scheme(espp_instance);
 
     // Solve subproblem instance.
-    treesearchsolver::IterativeBeamSearchParameters<espprctw::BranchingScheme> espp_parameters;
+    treesearchsolver::IterativeBeamSearchParameters<columngenerationsolver::espprctw::BranchingScheme> espp_parameters;
     espp_parameters.maximum_size_of_the_solution_pool = 1;
     espp_parameters.minimum_size_of_the_queue = bs_size_of_the_queue_;
     espp_parameters.maximum_size_of_the_queue = bs_size_of_the_queue_;
@@ -207,12 +206,12 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             branching_scheme, espp_parameters);
 
     // Retrieve column.
-    for (const std::shared_ptr<espprctw::BranchingScheme::Node>& node:
+    for (const std::shared_ptr<columngenerationsolver::espprctw::BranchingScheme::Node>& node:
             espp_output.solution_pool.solutions()) {
         if (node->last_location_id == 0)
             continue;
 
-        std::vector<LocationId> solution; // Without the depot.
+        std::vector<LocationId> solution;  // Without the depot.
         for (auto node_tmp = node;
                 node_tmp->parent != nullptr;
                 node_tmp = node_tmp->parent) {
@@ -220,14 +219,14 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         }
         std::reverse(solution.begin(), solution.end());
 
-        Column column;
-        LinearTerm element;
+        columngenerationsolver::Column column;
+        columngenerationsolver::LinearTerm element;
         element.row = 0;
         element.coefficient = 1;
         column.elements.push_back(element);
         LocationId location_id_prev = 0;
         for (LocationId location_id: solution) {
-            LinearTerm element;
+            columngenerationsolver::LinearTerm element;
             element.row = location_id;
             element.coefficient = 1;
             column.elements.push_back(element);
@@ -239,14 +238,14 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         // Extra.
         ColumnExtra extra {solution};
         column.extra = std::shared_ptr<void>(new ColumnExtra(extra));
-        output.columns.push_back(std::shared_ptr<const Column>(new Column(column)));
+        output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
     }
 
     return output;
 }
 
 inline void write_solution(
-        const Solution& solution,
+        const columngenerationsolver::Solution& solution,
         const std::string& certificate_path)
 {
     std::ofstream file(certificate_path);
@@ -266,5 +265,50 @@ inline void write_solution(
     }
 }
 
-}
+int main(int argc, char *argv[])
+{
+    // Setup options.
+    boost::program_options::options_description desc = columngenerationsolver::setup_args();
+    desc.add_options()
+        //("guide,g", boost::program_options::value<GuideId>(), "")
+        ;
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+    try {
+        boost::program_options::notify(vm);
+    } catch (const boost::program_options::required_option& e) {
+        std::cout << desc << std::endl;;
+        throw "";
+    }
+
+    // Create instance.
+    InstanceBuilder instance_builder;
+    instance_builder.read(
+            vm["input"].as<std::string>(),
+            vm["format"].as<std::string>());
+    const Instance instance = instance_builder.build();
+
+    // Create model.
+    columngenerationsolver::Model model = get_model(instance);
+
+    // Solve.
+    auto output = run(model, write_solution, vm);
+
+    // Run checker.
+    if (vm.count("certificate")
+            && vm["print-checker"].as<int>() > 0) {
+        std::cout << std::endl
+            << "Checker" << std::endl
+            << "-------" << std::endl;
+        instance.check(
+                vm["certificate"].as<std::string>(),
+                std::cout,
+                vm["print-checker"].as<int>());
+    }
+
+    return 0;
 }
