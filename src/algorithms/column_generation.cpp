@@ -153,6 +153,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     for (;;) {
         //std::cout << "dummy_column_objective_coefficient " << output.dummy_column_objective_coefficient << std::endl;
 
+        overcost = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+            -std::numeric_limits<Value>::infinity():
+            +std::numeric_limits<Value>::infinity();
+
         // Initialize solver
         //std::cout << "Initialize solver... " << parameters.solver_name << std::endl;
         std::unique_ptr<LinearProgrammingSolver> solver = NULL;
@@ -202,11 +206,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (solver == NULL) {
             throw std::runtime_error("ERROR, no linear programming solver found");
         }
-
-        overcost = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-            -std::numeric_limits<Value>::infinity():
-            +std::numeric_limits<Value>::infinity();
-
 
         // This array is used to retrieve the corresponding column from a
         // variable id in the LP solver solution.
