@@ -125,6 +125,7 @@ public:
     {
         // Reduce printout.
         model_.setOptionValue("log_to_console", false);
+        model_.setOptionValue("simplex_strategy", 4);
 
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.changeObjectiveSense(ObjSense::kMinimize);
