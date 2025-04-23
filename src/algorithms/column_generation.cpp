@@ -222,7 +222,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         //std::cout << "Initialize pricing solver..." << std::endl;
         std::vector<std::shared_ptr<const Column>> infeasible_columns
             = model.pricing_solver->initialize_pricing(parameters.fixed_columns);
-        std::vector<int8_t> feasible(model.columns.size(), 1);
+        std::vector<int8_t> feasible(model.static_columns.size(), 1);
 
         // Add dummy columns.
         for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
@@ -253,7 +253,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         }
 
         // Add model columns.
-        for (const std::shared_ptr<const Column>& column: model.columns) {
+        for (const std::shared_ptr<const Column>& column: model.static_columns) {
             model.check_column(column);
 
             // Don't add the column if it has already been fixed.

@@ -153,7 +153,7 @@ struct Model
     std::unique_ptr<PricingSolver> pricing_solver = NULL;
 
     /** Column which are not dynamically generated. */
-    std::vector<std::shared_ptr<const Column>> columns;
+    std::vector<std::shared_ptr<const Column>> static_columns;
 
 
     void check_column(
@@ -197,9 +197,9 @@ struct Model
     {
         if (verbosity_level >= 1) {
             os
-                << "Objective sense:        " << ((objective_sense == optimizationtools::ObjectiveDirection::Minimize)? "Minimize": "Maximize") << std::endl
-                << "Number of constraints:  " << rows.size() << std::endl
-                << "Number of columns:      " << columns.size() << std::endl
+                << "Objective sense:           " << ((objective_sense == optimizationtools::ObjectiveDirection::Minimize)? "Minimize": "Maximize") << std::endl
+                << "Number of constraints:     " << rows.size() << std::endl
+                << "Number of static columns:  " << static_columns.size() << std::endl
                 ;
         }
 
@@ -232,7 +232,7 @@ struct Model
         if (verbosity_level >= 3) {
 
             std::vector<std::vector<std::pair<const Column*, Value>>> row_elements(this->rows.size());
-            for (const auto& column: columns) {
+            for (const auto& column: static_columns) {
                 for (const LinearTerm& element: column->elements)
                     row_elements[element.row].push_back({column.get(), element.coefficient});
             }
