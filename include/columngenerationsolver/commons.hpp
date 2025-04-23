@@ -32,6 +32,9 @@ struct LinearTerm
  */
 struct Column
 {
+    /** Column name. */
+    std::string name;
+
     /** Type. */
     VariableType type = VariableType::Integer;
 
@@ -64,6 +67,7 @@ inline std::ostream& operator<<(
         std::ostream& os,
         const Column& column)
 {
+    os << "name: " << column.name << std::endl;
     os << "objective coefficient: " << column.objective_coefficient << std::endl;
     os << "lower bound: " << column.lower_bound << std::endl;
     os << "upper bound: " << column.upper_bound << std::endl;
@@ -88,6 +92,9 @@ inline std::ostream& operator<<(
  */
 struct Row
 {
+    /** Row name. */
+    std::string name;
+
     /** Lower bounds of the constraints. */
     Value lower_bound = 0.0;
 
@@ -200,10 +207,12 @@ struct Model
             os
                 << std::endl
                 << std::setw(12) << "Row"
+                << std::setw(36) << "Name"
                 << std::setw(12) << "Lower"
                 << std::setw(12) << "Upper"
                 << std::endl
                 << std::setw(12) << "---"
+                << std::setw(36) << "-----"
                 << std::setw(12) << "-----"
                 << std::setw(12) << "-----"
                 << std::endl;
@@ -213,10 +222,68 @@ struct Model
                 const Row& row = this->rows[row_id];
                 os
                     << std::setw(12) << row_id
+                    << std::setw(36) << row.name
                     << std::setw(12) << row.lower_bound
                     << std::setw(12) << row.upper_bound
                     << std::endl;
             }
+        }
+
+        if (verbosity_level >= 3) {
+
+            std::vector<std::vector<std::pair<const Column*, Value>>> row_elements(this->rows.size());
+            for (const auto& column: columns) {
+                for (const LinearTerm& element: column->elements)
+                    row_elements[element.row].push_back({column.get(), element.coefficient});
+            }
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)rows.size();
+                    ++row_id) {
+                const Row& row = this->rows[row_id];
+                os << "- " << row_id << " " << row.name << ":";
+                if (row.upper_bound != std::numeric_limits<Value>::infinity()
+                        && row.lower_bound != -std::numeric_limits<Value>::infinity()) {
+                    os << " " << row.lower_bound << " <=";
+                }
+
+                bool first = true;
+                for (const auto& p: row_elements[row_id]) {
+                    const Column* column = p.first;
+                    Value coef = p.second;
+                    if (coef == 0)
+                        continue;
+                    if (first) {
+                        if (coef == 1) {
+                            os << " " << column->name;
+                        } else if (coef == -1) {
+                            os << " - " << column->name;
+                        } else if (coef > 0) {
+                            os << " " << coef << " " << column->name;
+                        } else {
+                            os << " - " << -coef << " " << column->name;
+                        }
+                    } else {
+                        if (coef == 1) {
+                            os << " + " << column->name;
+                        } else if (coef == -1) {
+                            os << " - " << column->name;
+                        } else if (coef > 0) {
+                            os << " + " << coef << " " << column->name;
+                        } else {
+                            os << " - " << -coef << " " << column->name;
+                        }
+                    }
+                    first = false;
+                }
+
+                if (row.upper_bound != std::numeric_limits<Value>::infinity()) {
+                    os << " <= " << row.upper_bound;
+                } else {
+                    os << " >= " << row.lower_bound;
+                }
+                os << std::endl;
+            }
+            os << std::endl;
         }
     }
 };
