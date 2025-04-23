@@ -202,7 +202,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             } else {
                 for (const auto& p: node->parent->relaxation_solution->columns()) {
                     bool ok = true;
-                    for (const auto& column: model.columns)
+                    for (const auto& column: model.static_columns)
                         if (p.first.get() == column.get())
                             ok = false;
                     if (!ok)
