@@ -29,7 +29,7 @@ inline boost::program_options::options_description setup_args()
         ("internal-diving", boost::program_options::value<int>(), "set internal diving")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
-        ("dummy-coefficient-value", boost::program_options::value<float>(), "Set dummy coefficient value in the column generation master problem")
+        ("dummy-column-objective-coefficient", boost::program_options::value<Value>(), "Set dummy coefficient value in the column generation master problem")
         ;
     return desc;
 }
@@ -73,8 +73,8 @@ inline void read_args(
     parameters.column_pool = column_pool;
     if (vm.count("internal-diving"))
         parameters.internal_diving = vm["internal-diving"].as<int>();
-    if (vm.count("dummy-coefficient-value"))
-        parameters.dummy_column_objective_coefficient = vm["dummy-coefficient-value"].as<float>();
+    if (vm.count("dummy-column-objective-coefficient"))
+        parameters.dummy_column_objective_coefficient = vm["dummy-column-objective-coefficient"].as<Value>();
 }
 
 inline void write_output(

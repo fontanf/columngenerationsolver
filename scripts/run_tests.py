@@ -142,13 +142,6 @@ if args.tests is None or "cutting-stock" in args.tests:
                 instance + ".json")
         if not os.path.exists(os.path.dirname(json_output_path)):
             os.makedirs(os.path.dirname(json_output_path))
-        # Read the second line of the instance file to obtain the capacity of the cutting stock
-        # problem. This can be used to set the dummy coefficient value in the column generation
-        # master problem which is set to 1 otherwise.
-        with open(instance_path, 'r') as f:
-            f.readline()
-            capacity = float(f.readline().strip())
-
         command = (
                 main
                 + "  --verbosity-level 1"
@@ -156,8 +149,7 @@ if args.tests is None or "cutting-stock" in args.tests:
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm greedy"
                 + " --internal-diving 1"
-                + "  --output \"" + json_output_path + "\""
-                + f" --dummy-coefficient-value {capacity}")
+                + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)
         if status != 0:
