@@ -64,9 +64,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 && row_values[row_id] == model.rows[row_id].upper_bound) {
             // TODO improve float comparison.
             //std::cout
-            //    << "row " << row
-            //    << " ub " << model.row_upper_bounds[row]
-            //    << " val " << row_values[row]
+            //    << "row " << row_id
+            //    << " ub " << model.rows[row_id].upper_bound
+            //    << " val " << row_values[row_id]
             //    << std::endl;
             continue;
         }
@@ -280,7 +280,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // For example, it corresponds to the same bin / machine that a
                 // currently fixed column or it contains an item / job also
                 // included in a currently fixed column.
-                if (element.coefficient >= 0
+                if (model.rows[element.row].coefficient_lower_bound >= 0
                         && column->type == VariableType::Integer
                         && row_values[element.row] + element.coefficient
                         > model.rows[element.row].upper_bound) {
