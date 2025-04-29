@@ -225,6 +225,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         std::vector<int8_t> feasible(model.static_columns.size(), 1);
 
         // Add dummy columns.
+        std::vector<RowIdx> dummy_column_rows;
         for (RowIdx row_id = 0; row_id < new_number_of_rows; ++row_id) {
             if (new_row_lower_bounds[row_id] > 0) {
                 solver_columns.push_back(nullptr);
@@ -237,6 +238,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         0,
                         std::numeric_limits<Value>::infinity());
                 output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(row_id);
             }
             if (new_row_upper_bounds[row_id] < 0) {
                 solver_columns.push_back(nullptr);
@@ -249,6 +251,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         0,
                         std::numeric_limits<Value>::infinity());
                 output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(row_id);
             }
         }
 
@@ -800,6 +803,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 continue;
             if (solver_columns[column_id] == nullptr) {
                 has_dummy_column = true;
+                //std::cout << "dummy column id " << column_id
+                //    << " row " << dummy_column_rows[column_id]
+                //    << " name " << model.rows[dummy_column_rows[column_id]].name
+                //    << " value " << solver->primal(column_id) << std::endl
+                //    << std::endl;
             } else {
                 if (solver->primal(column_id) > solver_columns[column_id]->upper_bound + FFOT_TOL) {
                     std::stringstream ss;
