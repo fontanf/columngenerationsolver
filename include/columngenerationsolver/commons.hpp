@@ -406,14 +406,16 @@ public:
         }
 
         if (verbosity_level >= 2) {
-            os << std::endl
+            os << std::right << std::endl
                 << std::setw(12) << "Row"
+                << std::setw(36) << "Name"
                 << std::setw(12) << "Lower"
                 << std::setw(12) << "Value"
                 << std::setw(12) << "Upper"
                 << std::setw(12) << "Feasible"
                 << std::endl
                 << std::setw(12) << "---"
+                << std::setw(36) << "----"
                 << std::setw(12) << "-----"
                 << std::setw(12) << "-----"
                 << std::setw(12) << "-----"
@@ -427,6 +429,7 @@ public:
                     || (row_values_[row_id] < model_->rows[row_id].lower_bound - FFOT_TOL);
                 os
                     << std::setw(12) << row_id
+                    << std::setw(36) << row.name
                     << std::setw(12) << row.lower_bound
                     << std::setw(12) << row_values_[row_id]
                     << std::setw(12) << row.upper_bound
@@ -436,10 +439,12 @@ public:
 
             os
                 << std::endl
+                << std::setw(12) << "Name"
                 << std::setw(12) << "Type"
                 << std::setw(12) << "Value"
                 << std::setw(12) << "Integral"
                 << std::endl
+                << std::setw(12) << "----"
                 << std::setw(12) << "----"
                 << std::setw(12) << "-----"
                 << std::setw(12) << "--------"
@@ -450,6 +455,7 @@ public:
                 bool integral = (p.first->type == VariableType::Continuous)
                     || !(fractionality > FFOT_TOL);
                 os
+                    << std::setw(12) << p.first->name
                     << std::setw(12) << ((p.first->type == VariableType::Continuous)? "C": "I")
                     << std::setw(12) << p.second
                     << std::setw(12) << integral
