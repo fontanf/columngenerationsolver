@@ -28,13 +28,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
     RowIdx number_of_rows = model.rows.size();
     //std::cout << "m " << m << std::endl;
-    //std::cout << "fixed_columns.size() " << fixed_columns.size() << std::endl;
+    //std::cout << "parameters.fixed_columns.size() " << parameters.fixed_columns.size() << std::endl;
 
     // Compute row values.
     //std::cout << "Compute row values..." << std::endl;
     std::vector<Value> row_values(number_of_rows, 0.0);
     Value c0 = 0.0;
     for (auto p: parameters.fixed_columns) {
+        //std::cout << *p.first << std::endl;
+        //std::cout << p.second << std::endl;
         const Column& column = *(p.first);
         Value value = p.second;
         for (const LinearTerm& element: column.elements)
@@ -276,6 +278,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             std::vector<RowIdx> row_ids;
             std::vector<Value> row_coefficients;
             bool ok = true;
+            //bool print = false;
+            //for (const LinearTerm& element: column->elements)
+            //    if (element.row == 11380)
+            //        print = true;
             for (const LinearTerm& element: column->elements) {
                 // The column might not be feasible.
                 // For example, it corresponds to the same bin / machine that a
@@ -285,14 +291,25 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         && column->type == VariableType::Integer
                         && row_values[element.row] + element.coefficient
                         > model.rows[element.row].upper_bound) {
+                    //if (print) {
+                    //    std::cout << "element " << element.row
+                    //        << " " << element.coefficient
+                    //        << std::endl;
+                    //}
                     ok = false;
                     break;
                 }
-                if (new_row_indices[element.row] < 0)
-                    continue;
+                if (new_row_indices[element.row] < 0) {
+                    ok = false;
+                    break;
+                }
                 row_ids.push_back(new_row_indices[element.row]);
                 row_coefficients.push_back(element.coefficient);
             }
+            //if (print) {
+            //    std::cout << *column << std::endl;
+            //    std::cout << "ok " << ok << std::endl;
+            //}
             if (!ok)
                 continue;
             solver_columns.push_back(column);
@@ -334,8 +351,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     ok = false;
                     break;
                 }
-                if (new_row_indices[element.row] < 0)
-                    continue;
+                if (new_row_indices[element.row] < 0) {
+                    ok = false;
+                    break;
+                }
                 row_ids.push_back(new_row_indices[element.row]);
                 row_coefficients.push_back(element.coefficient);
             }
@@ -772,8 +791,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         ++row_pos) {
                     RowIdx i = column->elements[row_pos].row;
                     Value c = column->elements[row_pos].coefficient;
-                    if (new_row_indices[i] < 0)
-                        continue;
+                    if (new_row_indices[i] < 0) {
+                        throw std::logic_error("");
+                    }
                     ri.push_back(new_row_indices[i]);
                     rc.push_back(c);
                 }
@@ -806,7 +826,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             if (solver_columns[column_id] == nullptr) {
                 has_dummy_column = true;
                 //std::cout << "dummy column id " << column_id
-                //    << " row " << dummy_column_rows[column_id]
+                //    << " row_lp " << dummy_column_rows[column_id]
+                //    << " row_orig " << new_rows[dummy_column_rows[column_id]]
                 //    << " name " << model.rows[dummy_column_rows[column_id]].name
                 //    << " value " << solver->primal(column_id) << std::endl
                 //    << std::endl;
@@ -841,7 +862,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // If the final solution doesn't contain any dummy column, then stop.
         if (!has_dummy_column) {
             output.feasible = true;
+            //std::cout << "feasible" << std::endl;
             output.relaxation_solution = solution_builder.build();
+            if (!output.relaxation_solution.feasible_relaxation()) {
+                throw std::logic_error(
+                        "columngenerationsolver::column_generation: "
+                        "infeasible relaxation solution.");
+            }
             break;
         }
 
@@ -852,6 +879,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (column_highest_cost > 0
                 && std::abs(output.dummy_column_objective_coefficient)
                 > 100 * column_highest_cost) {
+            //std::cout << "infeasible" << std::endl;
             output.relaxation_solution = solution_builder.build();
             break;
         }

@@ -539,6 +539,7 @@ private:
     /** Compute the feasibility of the solution. */
     void compute_feasible()
     {
+        //std::cout << "compute_feasible" << std::endl;
         solution_.row_values_ = std::vector<Value>(solution_.model_->rows.size(), 0.0);
         for (const auto& p: solution_.columns_) {
             const Column& column = *p.first;
@@ -555,11 +556,13 @@ private:
                 ++row) {
             if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound + FFOT_TOL) {
                 //std::cout << "row " << row
+                //    << " name " << solution_.model_->rows[row].name
                 //    << " lb " << solution_.model_->rows[row].lower_bound
                 //    << " val " << solution_.row_values_[row]
                 //    << " ub " << solution_.model_->rows[row].upper_bound
                 //    << std::endl;
                 solution_.feasible_ = false;
+                solution_.feasible_relaxation_ = false;
             }
             if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - FFOT_TOL) {
                 //std::cout << "row " << row
@@ -578,6 +581,10 @@ private:
             if (column.type == VariableType::Integer) {
                 Value fractionality = std::fabs(value - std::round(value));
                 if (fractionality > FFOT_TOL) {
+                    //std::cout << "column " << column
+                    //    << " value " << value
+                    //    << " frac " << fractionality
+                    //    << std::endl;
                     solution_.feasible_ = false;
                 }
             }
