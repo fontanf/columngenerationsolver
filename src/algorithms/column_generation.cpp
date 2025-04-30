@@ -259,6 +259,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         }
 
         // Add model columns.
+        std::vector<Value> lower_bounds;
+        std::vector<Value> upper_bounds;
+        std::vector<Value> objective_coefficients;
+        std::vector<std::vector<RowIdx>> row_ids;
+        std::vector<std::vector<Value>> row_coefficients;
         for (const std::shared_ptr<const Column>& column: model.static_columns) {
             model.check_column(column);
 
@@ -275,8 +280,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     != infeasible_columns.end())
                 continue;
 
-            std::vector<RowIdx> row_ids;
-            std::vector<Value> row_coefficients;
+            std::vector<RowIdx> ri;
+            std::vector<Value> rc;
             bool ok = true;
             //bool print = false;
             //for (const LinearTerm& element: column->elements)
@@ -303,8 +308,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     ok = false;
                     break;
                 }
-                row_ids.push_back(new_row_indices[element.row]);
-                row_coefficients.push_back(element.coefficient);
+                ri.push_back(new_row_indices[element.row]);
+                rc.push_back(element.coefficient);
             }
             //if (print) {
             //    std::cout << *column << std::endl;
@@ -313,14 +318,19 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             if (!ok)
                 continue;
             solver_columns.push_back(column);
-            solver->add_column(
-                    row_ids,
-                    row_coefficients,
-                    column->objective_coefficient,
-                    column->lower_bound,
-                    column->upper_bound);
+            lower_bounds.push_back(column->lower_bound);
+            upper_bounds.push_back(column->upper_bound);
+            objective_coefficients.push_back(column->objective_coefficient);
+            row_ids.push_back(ri);
+            row_coefficients.push_back(rc);
             output.number_of_columns_in_linear_subproblem++;
         }
+        solver->add_columns(
+                row_ids,
+                row_coefficients,
+                objective_coefficients,
+                lower_bounds,
+                upper_bounds);
 
         // Add initial columns.
         for (const std::shared_ptr<const Column>& column: initial_columns) {
@@ -825,10 +835,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 continue;
             if (solver_columns[column_id] == nullptr) {
                 has_dummy_column = true;
+                //RowIdx row_orig_id = new_rows[dummy_column_rows[column_id]];
                 //std::cout << "dummy column id " << column_id
                 //    << " row_lp " << dummy_column_rows[column_id]
-                //    << " row_orig " << new_rows[dummy_column_rows[column_id]]
-                //    << " name " << model.rows[dummy_column_rows[column_id]].name
+                //    << " row_orig " << row_orig_id
+                //    << " name " << model.rows[row_orig_id].name
                 //    << " value " << solver->primal(column_id) << std::endl
                 //    << std::endl;
             } else {

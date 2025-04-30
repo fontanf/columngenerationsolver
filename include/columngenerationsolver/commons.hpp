@@ -566,6 +566,7 @@ private:
             }
             if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - FFOT_TOL) {
                 //std::cout << "row " << row
+                //    << " name " << solution_.model_->rows[row].name
                 //    << " lb " << solution_.model_->rows[row].lower_bound
                 //    << " val " << solution_.row_values_[row]
                 //    << " ub " << solution_.model_->rows[row].upper_bound

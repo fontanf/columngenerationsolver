@@ -34,7 +34,21 @@ public:
             const std::vector<Value>& row_coefficients,
             Value objective_coefficient,
             Value lower_bound,
-            Value upper_bound) = 0;
+            Value upper_bound)
+    {
+        add_columns(
+                {row_indices},
+                {row_coefficients},
+                {objective_coefficient},
+                {lower_bound},
+                {upper_bound});
+    }
+    virtual void add_columns(
+            const std::vector<std::vector<RowIdx>>& row_indices,
+            const std::vector<std::vector<Value>>& row_coefficients,
+            const std::vector<Value>& objective_coefficient,
+            const std::vector<Value>& lower_bound,
+            const std::vector<Value>& upper_bound) = 0;
     virtual void solve() = 0;
     virtual Value objective() const = 0;
     virtual Value dual(RowIdx row) const = 0;
@@ -60,33 +74,62 @@ public:
         } else {
             model_.setOptimizationDirection(-1);
         }
+        std::vector<double> clp_lower_bounds(row_lower_bounds.size());
+        std::vector<double> clp_upper_bounds(row_upper_bounds.size());
         for (RowIdx row_id = 0;
                 row_id < (RowIdx)row_lower_bounds.size();
                 ++row_id) {
-            model_.addRow(
-                    0, NULL, NULL,
-                    (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[row_id]: -COIN_DBL_MAX,
-                    (row_upper_bounds[row_id] != std::numeric_limits<Value>::infinity())? row_upper_bounds[row_id]: COIN_DBL_MAX);
+            clp_lower_bounds[row_id] = (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[row_id]: -COIN_DBL_MAX;
+            clp_upper_bounds[row_id] = (row_upper_bounds[row_id] != +std::numeric_limits<Value>::infinity())? row_upper_bounds[row_id]: +COIN_DBL_MAX;
         }
+        model_.addRows(
+                row_lower_bounds.size(),
+                clp_lower_bounds.data(),
+                clp_upper_bounds.data(),
+                NULL, NULL, NULL);
     }
 
     virtual ~LinearProgrammingSolverClp() { }
 
-    void add_column(
-            const std::vector<RowIdx>& row_indices,
-            const std::vector<Value>& row_coefficients,
-            Value objective_coefficient,
-            Value lower_bound,
-            Value upper_bound)
+    void add_columns(
+            const std::vector<std::vector<RowIdx>>& row_indices,
+            const std::vector<std::vector<Value>>& row_coefficients,
+            const std::vector<Value>& objective_coefficients,
+            const std::vector<Value>& lower_bounds,
+            const std::vector<Value>& upper_bounds)
     {
-        std::vector<int> row_indices_int(row_indices.begin(), row_indices.end());
-        model_.addColumn(
+        std::vector<double> clp_lower_bounds(lower_bounds.size());
+        std::vector<double> clp_upper_bounds(upper_bounds.size());
+        std::vector<double> clp_objective(objective_coefficients.size());
+        std::vector<CoinBigIndex> clp_column_starts(row_indices.size() + 1);
+        RowIdx number_of_elements = 0;
+        for (const auto& e: row_coefficients)
+            number_of_elements += e.size();
+        std::vector<int> clp_column_rows(number_of_elements);
+        std::vector<double> clp_column_elements(number_of_elements);
+
+        RowIdx pos = 0;
+        for (ColIdx col = 0; col < (ColIdx)row_indices.size(); ++col) {
+            clp_lower_bounds[col] = ((lower_bounds[col] != -std::numeric_limits<Value>::infinity())? lower_bounds[col]: -COIN_DBL_MAX);
+            clp_upper_bounds[col] = ((upper_bounds[col] != +std::numeric_limits<Value>::infinity())? upper_bounds[col]: +COIN_DBL_MAX);
+            clp_objective[col] = objective_coefficients[col];
+            clp_column_starts[col] = pos;
+            for (RowIdx row = 0; row < (RowIdx)row_indices[col].size(); ++row) {
+                clp_column_rows[pos] = row_indices[col][row];
+                clp_column_elements[pos] = row_coefficients[col][row];
+                pos++;
+            }
+        }
+        clp_column_starts[row_indices.size()] = pos;
+
+        model_.addColumns(
                 row_indices.size(),
-                row_indices_int.data(),
-                row_coefficients.data(),
-                ((lower_bound != -std::numeric_limits<Value>::infinity())? lower_bound: -COIN_DBL_MAX),
-                ((upper_bound != std::numeric_limits<Value>::infinity())? upper_bound: COIN_DBL_MAX),
-                objective_coefficient);
+                clp_lower_bounds.data(),
+                clp_upper_bounds.data(),
+                clp_objective.data(),
+                clp_column_starts.data(),
+                clp_column_rows.data(),
+                clp_column_elements.data());
     }
 
     void solve()
@@ -132,35 +175,63 @@ public:
         } else {
             model_.changeObjectiveSense(ObjSense::kMaximize);
         }
+        std::vector<double> highs_lower_bounds(row_lower_bounds.size());
+        std::vector<double> highs_upper_bounds(row_upper_bounds.size());
         for (RowIdx row_id = 0;
                 row_id < (RowIdx)row_lower_bounds.size();
                 ++row_id) {
-            model_.addRow(
-                    (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[row_id]: -1.0e30,
-                    (row_upper_bounds[row_id] != std::numeric_limits<Value>::infinity())? row_upper_bounds[row_id]: 1.0e30,
-                    0,
-                    nullptr,
-                    nullptr);
+            highs_lower_bounds[row_id] = (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity())? row_lower_bounds[row_id]: -1.0e30;
+            highs_upper_bounds[row_id] = (row_upper_bounds[row_id] != +std::numeric_limits<Value>::infinity())? row_upper_bounds[row_id]: +1.0e30;
         }
+        model_.addRows(
+                row_lower_bounds.size(),
+                highs_lower_bounds.data(),
+                highs_upper_bounds.data(),
+                0, NULL, NULL, NULL);
     }
 
     virtual ~LinearProgrammingSolverHighs() { }
 
-    void add_column(
-            const std::vector<RowIdx>& row_indices,
-            const std::vector<Value>& row_coefficients,
-            Value objective_coefficient,
-            Value lower_bound,
-            Value upper_bound)
+    void add_columns(
+            const std::vector<std::vector<RowIdx>>& row_indices,
+            const std::vector<std::vector<Value>>& row_coefficients,
+            const std::vector<Value>& objective_coefficients,
+            const std::vector<Value>& lower_bounds,
+            const std::vector<Value>& upper_bounds)
     {
-        std::vector<HighsInt> row_indices_int(row_indices.begin(), row_indices.end());
-        model_.addCol(
-                objective_coefficient,
-                ((lower_bound != -std::numeric_limits<Value>::infinity())? lower_bound: -1.0e30),
-                ((upper_bound != std::numeric_limits<Value>::infinity())? upper_bound: 1.0e30),
+        std::vector<double> highs_lower_bounds(lower_bounds.size());
+        std::vector<double> highs_upper_bounds(upper_bounds.size());
+        std::vector<double> highs_objective(objective_coefficients.size());
+        std::vector<HighsInt> highs_column_starts(row_indices.size() + 1);
+        RowIdx number_of_elements = 0;
+        for (const auto& e: row_coefficients)
+            number_of_elements += e.size();
+        std::vector<int> highs_column_rows(number_of_elements);
+        std::vector<double> highs_column_elements(number_of_elements);
+
+        RowIdx pos = 0;
+        for (ColIdx col = 0; col < (ColIdx)row_indices.size(); ++col) {
+            highs_lower_bounds[col] = ((lower_bounds[col] != -std::numeric_limits<Value>::infinity())? lower_bounds[col]: -1.0e30);
+            highs_upper_bounds[col] = ((upper_bounds[col] != +std::numeric_limits<Value>::infinity())? upper_bounds[col]: +1.0e30);
+            highs_objective[col] = objective_coefficients[col];
+            highs_column_starts[col] = pos;
+            for (RowIdx row = 0; row < (RowIdx)row_indices[col].size(); ++row) {
+                highs_column_rows[pos] = row_indices[col][row];
+                highs_column_elements[pos] = row_coefficients[col][row];
+                pos++;
+            }
+        }
+        highs_column_starts[row_indices.size()] = pos;
+
+        model_.addCols(
                 row_indices.size(),
-                row_indices_int.data(),
-                row_coefficients.data());
+                highs_objective.data(),
+                highs_lower_bounds.data(),
+                highs_upper_bounds.data(),
+                number_of_elements,
+                highs_column_starts.data(),
+                highs_column_rows.data(),
+                highs_column_elements.data());
     }
 
     void solve()
