@@ -894,6 +894,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             output.relaxation_solution = solution_builder.build();
             break;
         }
+        if (parameters.tabu != nullptr
+                && parameters.tabu->size() > 0) {
+            output.relaxation_solution = solution_builder.build();
+            break;
+        }
 
         // Otherwise, increase the dummy column objective coefficient and
         // restart.
