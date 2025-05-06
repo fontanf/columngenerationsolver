@@ -231,11 +231,44 @@ struct Model
 
         if (verbosity_level >= 3) {
 
-            std::vector<std::vector<std::pair<const Column*, Value>>> row_elements(this->rows.size());
+            std::vector<std::vector<std::pair<const Column*, Value>>> row_elements(this->rows.size() + 1);
             for (const auto& column: static_columns) {
+                if (column->objective_coefficient != 0.0)
+                    row_elements[this->rows.size()].push_back({column.get(), column->objective_coefficient});
                 for (const LinearTerm& element: column->elements)
                     row_elements[element.row].push_back({column.get(), element.coefficient});
             }
+            // Print objective.
+            bool first = true;
+            os << "- -1 Obj:";
+            for (const auto& p: row_elements[this->rows.size()]) {
+                const Column* column = p.first;
+                Value coef = column->objective_coefficient;
+                if (first) {
+                    first = false;
+                    if (coef == 1) {
+                        os << " " << column->name;
+                    } else if (coef == -1) {
+                        os << " - " << column->name;
+                    } else if (coef > 0) {
+                        os << " " << coef << " " << column->name;
+                    } else {
+                        os << " - " << -coef << " " << column->name;
+                    }
+                } else {
+                    if (coef == 1) {
+                        os << " + " << column->name;
+                    } else if (coef == -1) {
+                        os << " - " << column->name;
+                    } else if (coef > 0) {
+                        os << " + " << coef << " " << column->name;
+                    } else {
+                        os << " - " << -coef << " " << column->name;
+                    }
+                }
+            }
+            os << std::endl;
+            // Print rows.
             for (RowIdx row_id = 0;
                     row_id < (RowIdx)rows.size();
                     ++row_id) {
@@ -253,6 +286,7 @@ struct Model
                     if (coef == 0)
                         continue;
                     if (first) {
+                        first = false;
                         if (coef == 1) {
                             os << " " << column->name;
                         } else if (coef == -1) {
@@ -273,7 +307,6 @@ struct Model
                             os << " - " << -coef << " " << column->name;
                         }
                     }
-                    first = false;
                 }
 
                 if (row.upper_bound != std::numeric_limits<Value>::infinity()) {
