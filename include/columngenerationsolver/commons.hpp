@@ -430,6 +430,7 @@ public:
             std::ostream& os,
             int verbosity_level = 1) const
     {
+        double tol = 1e-4;
         if (verbosity_level >= 1) {
             os
                 << "Feasible:           " << feasible() << std::endl
@@ -458,8 +459,8 @@ public:
                     row_id < (RowIdx)this->model().rows.size();
                     ++row_id) {
                 const Row& row = this->model().rows[row_id];
-                bool infeasible = (row_values_[row_id] > model_->rows[row_id].upper_bound + FFOT_TOL)
-                    || (row_values_[row_id] < model_->rows[row_id].lower_bound - FFOT_TOL);
+                bool infeasible = (row_values_[row_id] > model_->rows[row_id].upper_bound + tol)
+                    || (row_values_[row_id] < model_->rows[row_id].lower_bound - tol);
                 os
                     << std::setw(12) << row_id
                     << std::setw(36) << row.name
@@ -486,7 +487,7 @@ public:
                 Value value = p.second;
                 Value fractionality = std::fabs(value - std::round(value));
                 bool integral = (p.first->type == VariableType::Continuous)
-                    || !(fractionality > FFOT_TOL);
+                    || !(fractionality > tol);
                 os
                     << std::setw(12) << p.first->name
                     << std::setw(12) << ((p.first->type == VariableType::Continuous)? "C": "I")
@@ -572,6 +573,7 @@ private:
     /** Compute the feasibility of the solution. */
     void compute_feasible()
     {
+        double tol = 1e-4;
         //std::cout << "compute_feasible" << std::endl;
         solution_.row_values_ = std::vector<Value>(solution_.model_->rows.size(), 0.0);
         for (const auto& p: solution_.columns_) {
@@ -587,7 +589,7 @@ private:
         for (RowIdx row = 0;
                 row < (RowIdx)solution_.model_->rows.size();
                 ++row) {
-            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound + FFOT_TOL) {
+            if (solution_.row_values_[row] > solution_.model_->rows[row].upper_bound + tol) {
                 //std::cout << "row " << row
                 //    << " name " << solution_.model_->rows[row].name
                 //    << " lb " << solution_.model_->rows[row].lower_bound
@@ -597,7 +599,7 @@ private:
                 solution_.feasible_ = false;
                 solution_.feasible_relaxation_ = false;
             }
-            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - FFOT_TOL) {
+            if (solution_.row_values_[row] < solution_.model_->rows[row].lower_bound - tol) {
                 //std::cout << "row " << row
                 //    << " name " << solution_.model_->rows[row].name
                 //    << " lb " << solution_.model_->rows[row].lower_bound
@@ -614,7 +616,7 @@ private:
             Value value = p.second;
             if (column.type == VariableType::Integer) {
                 Value fractionality = std::fabs(value - std::round(value));
-                if (fractionality > FFOT_TOL) {
+                if (fractionality > tol) {
                     //std::cout << "column " << column
                     //    << " value " << value
                     //    << " frac " << fractionality
