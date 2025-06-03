@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "gdown",
+# ]
+# ///
 import gdown
 import os
 import pathlib

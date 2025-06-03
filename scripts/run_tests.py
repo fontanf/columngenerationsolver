@@ -1,3 +1,8 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+
 import argparse
 import sys
 import os
@@ -255,3 +260,4 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
         print()
     print()
     print()
+
