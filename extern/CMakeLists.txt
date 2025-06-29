@@ -27,7 +27,7 @@ endif()
 FetchContent_Declare(
     optimizationtools
     GIT_REPOSITORY https://github.com/fontanf/optimizationtools.git
-    GIT_TAG 4037a1a03f97ea0c388baa4f3f74c3ba55baec08
+    GIT_TAG 5e0c59cb06c779d1950b31caa636998b37f5db1b
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../optimizationtools/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(optimizationtools)
@@ -45,7 +45,7 @@ endif()
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
-    GIT_TAG 4472814a28a40f4d861ccd757e140835c3a31bd0
+    GIT_TAG f98a9547657a6917659a5397d2f3bb54074293c2
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../mathoptsolverscmake/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(mathoptsolverscmake)
@@ -64,7 +64,7 @@ endif()
 FetchContent_Declare(
     knapsacksolver
     GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
-    GIT_TAG abd1acf0704744f5e975e75a1f09cb5a9679e7e8
+    GIT_TAG 5aee5d72a09fb228033d695fe22dc90dba65ec05
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(knapsacksolver)
@@ -73,7 +73,7 @@ FetchContent_MakeAvailable(knapsacksolver)
 FetchContent_Declare(
     treesearchsolver
     GIT_REPOSITORY https://github.com/fontanf/treesearchsolver.git
-    GIT_TAG 8e2d5190d4005a753a815641b1e3f8753a9d7095
+    GIT_TAG 8cf4a179d103efb9d4e0a94bc2f6f669105cd45a
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../treesearchsolver/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(treesearchsolver)
