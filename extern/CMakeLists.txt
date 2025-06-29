@@ -24,10 +24,11 @@ if(COLUMNGENERATIONSOLVER_BUILD_TEST)
 endif()
 
 # Fetch fontanf/optimizationtools.
+set(OPTIMIZATIONTOOLS_BUILD_TEST OFF)
 FetchContent_Declare(
     optimizationtools
     GIT_REPOSITORY https://github.com/fontanf/optimizationtools.git
-    GIT_TAG 5e0c59cb06c779d1950b31caa636998b37f5db1b
+    GIT_TAG e086ec4cfcc9a885cd63f579a99ea5e8f4737005
     #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../optimizationtools/"
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(optimizationtools)
@@ -61,6 +62,8 @@ if(COLUMNGENERATIONSOLVER_USE_HIGHS)
 endif()
 
 # Fetch fontanf/knapsacksolver.
+set(KNAPSACKSOLVER_BUILD_MAIN OFF)
+set(KNAPSACKSOLVER_BUILD_TEST OFF)
 FetchContent_Declare(
     knapsacksolver
     GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
@@ -70,6 +73,8 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(knapsacksolver)
 
 # Fetch fontanf/treesearchsolver.
+set(TREESEARCHSOLVER_BUILD_TEST OFF)
+set(TREESEARCHSOLVER_BUILD_EXAMPLES OFF)
 FetchContent_Declare(
     treesearchsolver
     GIT_REPOSITORY https://github.com/fontanf/treesearchsolver.git
