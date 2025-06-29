@@ -8,7 +8,8 @@ option(COLUMNGENERATIONSOLVER_USE_HIGHS "Use Highs" ON)
 option(COLUMNGENERATIONSOLVER_USE_CPLEX "Use CPLEX" OFF)
 option(COLUMNGENERATIONSOLVER_USE_XPRESS "Use Xpress" OFF)
 
-# Other options.
+# Build options.
+option(COLUMNGENERATIONSOLVER_BUILD_TEST "Build the unit tests" ON)
 option(COLUMNGENERATIONSOLVER_BUILD_EXAMPLES "Build examples" ON)
 
 # Avoid FetchContent warning.
@@ -26,7 +27,9 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 # Add sub-directories.
 add_subdirectory(extern)
 add_subdirectory(src)
-add_subdirectory(test)
+if(COLUMNGENERATIONSOLVER_BUILD_TEST)
+  add_subdirectory(test)
+endif()
 if(COLUMNGENERATIONSOLVER_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+  add_subdirectory(examples)
 endif()
