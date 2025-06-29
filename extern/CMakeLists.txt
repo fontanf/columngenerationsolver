@@ -33,6 +33,17 @@ FetchContent_Declare(
     EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(optimizationtools)
 
+# Fetch fontanf/orproblems.
+if(COLUMNGENERATIONSOLVER_BUILD_EXAMPLES)
+    FetchContent_Declare(
+        orproblems
+        GIT_REPOSITORY https://github.com/fontanf/orproblems.git
+        GIT_TAG db86a3563c7810b90e6d54192c487d35efeda0ca
+        #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../orproblems/"
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(orproblems)
+endif()
+
 # Fetch fontanf/mathoptsolverscmake.
 if(COLUMNGENERATIONSOLVER_USE_CLP)
     set(MATHOPTSOLVERSCMAKE_USE_CLP ON)
@@ -62,15 +73,17 @@ if(COLUMNGENERATIONSOLVER_USE_HIGHS)
 endif()
 
 # Fetch fontanf/knapsacksolver.
-set(KNAPSACKSOLVER_BUILD_MAIN OFF)
-set(KNAPSACKSOLVER_BUILD_TEST OFF)
-FetchContent_Declare(
-    knapsacksolver
-    GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
-    GIT_TAG 5aee5d72a09fb228033d695fe22dc90dba65ec05
-    #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
-    EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(knapsacksolver)
+if(COLUMNGENERATIONSOLVER_BUILD_EXAMPLES)
+    set(KNAPSACKSOLVER_BUILD_MAIN OFF)
+    set(KNAPSACKSOLVER_BUILD_TEST OFF)
+    FetchContent_Declare(
+        knapsacksolver
+        GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
+        GIT_TAG 5aee5d72a09fb228033d695fe22dc90dba65ec05
+        #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
+        EXCLUDE_FROM_ALL)
+    FetchContent_MakeAvailable(knapsacksolver)
+endif()
 
 # Fetch fontanf/treesearchsolver.
 set(TREESEARCHSOLVER_BUILD_TEST OFF)
