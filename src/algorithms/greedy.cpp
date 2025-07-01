@@ -33,7 +33,7 @@ const GreedyOutput columngenerationsolver::greedy(
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
         column_generation_parameters.dummy_column_objective_coefficient
-            = output.dummy_column_objective_coefficient;
+            = parameters.dummy_column_objective_coefficient; //output.dummy_column_objective_coefficient;
         if (parameters.internal_diving == 2
                 || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
             column_generation_parameters.internal_diving = 1;
