@@ -412,6 +412,43 @@ public:
                 &upper_bound);
     }
 
+    // Adds multiple columns to the problem.
+    // Recursive call of add column function 
+    void add_columns(
+            const std::vector<std::vector<RowIdx>>& row_indices,
+            const std::vector<std::vector<Value>>& row_coefficients,
+            const std::vector<Value>& objective_coefficients,
+            const std::vector<Value>& lower_bounds,
+            const std::vector<Value>& upper_bounds)
+    {
+
+        // Check vector sizes 
+        if (row_indices.size() != row_coefficients.size()
+            || row_indices.size() != objective_coefficients.size()
+         || row_indices.size() != lower_bounds.size()
+         || row_indices.size() != upper_bounds.size()) {
+         throw std::invalid_argument("Mismatched input vector sizes in add_columns.");
+        }
+
+        // Initialize iterators
+        std::vector<std::vector<RowIdx>>::const_iterator row_indices_it = row_indices.begin();
+        std::vector<std::vector<Value>>::const_iterator row_coefficients_it = row_coefficients.begin();
+        std::vector<Value>::const_iterator objective_coefficients_it = objective_coefficients.begin();
+        std::vector<Value>::const_iterator lower_bounds_it = lower_bounds.begin();
+        std::vector<Value>::const_iterator upper_bounds_it = upper_bounds.begin();
+
+        // recursively add columns
+        for (; row_indices_it != row_indices.end(); ++row_indices_it,
+                ++row_coefficients_it, ++objective_coefficients_it,
+                ++lower_bounds_it, ++upper_bounds_it) {
+            add_column(
+                    *row_indices_it,
+                    *row_coefficients_it,
+                    *objective_coefficients_it,
+                    *lower_bounds_it,
+                    *upper_bounds_it);
+        
+
     void solve()
     {
         //std::cout << "LinearProgrammingSolverXpress::solve" << std::endl;
