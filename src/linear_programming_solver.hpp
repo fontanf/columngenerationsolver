@@ -387,29 +387,47 @@ public:
         XPRSdestroyprob(problem_);
     }
 
-    void add_column(
-            const std::vector<RowIdx>& row_indices,
-            const std::vector<Value>& row_coefficients,
-            Value objective_coefficient,
-            Value lower_bound,
-            Value upper_bound)
+    void add_columns(
+            const std::vector<std::vector<RowIdx>>& row_indices,
+            const std::vector<std::vector<Value>>& row_coefficients,
+            const std::vector<Value>& objective_coefficients,
+            const std::vector<Value>& lower_bounds,
+            const std::vector<Value>& upper_bounds)
     {
-        //std::cout << "LinearProgrammingSolverXpress::add_column" << std::endl;
-        primals_.push_back(0.0);
-        basis_cols_.push_back(0);
-        int start[] = {0};
-        for (int i = 0; i < (int)row_indices.size(); ++i)
-            ri_[i] = row_indices[i];
+        std::vector<double> xprs_objective(objective_coefficients.size());
+        std::vector<int> xprs_column_starts(row_indices.size() + 1);
+        RowIdx number_of_elements = 0;
+        for (const auto& e: row_coefficients)
+            number_of_elements += e.size();
+        std::vector<int> xprs_column_rows(number_of_elements);
+        std::vector<double> xprs_column_elements(number_of_elements);
+        std::vector<int> xprs_row_indices(number_of_elements);
+
+        RowIdx pos = 0;
+        for (ColIdx col = 0; col < (ColIdx)row_indices.size(); ++col) {
+            primals_.push_back(0.0);
+            basis_cols_.push_back(0);
+            xprs_objective[col] = objective_coefficients[col];
+            xprs_column_starts[col] = pos;
+            for (RowIdx row = 0; row < (RowIdx)row_indices[col].size(); ++row) {
+                xprs_column_rows[pos] = row_indices[col][row];
+                xprs_column_elements[pos] = row_coefficients[col][row];
+                xprs_row_indices[pos] = row_indices[col][row];
+                pos++;
+            }
+        }
+        xprs_column_starts[row_indices.size()] = pos;
+
         XPRSaddcols(
                 problem_,
-                1,
                 row_indices.size(),
-                &objective_coefficient,
-                start,
-                ri_.data(),
-                row_coefficients.data(),
-                &lower_bound,
-                &upper_bound);
+                xprs_column_elements.size(),
+                objective_coefficients.data(),
+                xprs_column_starts.data(),
+                xprs_row_indices.data(),
+                xprs_column_elements.data(),
+                lower_bounds.data(),
+                upper_bounds.data());
     }
 
     void solve()
