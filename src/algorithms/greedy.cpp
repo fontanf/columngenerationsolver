@@ -18,6 +18,7 @@ const GreedyOutput columngenerationsolver::greedy(
             output);
     algorithm_formatter.start("Greedy");
     output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
+    output.solve_milp_at_the_end = parameters.solve_milp_at_the_end;
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
@@ -179,13 +180,17 @@ const GreedyOutput columngenerationsolver::greedy(
             initial_columns.push_back(p.first);
     }
 
-    // Solve the MILP problem.
-    MilpSolverCbc milp_solver = MilpSolverCbc(output);
-    milp_solver.solve();
-    std::cout << "Number of feasible solutions: " << milp_solver.nb_feasible_solutions() << std::endl;
-    std::cout << "Objective value: " << milp_solver.objective() << std::endl;
-    // milp_solver.print_solution();
-
-    algorithm_formatter.end();
-    return milp_solver.output(); //output;
+    if (output.solve_milp_at_the_end) {
+        // Solve the MILP problem.
+        MilpSolverCbc milp_solver = MilpSolverCbc(output);
+        milp_solver.solve();
+        std::cout << "Number of feasible solutions: " << milp_solver.nb_feasible_solutions() << std::endl;
+        std::cout << "Objective value: " << milp_solver.objective() << std::endl;
+        // milp_solver.print_solution();
+        algorithm_formatter.end();
+        return milp_solver.output();
+    } else {
+        algorithm_formatter.end();
+        return output;
+    }
 }

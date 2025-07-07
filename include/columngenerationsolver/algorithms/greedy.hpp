@@ -10,6 +10,7 @@ struct GreedyParameters: Parameters
     /** Parameters for the column generation sub-problem. */
     ColumnGenerationParameters column_generation_parameters;
 
+    bool solve_milp_at_the_end = false;
 
     virtual int format_width() const override { return 41; }
 
@@ -38,6 +39,7 @@ struct GreedyOutput: Output
 
     Counter number_of_nodes = 0;
 
+    bool solve_milp_at_the_end = false;
 
     virtual int format_width() const override { return 31; }
 
