@@ -1,6 +1,8 @@
 #include "columngenerationsolver/algorithms/greedy.hpp"
 
 #include "columngenerationsolver/algorithm_formatter.hpp"
+#include "columngenerationsolver/algorithms/milp_solver.hpp"
+
 
 using namespace columngenerationsolver;
 
@@ -33,7 +35,7 @@ const GreedyOutput columngenerationsolver::greedy(
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
         column_generation_parameters.dummy_column_objective_coefficient
-            = parameters.dummy_column_objective_coefficient; //output.dummy_column_objective_coefficient;
+            = output.dummy_column_objective_coefficient;
         if (parameters.internal_diving == 2
                 || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
             column_generation_parameters.internal_diving = 1;
@@ -177,6 +179,13 @@ const GreedyOutput columngenerationsolver::greedy(
             initial_columns.push_back(p.first);
     }
 
+    // Solve the MILP problem.
+    MilpSolverCbc milp_solver = MilpSolverCbc(output);
+    milp_solver.solve();
+    std::cout << "Number of feasible solutions: " << milp_solver.nb_feasible_solutions() << std::endl;
+    std::cout << "Objective value: " << milp_solver.objective() << std::endl;
+    // milp_solver.print_solution();
+
     algorithm_formatter.end();
-    return output;
+    return milp_solver.output(); //output;
 }

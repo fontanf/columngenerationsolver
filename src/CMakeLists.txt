@@ -5,7 +5,8 @@ target_sources(ColumnGenerationSolver_columngenerationsolver PRIVATE
     algorithms/column_generation.cpp
     algorithms/greedy.cpp
     algorithms/limited_discrepancy_search.cpp
-    algorithms/heuristic_tree_search.cpp)
+    algorithms/heuristic_tree_search.cpp
+    algorithms/milp_solve.cpp)
 target_include_directories(ColumnGenerationSolver_columngenerationsolver PUBLIC
     ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(ColumnGenerationSolver_columngenerationsolver PRIVATE
@@ -36,6 +37,12 @@ if(COLUMNGENERATIONSOLVER_USE_CPLEX)
         CPLEX_FOUND=1)
     target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
         MathOptSolversCMake::cplex)
+endif()
+if(COLUMNGENERATIONSOLVER_USE_CBC)
+    target_compile_definitions(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        CBC_FOUND=1)
+    target_link_libraries(ColumnGenerationSolver_columngenerationsolver PUBLIC
+        MathOptSolversCMake::cbc)
 endif()
 add_library(ColumnGenerationSolver::columngenerationsolver ALIAS ColumnGenerationSolver_columngenerationsolver)
 set_target_properties(ColumnGenerationSolver_columngenerationsolver PROPERTIES OUTPUT_NAME "columngenerationsolver")

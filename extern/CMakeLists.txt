@@ -29,6 +29,9 @@ endif()
 if(COLUMNGENERATIONSOLVER_USE_XPRESS)
     set(MATHOPTSOLVERSCMAKE_USE_XPRESS ON)
 endif()
+if(COLUMNGENERATIONSOLVER_USE_CBC)
+    set(MATHOPTSOLVERSCMAKE_USE_CBC ON)
+endif()
 FetchContent_Declare(
     mathoptsolverscmake
     GIT_REPOSITORY https://github.com/fontanf/mathoptsolverscmake.git
