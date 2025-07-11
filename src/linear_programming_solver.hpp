@@ -4,6 +4,7 @@
 
 #if CLP_FOUND
 #include <coin/ClpSimplex.hpp>
+#include <coin/ClpModel.hpp>
 #endif
 
 #if HIGHS_FOUND
@@ -145,6 +146,7 @@ public:
     Value objective() const { return model_.objectiveValue(); }
     Value dual(RowIdx row) const { return model_.dualRowSolution()[row]; }
     Value primal(ColIdx col) const { return model_.getColSolution()[col]; }
+    ClpSimplex get_model() const { return model_; }
 
 private:
 

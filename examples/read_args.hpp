@@ -30,7 +30,7 @@ inline boost::program_options::options_description setup_args()
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
         ("dummy-column-objective-coefficient", boost::program_options::value<Value>(), "Set dummy coefficient value in the column generation master problem")
-        ;
+        ("solve-milp-at-the-end", boost::program_options::value<bool>(), "Solve the MILP problem at the end if true, take greedy output if false");
     return desc;
 }
 
@@ -121,6 +121,8 @@ inline const Output run_greedy(
         parameters.column_generation_parameters.solver_name
             = vm["linear-programming-solver"].as<SolverName>();
     }
+    if (vm.count("solve-milp-at-the-end"))
+        parameters.solve_milp_at_the_end = vm["solve-milp-at-the-end"].as<bool>();
     const Output output = greedy(model, parameters);
     write_output(write_solution, vm, output);
     return output;
