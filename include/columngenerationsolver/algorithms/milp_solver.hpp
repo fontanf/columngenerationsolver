@@ -1,3 +1,16 @@
+/**
+ * Implementation of the MILP solver.
+ * 
+ * It takes a GreedyOutput and solves the MILP solution of all generated
+ * columns. This may be useful when the various nodes of the greedy algorithm
+ * have produced a combination of columns that would result in a better primal
+ * solution than that found by the final node of the greedy algorithm.
+ * 
+ * For example, this may happen due to the dummy variable implementation in the
+ * column generation.
+ * 
+ */
+
 #pragma once
 
 #include "columngenerationsolver/commons.hpp"
@@ -5,7 +18,7 @@
 #include "linear_programming_solver.hpp"
 
 #if CBC_FOUND
-// Using Clp as the underlying solver.
+// Using Cbc as the underlying solver for milp problems.
 #include <coin/CbcModel.hpp>
 #include <coin/OsiClpSolverInterface.hpp>
 #endif
@@ -34,10 +47,6 @@ public:
     MilpSolverCbc(GreedyOutput& output)
         : output_(output)
     {
-        // Takes a fully formed linear program that could be solved by clp but we load it into cbc
-        // so that we can change some values to integers and solve the full integer program.
-        // Note this makes a copy of the model, alternative method to link to existing model - 
-        // may not be as safe so doing it this way for now.
         set_solver();
         model_ = CbcModel(solver_);
         model_.messageHandler()->setLogLevel(0);
