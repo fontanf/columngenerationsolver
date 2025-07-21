@@ -363,12 +363,28 @@ public:
         std::vector<double> rhs(row_lower_bounds.size(), 0.0);
         std::vector<double> rng(row_lower_bounds.size(), 0.0);
         std::vector<char> row_types(row_lower_bounds.size());
-        for (RowIdx i = 0; i < (RowIdx)row_lower_bounds.size(); ++i) {
-            rhs[i] = row_upper_bounds[i];
-            rng[i] = row_upper_bounds[i] - row_lower_bounds[i];
-            row_types[i] = 'R';
-            if (row_lower_bounds[i] == row_upper_bounds[i])
-                row_types[i] = 'E';
+        for (RowIdx row_id = 0;
+                row_id < (RowIdx)row_lower_bounds.size();
+                ++row_id) {
+            if (row_upper_bounds[row_id] != +std::numeric_limits<Value>::infinity()) {
+                rhs[row_id] = row_upper_bounds[row_id];
+                if (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity()) {
+                    if (row_lower_bounds[row_id] == row_upper_bounds[row_id]) {
+                        row_types[row_id] = 'E';
+                    } else {
+                        row_types[row_id] = 'R';
+                        rng[row_id] = row_upper_bounds[row_id] - row_lower_bounds[row_id];
+                    }
+                } else {
+                    row_types[row_id] = 'L';
+                }
+            } else if (row_lower_bounds[row_id] != -std::numeric_limits<Value>::infinity()) {
+                rhs[row_id] = row_lower_bounds[row_id];
+                row_types[row_id] = 'G';
+            } else {
+                rhs[row_id] = XPRS_PLUSINFINITY;
+                row_types[row_id] = 'L';
+            }
         }
         XPRSaddrows(
                 problem_,
@@ -440,6 +456,8 @@ public:
         XPRSlpoptimize(problem_, "");
         XPRSgetlpsol(problem_, primals_.data(), NULL, duals_.data(), NULL);
         XPRSgetbasis(problem_, basis_rows_.data(), basis_cols_.data());
+        //XPRSwriteprob(problem_, "model.lp", "l");
+        //XPRSwriteprob(problem_, "model.mps", "");
         has_basis_ = true;
     }
 
