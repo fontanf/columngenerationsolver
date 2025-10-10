@@ -5,6 +5,10 @@
 
 #include <boost/program_options.hpp>
 
+#if XPRESS_FOUND
+#include <xprs.h>
+#endif
+
 namespace columngenerationsolver
 {
 
@@ -103,7 +107,17 @@ inline const Output run_column_generation(
     read_args(parameters, write_solution, vm, column_pool, initial_columns);
     if (vm.count("linear-programming-solver"))
         parameters.solver_name = vm["linear-programming-solver"].as<SolverName>();
+#if XPRESS_FOUND
+    if (parameters.solver_name
+            == SolverName::Xpress)
+        XPRSinit(NULL);
+#endif
     const Output output = column_generation(model, parameters);
+#if XPRESS_FOUND
+    if (parameters.solver_name
+            == SolverName::Xpress)
+        XPRSfree();
+#endif
     write_output(write_solution, vm, output);
     return output;
 }
@@ -121,7 +135,17 @@ inline const Output run_greedy(
         parameters.column_generation_parameters.solver_name
             = vm["linear-programming-solver"].as<SolverName>();
     }
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSinit(NULL);
+#endif
     const Output output = greedy(model, parameters);
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSfree();
+#endif
     write_output(write_solution, vm, output);
     return output;
 }
@@ -139,11 +163,21 @@ inline const Output run_limited_discrepancy_search(
         parameters.column_generation_parameters.solver_name
             = vm["linear-programming-solver"].as<SolverName>();
     }
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSinit(NULL);
+#endif
     if (vm.count("discrepancy-limit"))
         parameters.discrepancy_limit = vm["discrepancy-limit"].as<int>();
     if (vm.count("automatic-stop"))
         parameters.automatic_stop = vm["automatic-stop"].as<bool>();
     const Output output = limited_discrepancy_search(model, parameters);
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSfree();
+#endif
     write_output(write_solution, vm, output);
     return output;
 }
@@ -161,7 +195,17 @@ inline const Output run_heuristic_tree_search(
         parameters.column_generation_parameters.solver_name
             = vm["linear-programming-solver"].as<SolverName>();
     }
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSinit(NULL);
+#endif
     const Output output = heuristic_tree_search(model, parameters);
+#if XPRESS_FOUND
+    if (parameters.column_generation_parameters.solver_name
+            == SolverName::Xpress)
+        XPRSfree();
+#endif
     write_output(write_solution, vm, output);
     return output;
 }
@@ -173,13 +217,6 @@ inline Output run(
         const std::vector<std::shared_ptr<const Column>>& column_pool = {},
         const std::vector<std::shared_ptr<const Column>>& initial_columns = {})
 {
-
-#if XPRESS_FOUND
-    if (column_generation_parameters.linear_programming_solver
-            == LinearProgrammingSolver::Xpress)
-        XPRSinit(NULL);
-#endif
-
     std::string algorithm = vm["algorithm"].as<std::string>();
     if (algorithm == "column-generation") {
         return run_column_generation(model, write_solution, vm, column_pool, initial_columns);
@@ -193,13 +230,6 @@ inline Output run(
         throw std::invalid_argument(
                 "Unknown algorithm \"" + algorithm + "\".");
     }
-
-#if XPRESS_FOUND
-    if (column_generation_parameters.linear_programming_solver
-            == LinearProgrammingSolver::Xpress)
-        XPRSfree();
-#endif
-
     return Output(model);
 }
 
