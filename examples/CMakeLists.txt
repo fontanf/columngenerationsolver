@@ -32,8 +32,8 @@ target_include_directories(ColumnGenerationSolver_example_cutting_stock_main INT
 target_link_libraries(ColumnGenerationSolver_example_cutting_stock_main PUBLIC
     ColumnGenerationSolver_columngenerationsolver
     ORProblems::cutting_stock
-    KnapsackSolver::knapsack::dynamic_programming_bellman
-    KnapsackSolver::knapsack::dynamic_programming_primal_dual
+    KnapsackSolver::dynamic_programming_bellman
+    KnapsackSolver::dynamic_programming_primal_dual
     Boost::program_options)
 set_target_properties(ColumnGenerationSolver_example_cutting_stock_main PROPERTIES OUTPUT_NAME "columngenerationsolver_cutting_stock")
 install(TARGETS ColumnGenerationSolver_example_cutting_stock_main)
@@ -46,8 +46,8 @@ target_include_directories(ColumnGenerationSolver_example_multiple_knapsack_main
 target_link_libraries(ColumnGenerationSolver_example_multiple_knapsack_main PUBLIC
     ColumnGenerationSolver_columngenerationsolver
     ORProblems::multiple_knapsack
-    KnapsackSolver::knapsack::dynamic_programming_bellman
-    KnapsackSolver::knapsack::dynamic_programming_primal_dual
+    KnapsackSolver::dynamic_programming_bellman
+    KnapsackSolver::dynamic_programming_primal_dual
     Boost::program_options)
 set_target_properties(ColumnGenerationSolver_example_multiple_knapsack_main PROPERTIES OUTPUT_NAME "columngenerationsolver_multiple_knapsack")
 install(TARGETS ColumnGenerationSolver_example_multiple_knapsack_main)

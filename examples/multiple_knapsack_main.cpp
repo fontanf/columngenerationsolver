@@ -40,8 +40,8 @@
 
 #include "orproblems/packing/multiple_knapsack.hpp"
 
-#include "knapsacksolver/knapsack/instance_builder.hpp"
-#include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
+#include "knapsacksolver/instance_builder.hpp"
+#include "knapsacksolver/algorithms/dynamic_programming_primal_dual.hpp"
 
 using namespace orproblems::multiple_knapsack;
 
@@ -151,7 +151,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             continue;
 
         // Build subproblem instance.
-        knapsacksolver::knapsack::InstanceFromFloatProfitsBuilder kp_instance_builder;
+        knapsacksolver::InstanceFromFloatProfitsBuilder kp_instance_builder;
         Weight capacity = instance_.capacity(knapsack_id);
         kp2mkp_.clear();
         for (ItemId item_id = 0;
@@ -168,17 +168,17 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             kp2mkp_.push_back(item_id);
         }
         kp_instance_builder.set_capacity(capacity);
-        knapsacksolver::knapsack::Instance kp_instance = kp_instance_builder.build();
+        knapsacksolver::Instance kp_instance = kp_instance_builder.build();
 
         // Solve subproblem instance.
-        knapsacksolver::knapsack::DynamicProgrammingPrimalDualParameters kp_parameters;
+        knapsacksolver::DynamicProgrammingPrimalDualParameters kp_parameters;
         kp_parameters.verbosity_level = 0;
-        auto kp_output = knapsacksolver::knapsack::dynamic_programming_primal_dual(kp_instance, kp_parameters);
+        auto kp_output = knapsacksolver::dynamic_programming_primal_dual(kp_instance, kp_parameters);
 
         // Retrieve column.
         columngenerationsolver::Column column;
         column.elements.push_back({knapsack_id, 1});
-        for (knapsacksolver::knapsack::ItemId kp_item_id = 0;
+        for (knapsacksolver::ItemId kp_item_id = 0;
                 kp_item_id < kp_instance.number_of_items();
                 ++kp_item_id) {
             if (kp_output.solution.contains(kp_item_id)) {
