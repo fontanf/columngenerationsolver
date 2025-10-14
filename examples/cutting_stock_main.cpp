@@ -36,9 +36,9 @@
 
 #include "orproblems/packing/cutting_stock.hpp"
 
-#include "knapsacksolver/knapsack/instance_builder.hpp"
-#include "knapsacksolver/knapsack/algorithms/dynamic_programming_bellman.hpp"
-#include "knapsacksolver/knapsack/algorithms/dynamic_programming_primal_dual.hpp"
+#include "knapsacksolver/instance_builder.hpp"
+#include "knapsacksolver/algorithms/dynamic_programming_bellman.hpp"
+#include "knapsacksolver/algorithms/dynamic_programming_primal_dual.hpp"
 
 using namespace orproblems::cutting_stock;
 
@@ -121,7 +121,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
 
     // Build subproblem instance.
     kp2csp_.clear();
-    knapsacksolver::knapsack::InstanceFromFloatProfitsBuilder kp_instance_builder;
+    knapsacksolver::InstanceFromFloatProfitsBuilder kp_instance_builder;
     for (ItemTypeId item_type_id = 0;
             item_type_id < instance_.number_of_item_types();
             ++item_type_id) {
@@ -137,20 +137,20 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         }
     }
     kp_instance_builder.set_capacity(instance_.capacity());
-    knapsacksolver::knapsack::Instance kp_instance = kp_instance_builder.build();
+    knapsacksolver::Instance kp_instance = kp_instance_builder.build();
 
     // Solve subproblem instance.
-    knapsacksolver::knapsack::Output kp_output(kp_instance);
+    knapsacksolver::Output kp_output(kp_instance);
     if (kp_instance.capacity() <= 1e3) {
-        knapsacksolver::knapsack::Parameters kp_parameters;
+        knapsacksolver::Parameters kp_parameters;
         kp_parameters.verbosity_level = 0;
-        kp_output = knapsacksolver::knapsack::dynamic_programming_bellman_array_all(
+        kp_output = knapsacksolver::dynamic_programming_bellman_array_all(
                 kp_instance,
                 kp_parameters);
     } else {
-        knapsacksolver::knapsack::DynamicProgrammingPrimalDualParameters kp_parameters;
+        knapsacksolver::DynamicProgrammingPrimalDualParameters kp_parameters;
         kp_parameters.verbosity_level = 0;
-        kp_output = knapsacksolver::knapsack::dynamic_programming_primal_dual(
+        kp_output = knapsacksolver::dynamic_programming_primal_dual(
                 kp_instance,
                 kp_parameters);
     }
@@ -159,7 +159,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
     columngenerationsolver::Column column;
     column.objective_coefficient = 1;
     std::vector<Demand> demands(instance_.number_of_item_types(), 0);
-    for (knapsacksolver::knapsack::ItemId kp_item_id = 0;
+    for (knapsacksolver::ItemId kp_item_id = 0;
             kp_item_id < kp_instance.number_of_items();
             ++kp_item_id) {
         if (kp_output.solution.contains(kp_item_id))

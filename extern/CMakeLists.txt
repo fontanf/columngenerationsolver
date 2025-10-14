@@ -79,7 +79,7 @@ if(COLUMNGENERATIONSOLVER_BUILD_EXAMPLES)
     FetchContent_Declare(
         knapsacksolver
         GIT_REPOSITORY https://github.com/fontanf/knapsacksolver.git
-        GIT_TAG 5aee5d72a09fb228033d695fe22dc90dba65ec05
+        GIT_TAG 1d7a689f88e953c099087a31f174cb6646002f9f
         #SOURCE_DIR "${PROJECT_SOURCE_DIR}/../knapsacksolver/"
         EXCLUDE_FROM_ALL)
     FetchContent_MakeAvailable(knapsacksolver)
