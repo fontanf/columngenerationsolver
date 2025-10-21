@@ -37,7 +37,7 @@ jobs:
       if: matrix.os == 'ubuntu-latest'
     - name: Build
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCOLUMNGENERATIONSOLVER_USE_CLP=ON
         cmake --build build --config Release --parallel
         cmake --install build --config Release --prefix install
     - name: Run tests
@@ -49,7 +49,7 @@ jobs:
         git checkout main
     - name: Build
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCOLUMNGENERATIONSOLVER_USE_CLP=ON
         cmake --build build --config Release --parallel
         cmake --install build --config Release --prefix install
     - name: Run tests
