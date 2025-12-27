@@ -859,6 +859,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Check time.
         if (parameters.timer.needs_to_end()) {
+            output.relaxation_solution = solution_builder.build();
             algorithm_formatter.end();
             return output;
         }
@@ -866,6 +867,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (parameters.maximum_number_of_iterations != -1
                 && output.number_of_column_generation_iterations
                 > parameters.maximum_number_of_iterations) {
+            output.relaxation_solution = solution_builder.build();
             algorithm_formatter.end();
             return output;
         }
