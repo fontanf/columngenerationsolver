@@ -356,8 +356,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // included in a currently fixed column.
                 if (model.rows[element.row].coefficient_lower_bound >= 0
                         && column->type == VariableType::Integer
-                        && row_values[element.row] + element.coefficient
-                        > model.rows[element.row].upper_bound) {
+                        && row_values[element.row] >= model.rows[element.row].upper_bound) {
                     ok = false;
                     break;
                 }
@@ -859,6 +858,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Check time.
         if (parameters.timer.needs_to_end()) {
+            output.relaxation_solution = solution_builder.build();
             algorithm_formatter.end();
             return output;
         }
@@ -866,6 +866,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (parameters.maximum_number_of_iterations != -1
                 && output.number_of_column_generation_iterations
                 > parameters.maximum_number_of_iterations) {
+            output.relaxation_solution = solution_builder.build();
             algorithm_formatter.end();
             return output;
         }
