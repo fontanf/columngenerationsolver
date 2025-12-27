@@ -356,7 +356,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // included in a currently fixed column.
                 if (model.rows[element.row].coefficient_lower_bound >= 0
                         && column->type == VariableType::Integer
-                        && row_values[element.row] >= model.rows[element.row].upper_bound) {
+                        && row_values[element.row] + element.coefficient
+                        > model.rows[element.row].upper_bound) {
                     ok = false;
                     break;
                 }
