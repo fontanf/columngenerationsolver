@@ -377,6 +377,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         child_1->depth = node->depth + 1;
         nodes.insert(child_1);
 
+        // value_best >= fixed_lower_bound + 1 always (see computation above),
+        // so value_best - 1 >= fixed_lower_bound: no guard needed here.
         auto child_2 = std::make_shared<LimitedDiscrepancySearchNode>();
         child_2->parent = node;
         child_2->column = column_best;
