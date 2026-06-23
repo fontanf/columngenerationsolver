@@ -458,11 +458,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 // Add the column if its reduced cost is negative.
                 Value rc = compute_reduced_cost(*column, duals_out);
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
-                        && rc < 0) {
+                        && rc < -parameters.optimality_tolerance) {
                     new_columns.push_back(column);
                 }
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
-                        && rc > 0) {
+                        && rc > parameters.optimality_tolerance) {
                     new_columns.push_back(column);
                 }
 
@@ -706,10 +706,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                       Value rc = compute_reduced_cost(*column, duals_out);
                       // std::cout << "rc " << rc << std::endl;
                       if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
-                              && rc < 0)
+                              && rc < -parameters.optimality_tolerance)
                         new_columns.push_back(column);
                       if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
-                              && rc > 0)
+                              && rc > parameters.optimality_tolerance)
                         new_columns.push_back(column);
                     }
 
