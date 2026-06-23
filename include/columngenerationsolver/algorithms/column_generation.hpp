@@ -69,6 +69,15 @@ struct ColumnGenerationParameters: Parameters
     /** Maximum number of iterations. */
     Counter maximum_number_of_iterations = -1;
 
+    /**
+     * Tolerance for the reduced cost optimality check.
+     *
+     * A column is only added when its reduced cost is strictly below
+     * -optimality_tolerance (minimization) or above +optimality_tolerance
+     * (maximization), guarding against LP dual imprecision (~1e-7).
+     */
+    Value optimality_tolerance = 1e-6;
+
     /** Callback function called at each column generation iteration. */
     ColumnGenerationIterationCallback iteration_callback = [](const Output&) { };
 
@@ -111,6 +120,7 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Self-adjusting Wentges smoothing: " << self_adjusting_wentges_smoothing << std::endl
             << std::setw(width) << std::left << "Automatic directional smoothing: " << automatic_directional_smoothing << std::endl
             << std::setw(width) << std::left << "Maximum number of iterations: " << maximum_number_of_iterations << std::endl
+            << std::setw(width) << std::left << "Optimality tolerance: " << optimality_tolerance << std::endl
             ;
     }
 
@@ -124,6 +134,7 @@ struct ColumnGenerationParameters: Parameters
                 {"SelfAdjustingWentgesSmoothing", self_adjusting_wentges_smoothing},
                 {"AutomaticDirectionalSmoothing", automatic_directional_smoothing},
                 {"MaximumNumberOfIterations", maximum_number_of_iterations},
+                {"OptimalityTolerance", optimality_tolerance},
                 });
         return json;
     }
