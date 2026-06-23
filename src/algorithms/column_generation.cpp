@@ -545,7 +545,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                                 / norm(new_rows, duals_in, duals_g);
                             //std::cout << "beta " << beta << std::endl;
                             //assert(beta >= 0);
-                            beta = std::max(0.0, beta);
+                            beta = std::max(0.0, std::min(1.0, beta));
                         }
 
                         // Compute ρ.
