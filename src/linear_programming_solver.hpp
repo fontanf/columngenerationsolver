@@ -138,7 +138,7 @@ public:
         model_.primal();
         if (model_.isProvenPrimalInfeasible()) {
             model_.writeLp("output");
-            throw std::runtime_error("Infeasible model");
+            throw std::runtime_error("Infeasible model (LP written to output.lp)");
         }
     }
 
