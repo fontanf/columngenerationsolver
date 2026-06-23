@@ -432,7 +432,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // Check iteration limit.
             if (parameters.maximum_number_of_iterations != -1
                     && output.number_of_column_generation_iterations
-                    > parameters.maximum_number_of_iterations) {
+                    >= parameters.maximum_number_of_iterations) {
                 break;
             }
 
