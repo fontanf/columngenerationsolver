@@ -411,11 +411,12 @@ public:
             const std::vector<Value>& upper_bounds)
     {
         std::vector<double> xprs_objective(objective_coefficients.size());
+        std::vector<double> xprs_lower_bounds(lower_bounds.size());
+        std::vector<double> xprs_upper_bounds(upper_bounds.size());
         std::vector<int> xprs_column_starts(row_indices.size() + 1);
         RowIdx number_of_elements = 0;
         for (const auto& e: row_coefficients)
             number_of_elements += e.size();
-        std::vector<int> xprs_column_rows(number_of_elements);
         std::vector<double> xprs_column_elements(number_of_elements);
         std::vector<int> xprs_row_indices(number_of_elements);
 
@@ -424,9 +425,10 @@ public:
             primals_.push_back(0.0);
             basis_cols_.push_back(0);
             xprs_objective[col] = objective_coefficients[col];
+            xprs_lower_bounds[col] = ((lower_bounds[col] != -std::numeric_limits<Value>::infinity())? lower_bounds[col]: -XPRS_PLUSINFINITY);
+            xprs_upper_bounds[col] = ((upper_bounds[col] != +std::numeric_limits<Value>::infinity())? upper_bounds[col]: +XPRS_PLUSINFINITY);
             xprs_column_starts[col] = pos;
             for (RowIdx row = 0; row < (RowIdx)row_indices[col].size(); ++row) {
-                xprs_column_rows[pos] = row_indices[col][row];
                 xprs_column_elements[pos] = row_coefficients[col][row];
                 xprs_row_indices[pos] = row_indices[col][row];
                 pos++;
@@ -438,12 +440,12 @@ public:
                 problem_,
                 row_indices.size(),
                 xprs_column_elements.size(),
-                objective_coefficients.data(),
+                xprs_objective.data(),
                 xprs_column_starts.data(),
                 xprs_row_indices.data(),
                 xprs_column_elements.data(),
-                lower_bounds.data(),
-                upper_bounds.data());
+                xprs_lower_bounds.data(),
+                xprs_upper_bounds.data());
     }
 
     void solve()
