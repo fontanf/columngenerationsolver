@@ -112,6 +112,12 @@ struct Row
      * constraint.
      */
     Value coefficient_upper_bound = 1.0;
+
+    /**
+     * Tolerance used when checking whether the row is already satisfied by
+     * fixed columns. Should reflect the scale of the constraint coefficients.
+     */
+    Value feasibility_tolerance = 0.0;
 };
 
 /**

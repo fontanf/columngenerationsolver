@@ -57,14 +57,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         //    << " ub " << model.row_upper_bounds[row]
         //    << std::endl;
         if (model.rows[row_id].coefficient_lower_bound >= 0
-                && row_values[row_id] > model.rows[row_id].upper_bound) {
-            // TODO improve float comparison.
+                && row_values[row_id] > model.rows[row_id].upper_bound + model.rows[row_id].feasibility_tolerance) {
             // Infeasible.
             return output;
         }
         if (model.rows[row_id].coefficient_lower_bound >= 0
-                && row_values[row_id] == model.rows[row_id].upper_bound) {
-            // TODO improve float comparison.
+                && row_values[row_id] >= model.rows[row_id].upper_bound - model.rows[row_id].feasibility_tolerance) {
             //std::cout
             //    << "row " << row_id
             //    << " ub " << model.rows[row_id].upper_bound
