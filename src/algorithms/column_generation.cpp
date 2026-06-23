@@ -737,7 +737,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             if (new_columns.empty())
                 break;
 
-            // Get lagrangian constraint values.
+            // Get Lagrangian constraint values.
+            // Ideally the subgradient g = a - Σ_k A_k z_k* should use the
+            // single best column per independent subproblem k. Summing over
+            // all new_columns is exact when each subproblem returns one column
+            // (the common case), but is an approximation when a single
+            // subproblem returns multiple columns. Fixing this properly
+            // requires PricingOutput to group columns by subproblem.
             std::fill(
                     lagrangian_constraint_values.begin(),
                     lagrangian_constraint_values.end(),
