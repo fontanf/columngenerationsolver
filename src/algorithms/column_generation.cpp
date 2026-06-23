@@ -442,6 +442,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             }
 
             std::vector<std::shared_ptr<const Column>> new_columns;
+            std::vector<Value> pricing_lagrangian_column_values;
 
             // Search for new columns from the column pool.
             for (const std::shared_ptr<const Column>& column: column_pool) {
@@ -598,6 +599,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
                         all_columns = pricing_output.columns;
                         overcost = pricing_output.overcost;
+                        pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                         for (const auto& column: all_columns)
                             model.check_generated_column(column);
                     } else {
@@ -608,8 +610,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                                 = pricing_output.columns;
-                            if (i == 0)
+                            if (i == 0) {
                                 overcost = pricing_output.overcost;
+                                pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
+                            }
                             for (const auto& column: all_columns_tmp_0)
                                 model.check_generated_column(column);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_1;
@@ -737,20 +741,24 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             if (new_columns.empty())
                 break;
 
-            // Get Lagrangian constraint values.
-            // Ideally the subgradient g = a - Σ_k A_k z_k* should use the
-            // single best column per independent subproblem k. Summing over
-            // all new_columns is exact when each subproblem returns one column
-            // (the common case), but is an approximation when a single
-            // subproblem returns multiple columns. Fixing this properly
-            // requires PricingOutput to group columns by subproblem.
+            // Get Lagrangian constraint values Σ_k A·z*_k for the subgradient.
+            // Use the pricer-provided values when available — necessary for
+            // identical subproblems (e.g. bin packing with N bins) where the
+            // pricer sets lagrangian_column_values[row] = N * A[row, z*],
+            // analogous to returning overcost = N * rc*. Otherwise fall back
+            // to summing the returned columns, which is correct when each
+            // independent subproblem contributes exactly one column.
             std::fill(
                     lagrangian_constraint_values.begin(),
                     lagrangian_constraint_values.end(),
                     0);
-            for (const std::shared_ptr<const Column>& column: new_columns)
-                for (const LinearTerm& element: column->elements)
-                    lagrangian_constraint_values[element.row] += element.coefficient;
+            if (!pricing_lagrangian_column_values.empty()) {
+                lagrangian_constraint_values = pricing_lagrangian_column_values;
+            } else {
+                for (const std::shared_ptr<const Column>& column: new_columns)
+                    for (const LinearTerm& element: column->elements)
+                        lagrangian_constraint_values[element.row] += element.coefficient;
+            }
 
             // Compute subgradient at separation point.
             //std::cout << "update subgradient..." << std::endl;

@@ -135,6 +135,19 @@ public:
         std::vector<std::shared_ptr<const Column>> columns;
 
         Value overcost = std::numeric_limits<Value>::infinity();
+
+        /**
+         * Aggregate column contributions Σ_k A·z*_k across all subproblems,
+         * used to compute the subgradient for Wentges/directional smoothing.
+         *
+         * Leave empty to let the framework sum the returned columns (correct
+         * when each independent subproblem returns exactly one column).
+         * Set explicitly when that assumption does not hold — e.g. for
+         * identical subproblems (bin packing with N bins): set each entry to
+         * N * A[row, z*] so the subgradient reflects all N subproblems, just
+         * as overcost = N * rc* reflects them for the dual bound.
+         */
+        std::vector<Value> lagrangian_column_values;
     };
 
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
