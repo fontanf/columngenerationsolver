@@ -76,7 +76,7 @@ struct ColumnGenerationParameters: Parameters
      * -optimality_tolerance (minimization) or above +optimality_tolerance
      * (maximization), guarding against LP dual imprecision (~1e-7).
      */
-    Value optimality_tolerance = 1e-6;
+    Value optimality_tolerance = 0.0;
 
     /** Callback function called at each column generation iteration. */
     ColumnGenerationIterationCallback iteration_callback = [](const Output&) { };
