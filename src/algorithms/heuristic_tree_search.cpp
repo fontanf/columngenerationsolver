@@ -18,6 +18,7 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
     algorithm_formatter.start("Heuristic tree search");
     output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
 
+    std::vector<std::shared_ptr<const Column>> column_pool;
     for (output.maximum_number_of_iterations = 0;;
             output.maximum_number_of_iterations *= parameters.growth_rate) {
         if (output.maximum_number_of_iterations == (Counter)(output.maximum_number_of_iterations * parameters.growth_rate))
@@ -27,10 +28,6 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
         if (parameters.timer.needs_to_end())
             break;
 
-        // Clean column pool?
-        //model.columns.clear();
-        //for (const auto& p: output.solution)
-        //    model.columns.push_back(p.first);
         LimitedDiscrepancySearchParameters lds_parameters;
         lds_parameters.timer = parameters.timer;
         lds_parameters.dummy_column_objective_coefficient
@@ -40,6 +37,7 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
         lds_parameters.column_generation_parameters.maximum_number_of_iterations
             = output.maximum_number_of_iterations;
         lds_parameters.automatic_stop = true;
+        lds_parameters.column_pool = column_pool;
 
         lds_parameters.new_solution_callback = [&algorithm_formatter](
                 const Output& callback_output)
@@ -53,6 +51,10 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
 
         output.dummy_column_objective_coefficient
             = lds_output.dummy_column_objective_coefficient;
+        column_pool.insert(
+                column_pool.end(),
+                lds_output.columns.begin(),
+                lds_output.columns.end());
 
     }
 
