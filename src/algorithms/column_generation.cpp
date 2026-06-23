@@ -773,11 +773,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 //        << " g " << subgradient[i]
                 //        << std::endl;
 
-                // It seems to work with this minus '-', but I don't undersstand
-                // why.
+                // Compute g^sep · (π^out - π^in) per Pessoa et al. (2018),
+                // Section 4. A positive dot product means the subgradient at
+                // the sep-point is aligned with the direction toward π^out, so
+                // a larger step would improve the dual bound: decrease α (less
+                // smoothing). Note: Table 1 of the paper has f_incr/f_decr
+                // swapped in Step 4; the body text on p. 347 is correct.
                 Value v = 0;
                 for (RowIdx row_id: new_rows)
-                    v += subgradient[row_id] * (duals_sep[row_id] - duals_in[row_id]);
+                    v += subgradient[row_id] * (duals_out[row_id] - duals_in[row_id]);
                 //std::cout << "v " << v << std::endl;
 
                 // Update alpha.
