@@ -21,10 +21,6 @@ struct HeuristicTreeSearchOutput: Output
         Output(model) { }
 
 
-    Counter solution_iteration;
-
-    Counter solution_node;
-
     Counter maximum_number_of_iterations = 0;
 };
 
