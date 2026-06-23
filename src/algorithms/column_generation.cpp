@@ -564,21 +564,29 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
                         // Compute π_sep.
                         //std::cout << "compute duals_sep..." << std::endl;
-                        Value coef_sep
-                            = norm(new_rows, duals_in, duals_tilde)
-                            / norm(new_rows, duals_in, rho);
                         //std::cout << "norm(new_rows, duals_in, duals_tilde) " << norm(new_rows, duals_in, duals_tilde) << std::endl;
                         //std::cout << "norm(new_rows, duals_in, rho) " << norm(new_rows, duals_in, rho) << std::endl;
-                        for (RowIdx row_id: new_rows) {
-                            //std::cout << " row " << row_id
-                            //    << " dual_in " << duals_in[row_id]
-                            //    << " coef_sep " << coef_sep
-                            //    << " rho " << rho[row_id]
-                            //    << " dual_sep " << duals_sep[row_id]
-                            //    << std::endl;
-                            duals_sep[row_id]
-                                = duals_in[row_id]
-                                + coef_sep * (rho[row_id] - duals_in[row_id]);
+                        Value norm_rho = norm(new_rows, duals_in, rho);
+                        if (norm_rho < FFOT_TOL) {
+                            // ρ ≈ π_in: directional adjustment is undefined;
+                            // fall back to plain Wentges smoothing.
+                            for (RowIdx row_id: new_rows)
+                                duals_sep[row_id] = duals_tilde[row_id];
+                        } else {
+                            Value coef_sep
+                                = norm(new_rows, duals_in, duals_tilde)
+                                / norm_rho;
+                            for (RowIdx row_id: new_rows) {
+                                //std::cout << " row " << row_id
+                                //    << " dual_in " << duals_in[row_id]
+                                //    << " coef_sep " << coef_sep
+                                //    << " rho " << rho[row_id]
+                                //    << " dual_sep " << duals_sep[row_id]
+                                //    << std::endl;
+                                duals_sep[row_id]
+                                    = duals_in[row_id]
+                                    + coef_sep * (rho[row_id] - duals_in[row_id]);
+                            }
                         }
                     }
 
