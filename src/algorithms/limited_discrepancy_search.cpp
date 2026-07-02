@@ -117,7 +117,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
         if (parameters.automatic_stop
-                && output.number_of_nodes >= 2
+                && output.number_of_nodes >= 64
                 && output.number_of_nodes > 4 * output.maximum_depth) {
             break;
         }
