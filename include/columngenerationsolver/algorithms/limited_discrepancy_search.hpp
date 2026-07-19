@@ -59,12 +59,6 @@ struct LimitedDiscrepancySearchOutput: Output
 
     Value maximum_discrepancy = -1;
 
-    /**
-     * 'true' iff the root node relaxation was proven infeasible by column
-     * generation (see 'ColumnGenerationOutput::is_proven_infeasible').
-     */
-    bool is_proven_infeasible = false;
-
 
     virtual int format_width() const override { return 30; }
 
@@ -76,7 +70,6 @@ struct LimitedDiscrepancySearchOutput: Output
             << std::setw(width) << std::left << "Number of nodes: " << number_of_nodes << std::endl
             << std::setw(width) << std::left << "Maximum depth: " << maximum_depth << std::endl
             << std::setw(width) << std::left << "Maximum discrepancy: " << maximum_discrepancy << std::endl
-            << std::setw(width) << std::left << "Proven infeasible: " << is_proven_infeasible << std::endl
             ;
     }
 
@@ -87,7 +80,6 @@ struct LimitedDiscrepancySearchOutput: Output
                 {"NumberOfNodes", number_of_nodes},
                 {"MaximumDepth", maximum_depth},
                 {"MaximumDiscrepancy", maximum_discrepancy},
-                {"IsProvenInfeasible", is_proven_infeasible},
                 });
         return json;
     }

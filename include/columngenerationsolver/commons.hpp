@@ -805,6 +805,22 @@ struct Output: optimizationtools::Output
                 solution.objective_value());
     }
 
+    /**
+     * String representation of 'bound'. JSON has no representation for
+     * +/-inf (nlohmann::json silently serializes both to 'null', making
+     * them indistinguishable), so 'bound' is exposed to JSON as a string
+     * instead of a raw number, the same way 'solution_value()' already is.
+     * This matters in particular because 'bound' reaching +inf
+     * (minimization) or -inf (maximization) is how infeasibility is
+     * signaled (see 'ColumnGenerationOutput::relaxation_solution_is_feasible').
+     */
+    std::string bound_string() const
+    {
+        std::stringstream ss;
+        ss << bound;
+        return ss.str();
+    }
+
     double absolute_optimality_gap() const
     {
         return optimizationtools::absolute_optimality_gap(
@@ -827,7 +843,7 @@ struct Output: optimizationtools::Output
     {
         return {
             {"Value", solution_value()},
-            {"Bound", bound},
+            {"Bound", bound_string()},
             {"AbsoluteOptimalityGap", absolute_optimality_gap()},
             {"RelativeOptimalityGap", relative_optimality_gap()},
             {"Time", time},

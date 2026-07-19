@@ -21,21 +21,18 @@ struct ColumnGenerationOutput: Output
      * 'true' iff column generation converged to a relaxation solution
      * containing no dummy column (i.e. 'relaxation_solution' is feasible
      * for the constraints).
+     *
+     * A (heuristic, not formally proven) infeasibility signal is reported
+     * through 'bound' instead of a separate flag: by the standard extended
+     * reals convention, the optimal value of an infeasible problem is +inf
+     * (minimization) or -inf (maximization), so 'bound' reaching that value
+     * means this node/branch has no feasible solution. This is distinct
+     * from column generation simply running out of time or iterations, in
+     * which case 'bound' stays finite and 'relaxation_solution_is_feasible'
+     * is 'false', meaning the result is inconclusive rather than
+     * infeasible.
      */
     bool relaxation_solution_is_feasible = false;
-
-    /**
-     * 'true' iff column generation stopped because the dummy column
-     * objective coefficient grew far larger than the cost of any generated
-     * column, which is taken as a (heuristic, not formally proven) signal
-     * that this node/branch has no feasible solution.
-     *
-     * Note this is distinct from column generation simply running out of
-     * time or iterations: in that case both 'relaxation_solution_is_feasible'
-     * and 'is_proven_infeasible' are 'false', meaning the result is
-     * inconclusive rather than infeasible.
-     */
-    bool is_proven_infeasible = false;
 
     /** Number of columns in the linear subproblem. */
     ColIdx number_of_columns_in_linear_subproblem = 0;

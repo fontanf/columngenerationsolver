@@ -58,7 +58,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         //    << std::endl;
         if (model.rows[row_id].coefficient_lower_bound >= 0
                 && row_values[row_id] > model.rows[row_id].upper_bound + model.rows[row_id].feasibility_tolerance) {
-            // Infeasible.
+            // Infeasible: the fixed columns alone already violate this row.
+            algorithm_formatter.update_bound(
+                    (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        std::numeric_limits<Value>::infinity():
+                        -std::numeric_limits<Value>::infinity());
             return output;
         }
         if (model.rows[row_id].coefficient_lower_bound >= 0
@@ -936,11 +940,20 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // column objective coefficient is significantly larger than the
         // largest generated column objective coefficient, then we consider the
         // problem infeasible.
-        if (column_highest_cost > 0
-                && std::abs(output.dummy_column_objective_coefficient)
+        // No 'column_highest_cost > 0' guard here: when every column has an
+        // objective coefficient of 0 (a pure feasibility problem),
+        // 'column_highest_cost' is always 0, so the threshold below already
+        // reduces to 'dummy coefficient > 0', which is the correct
+        // condition in that case (the master LP's optimal basis doesn't
+        // depend on the dummy coefficient's magnitude when the real
+        // objective is identically 0, only on whether it's positive).
+        if (std::abs(output.dummy_column_objective_coefficient)
                 > 100 * column_highest_cost) {
             //std::cout << "infeasible" << std::endl;
-            output.is_proven_infeasible = true;
+            algorithm_formatter.update_bound(
+                    (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        std::numeric_limits<Value>::infinity():
+                        -std::numeric_limits<Value>::infinity());
             output.relaxation_solution = solution_builder.build();
             break;
         }
