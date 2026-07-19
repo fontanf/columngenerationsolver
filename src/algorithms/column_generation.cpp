@@ -127,11 +127,22 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         Value value_max = std::numeric_limits<Value>::infinity();
         for (const LinearTerm& element: column->elements) {
+            // Use the residual row bounds (after subtracting the
+            // contribution of already fixed columns) rather than the
+            // original model bounds, otherwise the estimate can be wildly
+            // overestimated once columns have been fixed.
+            RowIdx new_row_id = new_row_indices[element.row];
+            Value row_lower_bound = (new_row_id >= 0)?
+                new_row_lower_bounds[new_row_id]:
+                model.rows[element.row].lower_bound;
+            Value row_upper_bound = (new_row_id >= 0)?
+                new_row_upper_bounds[new_row_id]:
+                model.rows[element.row].upper_bound;
             if (element.coefficient > 0) {
-                Value v = model.rows[element.row].upper_bound / element.coefficient;
+                Value v = row_upper_bound / element.coefficient;
                 value_max = (std::min)(value_max, v);
             } else {
-                Value v = model.rows[element.row].lower_bound / element.coefficient;
+                Value v = row_lower_bound / element.coefficient;
                 value_max = (std::min)(value_max, v);
             }
         }
@@ -701,11 +712,23 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         column_pool.insert(column);
                         Value value_max = std::numeric_limits<Value>::infinity();
                         for (const LinearTerm& element: column->elements) {
+                            // Use the residual row bounds (after subtracting
+                            // the contribution of already fixed columns)
+                            // rather than the original model bounds,
+                            // otherwise the estimate can be wildly
+                            // overestimated once columns have been fixed.
+                            RowIdx new_row_id = new_row_indices[element.row];
+                            Value row_lower_bound = (new_row_id >= 0)?
+                                new_row_lower_bounds[new_row_id]:
+                                model.rows[element.row].lower_bound;
+                            Value row_upper_bound = (new_row_id >= 0)?
+                                new_row_upper_bounds[new_row_id]:
+                                model.rows[element.row].upper_bound;
                             if (element.coefficient > 0) {
-                                Value v = model.rows[element.row].upper_bound / element.coefficient;
+                                Value v = row_upper_bound / element.coefficient;
                                 value_max = (std::min)(value_max, v);
                             } else {
-                                Value v = model.rows[element.row].lower_bound / element.coefficient;
+                                Value v = row_lower_bound / element.coefficient;
                                 value_max = (std::min)(value_max, v);
                             }
                         }
@@ -898,7 +921,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // If the final solution doesn't contain any dummy column, then stop.
         if (!has_dummy_column) {
-            output.feasible = true;
+            output.relaxation_solution_is_feasible = true;
             //std::cout << "feasible" << std::endl;
             output.relaxation_solution = solution_builder.build();
             if (!output.relaxation_solution.feasible_relaxation()) {
@@ -917,6 +940,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 && std::abs(output.dummy_column_objective_coefficient)
                 > 100 * column_highest_cost) {
             //std::cout << "infeasible" << std::endl;
+            output.is_proven_infeasible = true;
             output.relaxation_solution = solution_builder.build();
             break;
         }

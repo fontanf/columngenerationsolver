@@ -17,7 +17,25 @@ struct ColumnGenerationOutput: Output
     /** Value of the relaxation solution (with dummy columns). */
     double relaxation_solution_value = 0.0;
 
-    bool feasible = false;
+    /**
+     * 'true' iff column generation converged to a relaxation solution
+     * containing no dummy column (i.e. 'relaxation_solution' is feasible
+     * for the constraints).
+     */
+    bool relaxation_solution_is_feasible = false;
+
+    /**
+     * 'true' iff column generation stopped because the dummy column
+     * objective coefficient grew far larger than the cost of any generated
+     * column, which is taken as a (heuristic, not formally proven) signal
+     * that this node/branch has no feasible solution.
+     *
+     * Note this is distinct from column generation simply running out of
+     * time or iterations: in that case both 'relaxation_solution_is_feasible'
+     * and 'is_proven_infeasible' are 'false', meaning the result is
+     * inconclusive rather than infeasible.
+     */
+    bool is_proven_infeasible = false;
 
     /** Number of columns in the linear subproblem. */
     ColIdx number_of_columns_in_linear_subproblem = 0;

@@ -38,6 +38,12 @@ struct GreedyOutput: Output
 
     Counter number_of_nodes = 0;
 
+    /**
+     * 'true' iff the root node relaxation was proven infeasible by column
+     * generation (see 'ColumnGenerationOutput::is_proven_infeasible').
+     */
+    bool is_proven_infeasible = false;
+
 
     virtual int format_width() const override { return 31; }
 
@@ -47,6 +53,7 @@ struct GreedyOutput: Output
         int width = format_width();
         os
             << std::setw(width) << std::left << "Number of nodes: " << number_of_nodes << std::endl
+            << std::setw(width) << std::left << "Proven infeasible: " << is_proven_infeasible << std::endl
             ;
     }
 
@@ -55,6 +62,7 @@ struct GreedyOutput: Output
         nlohmann::json json = Output::to_json();
         json.merge_patch({
                 {"NumberOfNodes", number_of_nodes},
+                {"IsProvenInfeasible", is_proven_infeasible},
                 });
         return json;
     }
