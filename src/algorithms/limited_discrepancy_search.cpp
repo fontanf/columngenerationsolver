@@ -241,8 +241,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 algorithm_formatter.print_header();
                 algorithm_formatter.update_bound(cg_output.bound);
                 output.relaxation_solution = cg_output.relaxation_solution;
+                output.is_proven_infeasible = cg_output.is_proven_infeasible;
             }
-            if (!cg_output.feasible) {
+            if (!cg_output.relaxation_solution_is_feasible) {
                 //std::cout << "no solution" << std::endl;
                 continue;
             }
