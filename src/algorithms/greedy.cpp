@@ -73,8 +73,6 @@ const GreedyOutput columngenerationsolver::greedy(
         output.time_pricing += cg_output.time_pricing;
         output.dummy_column_objective_coefficient = cg_output.dummy_column_objective_coefficient;
         output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
-        if (output.number_of_nodes == 0)
-            output.is_proven_infeasible = cg_output.is_proven_infeasible;
         output.columns.insert(
                 output.columns.end(),
                 cg_output.columns.begin(),
