@@ -155,6 +155,38 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 std::abs(column->objective_coefficient * value_max));
         column_pool.insert(column);
     }
+    // Also account for the static columns: when the real objective lives
+    // entirely on model.static_columns (e.g. columns fixed for the whole
+    // model, outside of pricing), every generated column can have an
+    // objective coefficient of 0 even though the problem isn't a pure
+    // feasibility problem. Without this, 'column_highest_cost' would stay 0
+    // and the dummy-column infeasibility check below would incorrectly fire
+    // on ordinary column-generation degeneracy.
+    for (const std::shared_ptr<const Column>& column: model.static_columns) {
+        if (column->objective_coefficient == 0)
+            continue;
+
+        Value value_max = std::numeric_limits<Value>::infinity();
+        for (const LinearTerm& element: column->elements) {
+            RowIdx new_row_id = new_row_indices[element.row];
+            Value row_lower_bound = (new_row_id >= 0)?
+                new_row_lower_bounds[new_row_id]:
+                model.rows[element.row].lower_bound;
+            Value row_upper_bound = (new_row_id >= 0)?
+                new_row_upper_bounds[new_row_id]:
+                model.rows[element.row].upper_bound;
+            if (element.coefficient > 0) {
+                Value v = row_upper_bound / element.coefficient;
+                value_max = (std::min)(value_max, v);
+            } else {
+                Value v = row_lower_bound / element.coefficient;
+                value_max = (std::min)(value_max, v);
+            }
+        }
+        column_highest_cost = (std::max)(
+                column_highest_cost,
+                std::abs(column->objective_coefficient * value_max));
+    }
 
     Value overcost = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
         -std::numeric_limits<Value>::infinity():
