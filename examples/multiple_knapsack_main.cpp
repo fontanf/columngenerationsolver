@@ -61,10 +61,12 @@ public:
     {  }
 
     virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts);
 
     virtual inline PricingOutput solve_pricing(
-            const std::vector<Value>& duals);
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
 private:
 
@@ -116,7 +118,8 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 }
 
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&)
 {
     std::fill(fixed_items_.begin(), fixed_items_.end(), -1);
     std::fill(fixed_knapsacks_.begin(), fixed_knapsacks_.end(), -1);
@@ -139,7 +142,8 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 }
 
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
-            const std::vector<Value>& duals)
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
     PricingOutput output;
     Value reduced_cost_bound = 0.0;
@@ -193,7 +197,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
         reduced_cost_bound = (std::max)(
                 reduced_cost_bound,
-                columngenerationsolver::compute_reduced_cost(column, duals));
+                compute_reduced_cost(column, duals));
     }
 
     output.overcost = instance_.number_of_knapsacks() * reduced_cost_bound;

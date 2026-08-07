@@ -14,6 +14,7 @@ namespace columngenerationsolver
 using Counter = int64_t;
 using ColIdx = int64_t;
 using RowIdx = int64_t;
+using CutIdx = int64_t;
 using Value = double;
 
 enum class VariableType { Continuous, Integer };
@@ -120,6 +121,63 @@ struct Row
     Value feasibility_tolerance = 0.0;
 };
 
+class Solution;
+
+/**
+ * A cutting plane.
+ *
+ * Unlike 'Row', a cut's coefficient on a column is not necessarily
+ * decomposable from static per-column data: non-robust cuts (e.g.
+ * subset-row cuts) require cut-family-specific logic to compute it. That
+ * logic lives on 'PricingSolver::coefficient' rather than on 'Cut' itself,
+ * so 'Cut' stays a concrete, uniform type like 'Column': cut families carry
+ * whatever data they need through 'extra' instead of subclassing.
+ *
+ * 'PricingSolver::coefficient' only serves master problem bookkeeping
+ * (building the LP, rechecking pooled columns' reduced costs); it is not
+ * used by the pricing solver's internal search. A pricing solver that
+ * wants to enforce a non-robust cut during pricing needs direct, typed
+ * access to the active 'Cut' objects themselves (passed to 'PricingSolver::
+ * initialize_pricing'), since a coefficient computed on a finished column
+ * can't inform search-time pruning of an incomplete one.
+ */
+struct Cut
+{
+    /** Cut name. */
+    std::string name;
+
+    /** Lower bound of the cut. */
+    Value lower_bound = -std::numeric_limits<Value>::infinity();
+
+    /** Upper bound of the cut. */
+    Value upper_bound = 0.0;
+
+    /**
+     * Tolerance used when checking whether the cut is still active, i.e.
+     * whether its value at the current relaxation solution has slack (on
+     * both sides, relative to 'lower_bound'/'upper_bound') beyond this
+     * tolerance, making it a candidate for removal from the active set —
+     * the same check 'Row::feasibility_tolerance' does for rows. Should
+     * reflect the scale of the cut's coefficients, which only the code
+     * that creates the cut knows; defaults to 0 (a cut is only ever
+     * removed if it has no slack at all), so cut families are opted into
+     * automatic removal explicitly rather than by a framework-guessed
+     * default.
+     */
+    Value feasibility_tolerance = 1e-3;
+
+    /**
+     * Extra information.
+     *
+     * Problem-specific data needed to compute this cut's coefficients and
+     * to recognize it against other cuts, read back by 'PricingSolver::
+     * coefficient' and 'PricingSolver::equal' via a 'static_cast' to the
+     * concrete type the code that built the cut knows about. Same idiom as
+     * 'Column::extra'.
+     */
+    std::shared_ptr<void> extra;
+};
+
 /**
  * Interface for the pricing problem solver.
  */
@@ -151,10 +209,94 @@ public:
     };
 
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns) = 0;
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const Cut>>& cuts) = 0;
 
     virtual PricingOutput solve_pricing(
-            const std::vector<Value>& duals) = 0;
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals) = 0;
+
+    /**
+     * Separate cutting planes from the current relaxation solution.
+     *
+     * Called by 'column_generation' once the relaxation has converged to a
+     * feasible (dummy-column-free) solution, when cutting planes are
+     * enabled. The default implementation generates no cuts.
+     */
+    virtual std::vector<std::shared_ptr<const Cut>> separate_cuts(
+            const Solution& solution)
+    {
+        (void)solution;
+        return {};
+    }
+
+    /**
+     * Coefficient of a column in a cut.
+     *
+     * See 'Cut' for why this lives here rather than on 'Cut' itself. Only
+     * called by 'column_generation' for cuts that are actually part of the
+     * active set (master problem bookkeeping — see 'Cut'), so a
+     * 'PricingSolver' that doesn't use cuts never needs to override it.
+     * Throws by default, for the same reason as 'equal' below.
+     */
+    virtual Value coefficient(
+            const Cut& cut,
+            const Column& column) const
+    {
+        (void)cut;
+        (void)column;
+        throw std::logic_error(
+                "columngenerationsolver::PricingSolver::coefficient: "
+                "not implemented.");
+    }
+
+    /**
+     * Reduced cost of 'column', given 'duals' and (optionally)
+     * 'cut_duals'.
+     *
+     * A convenience for a 'PricingSolver' to score candidate columns
+     * (typically to decide whether one qualifies, or to rank several).
+     * Calls 'coefficient' above for the cut contribution, so 'cut_duals'
+     * must stay empty unless 'coefficient' is overridden.
+     */
+    Value compute_reduced_cost(
+            const Column& column,
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals = {}) const
+    {
+        Value reduced_cost = column.objective_coefficient;
+        for (const LinearTerm& element: column.elements)
+            reduced_cost -= duals[element.row] * element.coefficient;
+        for (const auto& p: cut_duals)
+            reduced_cost -= p.second * coefficient(*p.first, column);
+        return reduced_cost;
+    }
+
+    /**
+     * Return whether two cuts are the same constraint.
+     *
+     * 'column_generation' uses this to recognize a cut it has previously
+     * removed from the active set for being inactive, even though
+     * 'separate_cuts' may return a different 'Cut' instance for the same
+     * constraint each time it becomes violated again — pointer identity
+     * cannot be relied on for that. Only called once a cut has already
+     * been removed at least once in the current call, so a 'PricingSolver'
+     * that doesn't use cuts, or whose cuts are never removed, never
+     * triggers it and never needs to override it. Throws by default so
+     * that a 'PricingSolver' that does need it fails loudly if it forgets
+     * to override it, rather than silently falling back to an incorrect
+     * comparison.
+     */
+    virtual bool equal(
+            const Cut& cut_1,
+            const Cut& cut_2) const
+    {
+        (void)cut_1;
+        (void)cut_2;
+        throw std::logic_error(
+                "columngenerationsolver::PricingSolver::equal: "
+                "not implemented.");
+    }
 };
 
 /**
@@ -170,6 +312,15 @@ struct Model
 
     /** Solver of the pricing problem. */
     std::unique_ptr<PricingSolver> pricing_solver = NULL;
+
+    /** Reduced cost of 'column', given 'duals' and (optionally) 'cut_duals'. */
+    Value compute_reduced_cost(
+            const Column& column,
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals = {}) const
+    {
+        return pricing_solver->compute_reduced_cost(column, duals, cut_duals);
+    }
 
     /** Column which are not dynamically generated. */
     std::vector<std::shared_ptr<const Column>> static_columns;
@@ -673,16 +824,6 @@ private:
 //////////////////////////////// Implementation ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-inline Value compute_reduced_cost(
-        const Column& column,
-        const std::vector<Value>& duals)
-{
-    Value reduced_cost = column.objective_coefficient;
-    for (const LinearTerm& element: column.elements)
-        reduced_cost -= duals[element.row] * element.coefficient;
-    return reduced_cost;
-}
-
 inline Value norm(
         const std::vector<RowIdx>& new_rows,
         const std::vector<Value>& vector)
@@ -962,6 +1103,9 @@ struct Parameters: optimizationtools::Parameters
     /** Fixed columns. */
     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
 
+    /** Cuts to seed the active cut set with. */
+    std::vector<std::shared_ptr<const Cut>> initial_cuts;
+
     /**
      * Enable internal diving:
      * - 0: not enabled
@@ -969,6 +1113,14 @@ struct Parameters: optimizationtools::Parameters
      * - 2: enabled at all nodes
      */
     int internal_diving = 0;
+
+    /**
+     * Enable cutting planes:
+     * - 0: not enabled
+     * - 1: enabled at the root node
+     * - 2: enabled at all nodes
+     */
+    int cutting_planes = 0;
 
 
     virtual nlohmann::json to_json() const override
@@ -979,7 +1131,9 @@ struct Parameters: optimizationtools::Parameters
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
                 {"NumberOfFixedColumns", fixed_columns.size()},
+                {"NumberOfInitialCuts", initial_cuts.size()},
                 {"InternalDiving", internal_diving},
+                {"CuttingPlanes", cutting_planes},
                 });
         return json;
     }
@@ -995,7 +1149,9 @@ struct Parameters: optimizationtools::Parameters
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl
+            << std::setw(width) << std::left << "Number of initial cuts: " << initial_cuts.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
+            << std::setw(width) << std::left << "Cutting planes: " << cutting_planes << std::endl
             ;
     }
 };

@@ -62,10 +62,12 @@ public:
     { }
 
     virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts);
 
     virtual inline PricingOutput solve_pricing(
-            const std::vector<Value>& duals);
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
 
@@ -115,7 +117,8 @@ inline columngenerationsolver::Model get_model(
 
 template <typename Distances>
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver<Distances>::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
     for (const auto& p: fixed_columns) {
@@ -141,7 +144,8 @@ struct ColumnExtra
 
 template <typename Distances>
 typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve_pricing(
-            const std::vector<Value>& duals)
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
     PricingOutput output;
 

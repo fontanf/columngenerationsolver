@@ -192,12 +192,77 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         -std::numeric_limits<Value>::infinity():
         +std::numeric_limits<Value>::infinity();
 
+    // Active cuts. Starts from 'initial_cuts' and grows as cutting-plane
+    // rounds find violated cuts below.
+    std::vector<std::shared_ptr<const Cut>> active_cuts = parameters.initial_cuts;
+
+    // Relaxation value at the point each cut was last removed for being
+    // inactive. A cut in this list may only be removed again once the
+    // relaxation has genuinely improved relative to the value recorded
+    // here — otherwise a cut that gets removed, then found needed again,
+    // then found inactive again without any real progress in between
+    // would cycle indefinitely (remove, rebuild, re-add, rebuild, remove,
+    // ...). Persists across cutting-plane rounds for the whole call,
+    // unlike 'active_cuts' itself.
+    //
+    // Looked up by 'PricingSolver::equal' rather than by shared_ptr
+    // identity or a hash map, since 'separate_cuts' may return a
+    // different 'Cut' instance for the same constraint each time it
+    // becomes violated again, and a custom equality without a matching
+    // custom hash would break an unordered_map's bucket invariant. A
+    // linear scan is fine given the expected number of active cuts.
+    std::vector<std::pair<std::shared_ptr<const Cut>, Value>> cut_value_at_last_removal;
+
     // Loop for dummy columns.
     // If the final solution contains dummy columns, then the dummy column
     // objective value is increased and the algorithm is started again. The loop
     // is broken when the final solution doesn't contain any dummy column.
     output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
+
+    // Loop for cutting planes.
+    // After the dummy-column loop below converges to a feasible relaxation
+    // (no dummy column left), if cutting planes are enabled, cuts are
+    // separated from that relaxation. If any are found, the whole master LP
+    // is rebuilt from scratch (like a dummy-column retry) with the enlarged
+    // cut set and re-optimized. The loop stops when no more violated cuts
+    // are found, cutting planes are disabled, or the cutting-plane
+    // iteration limit is reached.
+    for (Counter cutting_plane_iteration = 0; ; ++cutting_plane_iteration) {
+
+    // Compute residual cut bounds, after subtracting the contribution of
+    // fixed columns (mirrors the row residual-bound computation above).
+    std::vector<Value> new_cut_lower_bounds(active_cuts.size());
+    std::vector<Value> new_cut_upper_bounds(active_cuts.size());
+    for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+        Value cut_fixed_value = 0.0;
+        for (const auto& p: parameters.fixed_columns)
+            cut_fixed_value += p.second * model.pricing_solver->coefficient(*active_cuts[cut_pos], *p.first);
+        new_cut_lower_bounds[cut_pos] = active_cuts[cut_pos]->lower_bound - cut_fixed_value;
+        new_cut_upper_bounds[cut_pos] = active_cuts[cut_pos]->upper_bound - cut_fixed_value;
+    }
+
+    // Appends the coefficients of 'column' in the active cuts to 'ri'/'rc',
+    // at row indices following the model rows.
+    auto append_cut_coefficients = [&model, &active_cuts, new_number_of_rows](
+            const Column& column,
+            std::vector<RowIdx>& ri,
+            std::vector<Value>& rc)
+    {
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+            Value coef = model.pricing_solver->coefficient(*active_cuts[cut_pos], column);
+            if (coef != 0.0) {
+                ri.push_back(new_number_of_rows + cut_pos);
+                rc.push_back(coef);
+            }
+        }
+    };
+
+    // Whether the dummy-column loop below converges to a feasible
+    // relaxation (no dummy column), i.e. whether it is meaningful to
+    // attempt cut separation afterwards.
+    bool relaxation_is_feasible_for_cuts = false;
+
     for (;;) {
         //std::cout << "dummy_column_objective_coefficient " << output.dummy_column_objective_coefficient << std::endl;
 
@@ -207,22 +272,33 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Initialize solver
         //std::cout << "Initialize solver... " << parameters.solver_name << std::endl;
+        std::vector<Value> lp_row_lower_bounds = new_row_lower_bounds;
+        std::vector<Value> lp_row_upper_bounds = new_row_upper_bounds;
+        lp_row_lower_bounds.insert(
+                lp_row_lower_bounds.end(),
+                new_cut_lower_bounds.begin(),
+                new_cut_lower_bounds.end());
+        lp_row_upper_bounds.insert(
+                lp_row_upper_bounds.end(),
+                new_cut_upper_bounds.begin(),
+                new_cut_upper_bounds.end());
+
         std::unique_ptr<LinearProgrammingSolver> solver = NULL;
 #if CPLEX_FOUND
         if (parameters.solver_name == SolverName::CPLEX)
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverCplex(
                         model.objective_sense,
-                        new_row_lower_bounds,
-                        new_row_upper_bounds));
+                        lp_row_lower_bounds,
+                        lp_row_upper_bounds));
 #endif
 #if CLP_FOUND
         if (parameters.solver_name == SolverName::CLP) {
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverClp(
                         model.objective_sense,
-                        new_row_lower_bounds,
-                        new_row_upper_bounds));
+                        lp_row_lower_bounds,
+                        lp_row_upper_bounds));
         }
 #endif
 #if HIGHS_FOUND
@@ -230,8 +306,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverHighs(
                         model.objective_sense,
-                        new_row_lower_bounds,
-                        new_row_upper_bounds));
+                        lp_row_lower_bounds,
+                        lp_row_upper_bounds));
         }
 #endif
 #if XPRESS_FOUND
@@ -239,8 +315,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverXpress(
                         model.objective_sense,
-                        new_row_lower_bounds,
-                        new_row_upper_bounds));
+                        lp_row_lower_bounds,
+                        lp_row_upper_bounds));
         }
 #endif
 #if KNITRO_FOUND
@@ -248,8 +324,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             solver = std::unique_ptr<LinearProgrammingSolver>(
                     new LinearProgrammingSolverKnitro(
                         model.objective_sense,
-                        new_row_lower_bounds,
-                        new_row_upper_bounds));
+                        lp_row_lower_bounds,
+                        lp_row_upper_bounds));
 #endif
         if (solver == NULL) {
             throw std::runtime_error("ERROR, no linear programming solver found");
@@ -269,7 +345,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // Initialize pricing solver.
         //std::cout << "Initialize pricing solver..." << std::endl;
         std::vector<std::shared_ptr<const Column>> infeasible_columns
-            = model.pricing_solver->initialize_pricing(parameters.fixed_columns);
+            = model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts);
         std::vector<int8_t> feasible(model.static_columns.size(), 1);
 
         // Add dummy columns.
@@ -300,6 +376,38 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         std::numeric_limits<Value>::infinity());
                 output.number_of_columns_in_linear_subproblem++;
                 dummy_column_rows.push_back(row_id);
+            }
+        }
+        // Add dummy columns for cut rows that fixed/static/initial columns
+        // alone cannot satisfy (symmetric to the model-row dummy columns
+        // above).
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+            RowIdx cut_row_id = new_number_of_rows + cut_pos;
+            if (new_cut_lower_bounds[cut_pos] > 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {cut_row_id},
+                        {new_cut_lower_bounds[cut_pos]},
+                        (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +output.dummy_column_objective_coefficient:
+                        -output.dummy_column_objective_coefficient,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(cut_row_id);
+            }
+            if (new_cut_upper_bounds[cut_pos] < 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {cut_row_id},
+                        {new_cut_upper_bounds[cut_pos]},
+                        (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +output.dummy_column_objective_coefficient:
+                        -output.dummy_column_objective_coefficient,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(cut_row_id);
             }
         }
 
@@ -362,6 +470,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             //}
             if (!ok)
                 continue;
+            append_cut_coefficients(*column, ri, rc);
             solver_columns.push_back(column);
             lower_bounds.push_back(column->lower_bound);
             upper_bounds.push_back(column->upper_bound);
@@ -415,6 +524,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             }
             if (!ok)
                 continue;
+            append_cut_coefficients(*column, row_ids, row_coefficients);
             solver_columns.push_back(column);
             solver_generated_columns.insert(column);
             solver->add_column(
@@ -441,6 +551,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         std::vector<Value> lagrangian_constraint_values(number_of_rows, 0);
         // g_in.
         std::vector<Value> subgradient(number_of_rows, 0);
+        // Cut duals (not stabilized: the active cut set is fixed for the
+        // whole CG loop, so there is no smoothing history to maintain).
+        // Paired with the cut itself (like 'fixed_columns' already is),
+        // so 'solve_pricing'/'compute_reduced_cost' callers don't have to
+        // separately track 'active_cuts' just to correlate the two.
+        std::vector<std::pair<std::shared_ptr<const Cut>, Value>> cut_duals;
+        cut_duals.reserve(active_cuts.size());
+        for (const std::shared_ptr<const Cut>& cut: active_cuts)
+            cut_duals.push_back({cut, 0.0});
         double alpha = parameters.static_wentges_smoothing_parameter;
         for (Counter number_of_column_generation_iterations = 1;
                 ;
@@ -487,6 +606,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             for (RowIdx row_pos = 0; row_pos < new_number_of_rows; ++row_pos) {
                 duals_out[new_rows[row_pos]] = solver->dual(row_pos);
             }
+            for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+                cut_duals[cut_pos].second = solver->dual(new_number_of_rows + cut_pos);
+            }
 
             std::vector<std::shared_ptr<const Column>> new_columns;
             std::vector<Value> pricing_lagrangian_column_values;
@@ -504,7 +626,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     continue;
 
                 // Add the column if its reduced cost is negative.
-                Value rc = compute_reduced_cost(*column, duals_out);
+                Value rc = model.compute_reduced_cost(*column, duals_out, cut_duals);
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
                         && rc < -parameters.optimality_tolerance) {
                     new_columns.push_back(column);
@@ -643,7 +765,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
                     std::vector<std::shared_ptr<const Column>> all_columns;
                     if (!parameters.internal_diving) {
-                        auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
+                        auto pricing_output = model.pricing_solver->solve_pricing(duals_sep, cut_duals);
                         all_columns = pricing_output.columns;
                         overcost = pricing_output.overcost;
                         pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
@@ -653,8 +775,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         std::vector<Value> row_values_tmp = row_values;
                         std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = parameters.fixed_columns;
                         for (int i = 0;; ++i) {
-                            model.pricing_solver->initialize_pricing(fixed_columns_tmp);
-                            auto pricing_output = model.pricing_solver->solve_pricing(duals_sep);
+                            model.pricing_solver->initialize_pricing(fixed_columns_tmp, active_cuts);
+                            auto pricing_output = model.pricing_solver->solve_pricing(duals_sep, cut_duals);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                                 = pricing_output.columns;
                             if (i == 0) {
@@ -677,12 +799,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             std::sort(
                                     all_columns_tmp_1.begin(),
                                     all_columns_tmp_1.end(),
-                                    [&model, &duals_out](
+                                    [&model, &duals_out, &cut_duals](
                                         const std::shared_ptr<const Column>& column_1,
                                         const std::shared_ptr<const Column>& column_2)
                                     {
-                                        Value rc1 = compute_reduced_cost(*column_1, duals_out);
-                                        Value rc2 = compute_reduced_cost(*column_2, duals_out);
+                                        Value rc1 = model.compute_reduced_cost(*column_1, duals_out, cut_duals);
+                                        Value rc2 = model.compute_reduced_cost(*column_2, duals_out, cut_duals);
                                         if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
                                             return rc1 < rc2;
                                         } else {
@@ -724,7 +846,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             if (!has_fixed)
                                 break;
                         }
-                        model.pricing_solver->initialize_pricing(parameters.fixed_columns);
+                        model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts);
                     }
 
                     auto end_pricing = std::chrono::high_resolution_clock::now();
@@ -774,7 +896,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                       output.columns.push_back(column);
 
                       // Only add the ones with negative reduced cost.
-                      Value rc = compute_reduced_cost(*column, duals_out);
+                      Value rc = model.compute_reduced_cost(*column, duals_out, cut_duals);
                       // std::cout << "rc " << rc << std::endl;
                       if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
                               && rc < -parameters.optimality_tolerance)
@@ -890,6 +1012,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     ri.push_back(new_row_indices[i]);
                     rc.push_back(c);
                 }
+                append_cut_coefficients(*column, ri, rc);
                 solver_columns.push_back(column);
                 solver_generated_columns.insert(column);
                 solver->add_column(
@@ -943,6 +1066,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // Check time.
         if (parameters.timer.needs_to_end()) {
             output.relaxation_solution = solution_builder.build();
+            output.cuts = active_cuts;
             algorithm_formatter.end();
             return output;
         }
@@ -951,6 +1075,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 && output.number_of_column_generation_iterations
                 > parameters.maximum_number_of_iterations) {
             output.relaxation_solution = solution_builder.build();
+            output.cuts = active_cuts;
             algorithm_formatter.end();
             return output;
         }
@@ -965,6 +1090,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         "columngenerationsolver::column_generation: "
                         "infeasible relaxation solution.");
             }
+            relaxation_is_feasible_for_cuts = true;
             break;
         }
 
@@ -982,6 +1108,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (std::abs(output.dummy_column_objective_coefficient)
                 > 100 * column_highest_cost) {
             //std::cout << "infeasible" << std::endl;
+            output.relaxation_solution_is_feasible = false;
             algorithm_formatter.update_bound(
                     (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
                         std::numeric_limits<Value>::infinity():
@@ -991,6 +1118,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         }
         if (parameters.tabu != nullptr
                 && parameters.tabu->size() > 0) {
+            output.relaxation_solution_is_feasible = false;
             output.relaxation_solution = solution_builder.build();
             break;
         }
@@ -1005,6 +1133,121 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 initial_columns.push_back(p.first);
     }
 
+    // If the dummy-column loop above didn't converge to a feasible
+    // relaxation (timeout/iteration-limit already returned directly;
+    // infeasible or tabu fell through to here), stop: no point separating
+    // cuts from a relaxation that still contains dummy columns.
+    if (!relaxation_is_feasible_for_cuts)
+        break;
+
+    // Cutting planes disabled for this call: stop after the first feasible
+    // relaxation, exactly like before cuts existed.
+    if (!parameters.cutting_planes)
+        break;
+
+    // Check cutting-plane iteration limit.
+    if (parameters.maximum_number_of_cutting_plane_iterations != -1
+            && cutting_plane_iteration >= parameters.maximum_number_of_cutting_plane_iterations) {
+        break;
+    }
+
+    // Separate cuts from the current (feasible) relaxation solution.
+    std::vector<std::shared_ptr<const Cut>> new_cuts
+        = model.pricing_solver->separate_cuts(output.relaxation_solution);
+
+    // Remove cuts that are no longer active: their value at the current
+    // relaxation solution has slack on both sides, more than their own
+    // 'feasibility_tolerance', relative to their bounds (the same check
+    // 'Row::feasibility_tolerance' does for rows). Checking the value
+    // rather than the dual avoids a false "inactive" reading under LP
+    // degeneracy — common in exactly the set-partitioning-style
+    // formulations this framework targets — where a constraint can be
+    // geometrically at its bound yet still be reported with a zero dual,
+    // because multiple dual solutions can correspond to the same primal
+    // optimum. Non-robust cuts especially can make pricing significantly
+    // harder, so don't keep paying for ones that aren't helping.
+    //
+    // A cut that has already been removed once may only be removed again
+    // if the relaxation has genuinely improved since then (sense-aware,
+    // guarded by FFOT_TOL against numerical noise) — otherwise a cut that
+    // gets removed, found needed again, then found inactive again without
+    // any real progress in between would cycle indefinitely. This still
+    // lets a cut be removed multiple times over a long search, as long as
+    // each removal is preceded by real progress, rather than forbidding
+    // it outright after a single bounce-back.
+    //
+    // 'output.cuts' (see 'ColumnGenerationOutput::cuts') mirrors
+    // 'active_cuts' by the time this call returns, so a cut dropped here —
+    // whether it came in via 'parameters.initial_cuts' or was newly separated
+    // this call — is dropped from 'output.cuts' too, and a caller feeding
+    // 'output.cuts' into a follow-up call won't keep reinstating it.
+    //
+    // 'PricingSolver::equal' is only called once a cut has already been
+    // removed at least once this call (i.e. 'cut_value_at_last_removal' is
+    // non-empty), and only for cuts that are themselves candidates for
+    // removal — so a 'PricingSolver' that never triggers a removal, or
+    // doesn't use cuts at all, never needs to implement it.
+    bool minimize = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+    Value current_value = output.relaxation_solution.objective_value();
+    std::vector<std::shared_ptr<const Cut>> still_active_cuts;
+    bool removed_a_cut = false;
+    for (const std::shared_ptr<const Cut>& cut: active_cuts) {
+        Value cut_value = 0.0;
+        for (const auto& p: output.relaxation_solution.columns())
+            cut_value += p.second * model.pricing_solver->coefficient(*cut, *p.first);
+
+        bool has_slack_below = (cut_value > cut->lower_bound + cut->feasibility_tolerance);
+        bool has_slack_above = (cut_value < cut->upper_bound - cut->feasibility_tolerance);
+        bool eligible_for_removal = has_slack_below && has_slack_above;
+
+        auto previous_removal = cut_value_at_last_removal.end();
+        if (eligible_for_removal && !cut_value_at_last_removal.empty()) {
+            previous_removal = std::find_if(
+                    cut_value_at_last_removal.begin(),
+                    cut_value_at_last_removal.end(),
+                    [&model, &cut](
+                        const std::pair<std::shared_ptr<const Cut>, Value>& p)
+                    {
+                        return model.pricing_solver->equal(*cut, *p.first);
+                    });
+            if (previous_removal != cut_value_at_last_removal.end()) {
+                eligible_for_removal = (minimize)?
+                    (current_value < previous_removal->second - FFOT_TOL):
+                    (current_value > previous_removal->second + FFOT_TOL);
+            }
+        }
+
+        if (eligible_for_removal) {
+            removed_a_cut = true;
+            if (previous_removal != cut_value_at_last_removal.end()) {
+                previous_removal->second = current_value;
+            } else {
+                cut_value_at_last_removal.push_back({cut, current_value});
+            }
+        } else {
+            still_active_cuts.push_back(cut);
+        }
+    }
+    active_cuts = std::move(still_active_cuts);
+
+    if (new_cuts.empty() && !removed_a_cut)
+        break;
+
+    active_cuts.insert(active_cuts.end(), new_cuts.begin(), new_cuts.end());
+    output.number_of_cutting_plane_iterations++;
+
+    // Rebuild the master LP from scratch with the enlarged cut set: reset
+    // the dummy column coefficient (the previous round's inflated value has
+    // no bearing on the new LP) and seed initial columns with the columns
+    // of the relaxation solution that just converged, same as a
+    // dummy-column retry already does.
+    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
+    initial_columns = parameters.initial_columns;
+    for (const auto& p: output.relaxation_solution.columns())
+        if (column_pool.find(p.first) != column_pool.end())
+            initial_columns.push_back(p.first);
+    }
+
     // Update bound.
     Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
         -std::numeric_limits<Value>::infinity():
@@ -1014,6 +1257,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     }
     algorithm_formatter.update_bound(bound);
 
+    output.cuts = active_cuts;
     algorithm_formatter.end();
     return output;
 }

@@ -57,10 +57,12 @@ public:
     { }
 
     inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts);
 
     inline virtual PricingOutput solve_pricing(
-            const std::vector<Value>& duals);
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
 private:
 
@@ -99,7 +101,8 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 }
 
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&)
 {
     std::fill(filled_demands_.begin(), filled_demands_.end(), 0);
     for (const auto& p: fixed_columns) {
@@ -114,7 +117,8 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 }
 
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
-            const std::vector<Value>& duals)
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
     PricingOutput output;
     Value reduced_cost_bound = 0.0;
@@ -176,7 +180,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         }
     }
     output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
-    output.overcost = instance_.total_demand() * std::min(0.0, columngenerationsolver::compute_reduced_cost(*output.columns.front(), duals));
+    output.overcost = instance_.total_demand() * std::min(0.0, compute_reduced_cost(*output.columns.front(), duals));
     return output;
 }
 
