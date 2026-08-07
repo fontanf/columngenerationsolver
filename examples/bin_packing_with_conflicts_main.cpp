@@ -59,10 +59,12 @@ public:
     { }
 
     virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts);
 
     virtual inline PricingOutput solve_pricing(
-            const std::vector<Value>& duals);
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
 private:
 
@@ -102,7 +104,8 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 }
 
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&)
 {
     std::fill(packed_items_.begin(), packed_items_.end(), 0);
     for (auto p: fixed_columns) {
@@ -117,7 +120,8 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 }
 
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
-            const std::vector<Value>& duals)
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
     PricingOutput output;
 

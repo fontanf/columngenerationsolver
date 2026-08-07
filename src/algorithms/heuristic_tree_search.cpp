@@ -38,6 +38,8 @@ const HeuristicTreeSearchOutput columngenerationsolver::heuristic_tree_search(
             = output.maximum_number_of_iterations;
         lds_parameters.automatic_stop = true;
         lds_parameters.column_pool = column_pool;
+        lds_parameters.initial_cuts = parameters.initial_cuts;
+        lds_parameters.cutting_planes = parameters.cutting_planes;
 
         lds_parameters.new_solution_callback = [&algorithm_formatter](
                 const Output& callback_output)

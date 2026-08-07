@@ -19,6 +19,7 @@ const GreedyOutput columngenerationsolver::greedy(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
+    std::vector<std::shared_ptr<const Cut>> cuts = parameters.initial_cuts;
     ColumnMap fixed_columns;
 
     for (output.number_of_nodes = 0;; ++ output.number_of_nodes) {
@@ -37,6 +38,10 @@ const GreedyOutput columngenerationsolver::greedy(
         if (parameters.internal_diving == 2
                 || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
             column_generation_parameters.internal_diving = 1;
+        }
+        if (parameters.cutting_planes == 2
+                || (parameters.cutting_planes == 1 && output.number_of_nodes == 0)) {
+            column_generation_parameters.cutting_planes = 1;
         }
         if (output.number_of_nodes == 0) {
             algorithm_formatter.print_column_generation_header();
@@ -61,6 +66,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 initial_columns.begin(),
                 initial_columns.end());
         column_generation_parameters.column_pool = column_pool;
+        column_generation_parameters.initial_cuts = cuts;
         column_generation_parameters.fixed_columns = fixed_columns.columns();
 
         // Solve.
@@ -81,6 +87,7 @@ const GreedyOutput columngenerationsolver::greedy(
                 column_pool.end(),
                 cg_output.columns.begin(),
                 cg_output.columns.end());
+        cuts = cg_output.cuts;
 
         // Print header.
         if (output.number_of_nodes == 0)

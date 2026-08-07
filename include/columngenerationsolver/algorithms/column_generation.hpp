@@ -46,18 +46,37 @@ struct ColumnGenerationOutput: Output
 
     Counter number_of_no_stab_pricings = 0;
 
+    /** Number of cutting-plane iterations. */
+    Counter number_of_cutting_plane_iterations = 0;
 
-    virtual int format_width() const override { return 31; }
+    /**
+     * The full set of cuts active at the end of this call: cuts from the
+     * input cut pool that weren't removed for being inactive, plus any
+     * newly separated during this call that weren't since removed either.
+     * Self-contained — a caller can feed this directly as the cut pool for
+     * a follow-up call without also carrying along the input cut pool
+     * separately. Lives here rather than on the base 'Output' since only
+     * 'column_generation' itself deals with cuts directly; algorithms
+     * built on top of it (LDS, greedy) track their own node/iteration-local
+     * active cut sets instead of flattening them into a whole-run list.
+     */
+    std::vector<std::shared_ptr<const Cut>> cuts;
+
+
+    virtual int format_width() const override { return 37; }
 
     virtual void format(std::ostream& os) const override
     {
         Output::format(os);
         int width = format_width();
         os
+            << std::setw(width) << std::left << "Relaxation solution is feasible: " << relaxation_solution_is_feasible << std::endl
             << std::setw(width) << std::left << "Number of pricings: " << number_of_pricings << std::endl
             << std::setw(width) << std::left << "Number of first-try pricings: " << number_of_first_try_pricings << std::endl
             << std::setw(width) << std::left << "Number of mispricings: " << number_of_mispricings << std::endl
             << std::setw(width) << std::left << "Number of no-stab pricings: " << number_of_no_stab_pricings << std::endl
+            << std::setw(width) << std::left << "Number of cutting-plane iterations: " << number_of_cutting_plane_iterations << std::endl
+            << std::setw(width) << std::left << "Number of cuts: " << cuts.size() << std::endl
             ;
     }
 
@@ -65,10 +84,13 @@ struct ColumnGenerationOutput: Output
     {
         nlohmann::json json = Output::to_json();
         json.merge_patch({
+                {"RelaxationSolutionIsFeasible", relaxation_solution_is_feasible},
                 {"NumberOfPricings", number_of_pricings},
                 {"NumberOfFirstTryPricings", number_of_first_try_pricings},
                 {"NumberOfMispricings", number_of_mispricings},
                 {"NumberOfNoStabPricings", number_of_no_stab_pricings},
+                {"NumberOfCuttingPlaneIterations", number_of_cutting_plane_iterations},
+                {"NumberOfCuts", cuts.size()},
                 });
         return json;
     }
@@ -83,6 +105,9 @@ struct ColumnGenerationParameters: Parameters
 
     /** Maximum number of iterations. */
     Counter maximum_number_of_iterations = -1;
+
+    /** Maximum number of cutting-plane iterations. */
+    Counter maximum_number_of_cutting_plane_iterations = -1;
 
     /**
      * Tolerance for the reduced cost optimality check.
@@ -122,7 +147,7 @@ struct ColumnGenerationParameters: Parameters
     std::unordered_set<std::shared_ptr<const Column>>* tabu = nullptr;
 
 
-    virtual int format_width() const override { return 41; }
+    virtual int format_width() const override { return 45; }
 
     virtual void format(std::ostream& os) const override
     {
@@ -135,7 +160,9 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Self-adjusting Wentges smoothing: " << self_adjusting_wentges_smoothing << std::endl
             << std::setw(width) << std::left << "Automatic directional smoothing: " << automatic_directional_smoothing << std::endl
             << std::setw(width) << std::left << "Maximum number of iterations: " << maximum_number_of_iterations << std::endl
+            << std::setw(width) << std::left << "Maximum number of cutting-plane iterations: " << maximum_number_of_cutting_plane_iterations << std::endl
             << std::setw(width) << std::left << "Optimality tolerance: " << optimality_tolerance << std::endl
+            << std::setw(width) << std::left << "Tabu size: " << (tabu == nullptr? 0: tabu->size()) << std::endl
             ;
     }
 
@@ -149,7 +176,9 @@ struct ColumnGenerationParameters: Parameters
                 {"SelfAdjustingWentgesSmoothing", self_adjusting_wentges_smoothing},
                 {"AutomaticDirectionalSmoothing", automatic_directional_smoothing},
                 {"MaximumNumberOfIterations", maximum_number_of_iterations},
+                {"MaximumNumberOfCuttingPlaneIterations", maximum_number_of_cutting_plane_iterations},
                 {"OptimalityTolerance", optimality_tolerance},
+                {"TabuSize", (tabu == nullptr? 0: tabu->size())},
                 });
         return json;
     }

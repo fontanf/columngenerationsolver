@@ -17,6 +17,16 @@ struct LimitedDiscrepancySearchNode
     /** Relaxation solution. */
     std::shared_ptr<Solution> relaxation_solution;
 
+    /**
+     * Cuts active at this node: exactly this node's own
+     * 'ColumnGenerationOutput::cuts' (already the full final active set,
+     * self-contained), not a tree-wide pool. A cut separated on one branch
+     * isn't necessarily relevant, let alone valid, on an unrelated branch
+     * (e.g. a non-robust cut derived using this branch's fixed columns),
+     * so only a node's own lineage should ever see it.
+     */
+    std::vector<std::shared_ptr<const Cut>> cuts;
+
     bool skip_relaxation = false;
 
     /** Column branched on at this node. */
@@ -166,6 +176,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (node->skip_relaxation) {
 
             node->relaxation_solution = node->parent->relaxation_solution;
+            node->cuts = node->parent->cuts;
 
         } else {
 
@@ -179,6 +190,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             if (parameters.internal_diving == 2
                     || (parameters.internal_diving == 1 && node->depth == 0)) {
                 column_generation_parameters.internal_diving = 1;
+            }
+            if (parameters.cutting_planes == 2
+                    || (parameters.cutting_planes == 1 && node->depth == 0)) {
+                column_generation_parameters.cutting_planes = 1;
             }
             if (node->depth == 0) {
                 algorithm_formatter.print_column_generation_header();
@@ -211,6 +226,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 }
             }
             column_generation_parameters.column_pool = column_pool;
+            column_generation_parameters.initial_cuts = (node->parent == nullptr)?
+                parameters.initial_cuts:
+                node->parent->cuts;
             column_generation_parameters.fixed_columns = fixed_columns.columns();
             column_generation_parameters.tabu = &tabu;
 
@@ -232,6 +250,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     column_pool.end(),
                     cg_output.columns.begin(),
                     cg_output.columns.end());
+            node->cuts = cg_output.cuts;
 
             //std::cout << "bound " << cg_output.solution_value << std::endl;
             if (parameters.timer.needs_to_end())
