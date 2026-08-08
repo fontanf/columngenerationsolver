@@ -5,7 +5,8 @@ target_sources(ColumnGenerationSolver_columngenerationsolver PRIVATE
     algorithms/column_generation.cpp
     algorithms/greedy.cpp
     algorithms/limited_discrepancy_search.cpp
-    algorithms/heuristic_tree_search.cpp)
+    algorithms/heuristic_tree_search.cpp
+    algorithms/branch_and_price.cpp)
 target_include_directories(ColumnGenerationSolver_columngenerationsolver PUBLIC
     ${PROJECT_SOURCE_DIR}/include)
 target_include_directories(ColumnGenerationSolver_columngenerationsolver PRIVATE
