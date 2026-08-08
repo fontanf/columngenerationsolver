@@ -179,6 +179,49 @@ struct Cut
 };
 
 /**
+ * A branching decision, for branch-and-price.
+ *
+ * Concrete, non-polymorphic, like 'Column': unlike 'Cut', the framework
+ * never invokes any behavior on a 'BranchingDecision' — it only threads it
+ * through node ancestry and hands it to
+ * 'PricingSolver::initialize_pricing', so there is no framework-required
+ * virtual method to dispatch on. Family-specific data (e.g. which two
+ * customers a Ryan-Foster decision is defined over) goes in 'extra', for
+ * the same 'PricingSolver' that created the decision (via
+ * 'compute_branching_candidates') to read back when it later receives the
+ * decision through 'initialize_pricing'.
+ */
+class BranchingDecision
+{
+
+public:
+
+    /** Branching decision name. */
+    std::string name;
+
+    /** Branching-decision-family-specific data. */
+    std::shared_ptr<void> extra;
+};
+
+/**
+ * A branch-and-price branching candidate: the decisions defining each of
+ * its children (one per child), plus a static score used to rank
+ * candidates when there are more of them than
+ * 'BranchAndPriceParameters::maximum_number_of_branching_candidates' can
+ * afford to strong-branch evaluate. Higher scores are more promising.
+ * Candidates with a tied (e.g. left-at-default) score keep the relative
+ * order 'PricingSolver::compute_branching_candidates' returned them in.
+ */
+struct BranchingCandidate
+{
+    /** Decisions defining each child of this candidate. */
+    std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
+
+    /** Static score used to rank candidates before strong-branching evaluation. */
+    Value score = 0.0;
+};
+
+/**
  * Interface for the pricing problem solver.
  */
 class PricingSolver
@@ -210,7 +253,8 @@ public:
 
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const Cut>>& cuts) = 0;
+            const std::vector<std::shared_ptr<const Cut>>& cuts,
+            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions) = 0;
 
     virtual PricingOutput solve_pricing(
             const std::vector<Value>& duals,
@@ -296,6 +340,27 @@ public:
         throw std::logic_error(
                 "columngenerationsolver::PricingSolver::equal: "
                 "not implemented.");
+    }
+
+    /**
+     * Propose branching candidates from the current (fractional) relaxation
+     * solution, for branch-and-price.
+     *
+     * Called by 'branch_and_price' when a node's relaxation is not integer
+     * feasible. Each returned 'BranchingCandidate' is one candidate to
+     * strong-branch over, holding the branching decisions defining its
+     * children (not necessarily 2, so N-ary branching is supported) and a
+     * score used to rank candidates when there are more than
+     * 'BranchAndPriceParameters::maximum_number_of_branching_candidates'.
+     * 'branch_and_price' never falls back to branching on columns, so the
+     * default implementation proposing no candidates only works for
+     * problems whose root relaxation is already integer feasible.
+     */
+    virtual std::vector<BranchingCandidate> compute_branching_candidates(
+            const Solution& solution)
+    {
+        (void)solution;
+        return {};
     }
 };
 
@@ -1103,6 +1168,16 @@ struct Parameters: optimizationtools::Parameters
     /** Fixed columns. */
     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
 
+    /**
+     * Branching decisions.
+     *
+     * Unlike 'column_pool'/'initial_cuts', this is node-local, not a pool:
+     * it is expected to hold exactly the decisions on the path from the
+     * root to the current node, rebuilt per node (like 'fixed_columns'),
+     * never accumulated across the whole search.
+     */
+    std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
+
     /** Cuts to seed the active cut set with. */
     std::vector<std::shared_ptr<const Cut>> initial_cuts;
 
@@ -1131,6 +1206,7 @@ struct Parameters: optimizationtools::Parameters
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
                 {"NumberOfFixedColumns", fixed_columns.size()},
+                {"NumberOfBranchingDecisions", branching_decisions.size()},
                 {"NumberOfInitialCuts", initial_cuts.size()},
                 {"InternalDiving", internal_diving},
                 {"CuttingPlanes", cutting_planes},
@@ -1149,6 +1225,7 @@ struct Parameters: optimizationtools::Parameters
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl
+            << std::setw(width) << std::left << "Number of branching decisions: " << branching_decisions.size() << std::endl
             << std::setw(width) << std::left << "Number of initial cuts: " << initial_cuts.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             << std::setw(width) << std::left << "Cutting planes: " << cutting_planes << std::endl

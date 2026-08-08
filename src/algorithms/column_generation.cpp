@@ -345,7 +345,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // Initialize pricing solver.
         //std::cout << "Initialize pricing solver..." << std::endl;
         std::vector<std::shared_ptr<const Column>> infeasible_columns
-            = model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts);
+            = model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts, parameters.branching_decisions);
         std::vector<int8_t> feasible(model.static_columns.size(), 1);
 
         // Add dummy columns.
@@ -775,7 +775,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         std::vector<Value> row_values_tmp = row_values;
                         std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = parameters.fixed_columns;
                         for (int i = 0;; ++i) {
-                            model.pricing_solver->initialize_pricing(fixed_columns_tmp, active_cuts);
+                            model.pricing_solver->initialize_pricing(fixed_columns_tmp, active_cuts, parameters.branching_decisions);
                             auto pricing_output = model.pricing_solver->solve_pricing(duals_sep, cut_duals);
                             std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                                 = pricing_output.columns;
@@ -846,7 +846,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                             if (!has_fixed)
                                 break;
                         }
-                        model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts);
+                        model.pricing_solver->initialize_pricing(parameters.fixed_columns, active_cuts, parameters.branching_decisions);
                     }
 
                     auto end_pricing = std::chrono::high_resolution_clock::now();

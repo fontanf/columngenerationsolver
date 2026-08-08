@@ -62,7 +62,8 @@ public:
 
     virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts);
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
 
     virtual inline PricingOutput solve_pricing(
             const std::vector<Value>& duals,
@@ -119,7 +120,8 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&)
+            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&)
 {
     std::fill(fixed_items_.begin(), fixed_items_.end(), -1);
     std::fill(fixed_knapsacks_.begin(), fixed_knapsacks_.end(), -1);
