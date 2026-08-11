@@ -309,7 +309,7 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 // relaxation, not just for the rows still short after
                 // Phase 1's greedy fixing.
                 for (;;) {
-                    input.model.pricing_solver->initialize_pricing(fixed_columns, input.active_cuts);
+                    input.model.pricing_solver->initialize_pricing(fixed_columns, input.active_cuts, input.parameters.branching_decisions);
                     auto pricing_output = input.model.pricing_solver->solve_pricing(input.duals_out, input.cut_duals);
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
@@ -352,7 +352,7 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 }
                 // Restore the real pricing solver state for the pricing
                 // calls in 'column_generation()'.
-                input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts);
+                input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions);
             }
 
             // Build and check the candidate solution. Always done (rather
