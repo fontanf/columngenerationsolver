@@ -26,9 +26,9 @@ struct BranchAndPriceParameters: Parameters
      * Maximum number of column generation iterations used while
      * strong-branch evaluating a candidate's children (-1: no limit, i.e.
      * evaluate to full convergence). Keeps candidate comparison cheap; the
-     * winning candidate's children are re-solved to full convergence when
-     * they are later expanded, unless they already converged under this
-     * cap.
+     * winning candidate's children are always re-solved to full
+     * convergence when they are later expanded, regardless of how far this
+     * capped evaluation got.
      */
     Counter strong_branching_maximum_number_of_iterations = 20;
 
