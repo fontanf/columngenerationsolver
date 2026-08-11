@@ -18,7 +18,7 @@ struct BranchAndPriceParameters: Parameters
      * one exact value doesn't exhaustively partition the search space and
      * so is unsound for an algorithm claiming a proof of optimality. Column
      * branching is exclusively a heuristic technique, used by
-     * limited_discrepancy_search / heuristic_tree_search.
+     * limited_discrepancy_search.
      */
     Counter maximum_number_of_branching_candidates = -1;
 
