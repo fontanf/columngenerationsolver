@@ -18,19 +18,14 @@ struct BranchAndPriceNode
     /** Depth of the node. */
     ColIdx depth = 0;
 
-    /** Dual bound of the node. */
-    Value bound = 0.0;
-
     /**
-     * 'true' iff 'bound'/'relaxation_solution' come from a full
-     * column_generation() solve (either the true solve, or a
-     * strong-branching evaluation that happened to converge/prove
-     * infeasibility before hitting its iteration cap). 'false' means the
-     * bound is only a partial, capped estimate and must be re-solved to
-     * full convergence before this node can be trusted for pruning,
-     * integer-feasibility checking, or branching.
+     * Dual bound of the node. Set from a strong-branching evaluation when
+     * the node is created (a valid, if possibly loose, bound — column
+     * generation bounds are valid at every iteration, not just at
+     * convergence), then overwritten once this node is popped and
+     * (re-)solved to full convergence.
      */
-    bool bound_is_exact = false;
+    Value bound = 0.0;
 
     /** Relaxation solution of the node, once solved. */
     std::shared_ptr<Solution> relaxation_solution;
@@ -57,24 +52,6 @@ struct BranchAndPriceNode
      */
     std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
 };
-
-/** Whether a column generation result is final (converged or proven infeasible), not just a partial/capped snapshot. */
-bool is_exact(
-        const ColumnGenerationOutput& cg_output,
-        Counter maximum_number_of_iterations)
-{
-    // The CG loop can only end three ways: the timer expired (already
-    // handled by the caller before this is checked), the iteration cap
-    // was hit, or it reached a genuine conclusion (converged, or — via
-    // the dummy-column escalation — proved infeasible). So "the cap
-    // wasn't hit" is a complete answer on its own; unlike checking
-    // 'relaxation_solution_is_feasible'/'bound', it doesn't depend on
-    // 'bound' actually having been updated, which it might not have been
-    // if every capped iteration was satisfied from the column pool
-    // without ever calling pricing.
-    return maximum_number_of_iterations == -1
-        || cg_output.number_of_column_generation_iterations < maximum_number_of_iterations;
-}
 
 }
 
@@ -120,7 +97,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
     root->bound = (minimize)?
         -std::numeric_limits<Value>::infinity():
         +std::numeric_limits<Value>::infinity();
-    root->bound_is_exact = false;
     nodes.insert(root);
 
     while (!nodes.empty()) {
@@ -152,15 +128,21 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             }
         }
 
-        // If this node's bound is only a partial estimate (from
-        // strong-branching evaluation), (re-)solve it to full convergence.
-        // Note the partial bound was already a valid (if possibly loose)
-        // lower bound — column generation bounds are valid at every
-        // iteration, not just at convergence — so it was safe to order the
-        // queue by it; a full solve is only needed now for a tight bound,
-        // a trustworthy relaxation solution, and a reliable
-        // integer-feasibility check.
-        if (!node->bound_is_exact) {
+        // (Re-)solve this node to full convergence: a strong-branching
+        // evaluation may have already set this node's 'bound' (used only
+        // to order the queue and score candidates) from a capped, possibly
+        // non-convergent column_generation() call — column generation
+        // bounds are valid at every iteration, not just at convergence, so
+        // it was safe to order the queue by that estimate, but a full,
+        // uncapped solve (with cutting planes, if enabled) is always
+        // required before this node can be trusted for pruning,
+        // integer-feasibility checking, or branching. Always doing this
+        // (rather than reusing a strong-branching evaluation that happened
+        // to already converge under its iteration cap) also sidesteps
+        // having to decide whether cutting planes — which strong-branching
+        // evaluations don't even run, see below — would have finished
+        // separating by the time the cap hit.
+        {
             ColumnGenerationParameters column_generation_parameters
                 = parameters.column_generation_parameters;
             column_generation_parameters.timer = parameters.timer;
@@ -208,15 +190,11 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 break;
 
             if (!cg_output.relaxation_solution_is_feasible) {
-                // Infeasible (or, if 'column_generation_parameters.
-                // maximum_number_of_iterations' was left at its default of
-                // -1 as expected for an exact final solve, inconclusive
-                // cannot happen here): prune, no children.
+                // Infeasible: prune, no children.
                 continue;
             }
 
             node->bound = cg_output.bound;
-            node->bound_is_exact = true;
             node->relaxation_solution = std::shared_ptr<Solution>(new Solution(cg_output.relaxation_solution));
 
             if (node->parent == nullptr) {
@@ -226,11 +204,11 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
         }
 
         // Report the global bound. This node had the best bound among all
-        // open nodes *at the time it was popped* — but if it wasn't exact,
-        // resolving it above may have revised its bound upward (worse,
-        // for minimization), since it was only selected using a loose,
-        // clamped estimate. That revised bound is not necessarily the
-        // true minimum over everything still open, so compare against
+        // open nodes *at the time it was popped* — but resolving it above
+        // to full convergence may have revised its bound upward (worse,
+        // for minimization), since it was only selected using a loose
+        // strong-branching estimate. That revised bound is not necessarily
+        // the true minimum over everything still open, so compare against
         // whatever now sits at the front of the queue (itself a valid,
         // if possibly still loose, lower bound) and report the better of
         // the two — never just the popped node in isolation.
@@ -257,14 +235,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 algorithm_formatter.print(ss.str());
                 continue;
             }
-        }
-
-        // A node marked exact with no relaxation solution is a proven
-        // infeasibility discovered during (capped) strong-branching
-        // evaluation: prune, no children.
-        if (node->relaxation_solution == nullptr) {
-            algorithm_formatter.print(ss.str());
-            continue;
         }
 
         // If the relaxation is already integer feasible, it's a new
@@ -362,6 +332,15 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 column_generation_parameters.branching_decisions = child_branching_decisions;
                 column_generation_parameters.maximum_number_of_iterations
                     = parameters.strong_branching_maximum_number_of_iterations;
+                // Strong-branching evaluations are capped, throwaway
+                // estimates used only to score candidates; separating cuts
+                // for them isn't worth the cost, and since a node's bound
+                // and relaxation solution are always fully re-solved (with
+                // cutting planes, if enabled) once it's actually popped
+                // (see above), nothing here depends on this evaluation
+                // having any cuts beyond the ones already active at the
+                // parent.
+                column_generation_parameters.cutting_planes = 0;
 
                 auto cg_output = column_generation(
                         model,
@@ -378,7 +357,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                         column_pool.end(),
                         cg_output.columns.begin(),
                         cg_output.columns.end());
-                child->cuts = cg_output.cuts;
 
                 if (parameters.timer.needs_to_end())
                     break;
@@ -391,17 +369,15 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 // every iteration, just not yet tight). Clamp to the
                 // parent's bound: still valid (the true value is at least
                 // this tight), and avoids polluting the open-node queue
-                // with under-iterated, misleadingly loose bounds.
+                // with under-iterated, misleadingly loose bounds. This is
+                // only ever used to order the queue and score candidates —
+                // once popped, every node is always fully re-solved (see
+                // above), so there's no need to also carry over this
+                // evaluation's (possibly non-convergent) relaxation
+                // solution or cuts.
                 child->bound = (minimize)?
                     (std::max)(cg_output.bound, node->bound):
                     (std::min)(cg_output.bound, node->bound);
-                child->bound_is_exact = is_exact(
-                        cg_output,
-                        parameters.strong_branching_maximum_number_of_iterations);
-                if (cg_output.relaxation_solution_is_feasible) {
-                    child->relaxation_solution = std::shared_ptr<Solution>(
-                            new Solution(cg_output.relaxation_solution));
-                }
 
                 Value degradation = (minimize)?
                     child->bound - node->bound:
