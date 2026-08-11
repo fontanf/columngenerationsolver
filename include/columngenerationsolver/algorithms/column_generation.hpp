@@ -146,6 +146,16 @@ struct ColumnGenerationParameters: Parameters
      */
     std::unordered_set<std::shared_ptr<const Column>>* tabu = nullptr;
 
+    /**
+     * Fraction of the starting infeasibility that must remain before the
+     * rounding heuristic's greedy fixing phase stops and hands off to its
+     * completion phase (e.g. 0.2 means "stop once 80% has been resolved").
+     * If the greedy phase exhausts all relaxation columns without reaching
+     * this, the heuristic gives up for this iteration without ever calling
+     * pricing.
+     */
+    Value rounding_heuristic_infeasibility_threshold = 0.2;
+
 
     virtual int format_width() const override { return 45; }
 
@@ -163,6 +173,7 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Maximum number of cutting-plane iterations: " << maximum_number_of_cutting_plane_iterations << std::endl
             << std::setw(width) << std::left << "Optimality tolerance: " << optimality_tolerance << std::endl
             << std::setw(width) << std::left << "Tabu size: " << (tabu == nullptr? 0: tabu->size()) << std::endl
+            << std::setw(width) << std::left << "Rounding heuristic infeasibility threshold: " << rounding_heuristic_infeasibility_threshold << std::endl
             ;
     }
 
@@ -179,6 +190,7 @@ struct ColumnGenerationParameters: Parameters
                 {"MaximumNumberOfCuttingPlaneIterations", maximum_number_of_cutting_plane_iterations},
                 {"OptimalityTolerance", optimality_tolerance},
                 {"TabuSize", (tabu == nullptr? 0: tabu->size())},
+                {"RoundingHeuristicInfeasibilityThreshold", rounding_heuristic_infeasibility_threshold},
                 });
         return json;
     }

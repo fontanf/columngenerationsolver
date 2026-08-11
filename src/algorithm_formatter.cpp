@@ -41,16 +41,18 @@ void AlgorithmFormatter::print_column_generation_header()
         << std::endl
         << std::right
         << std::setw(12) << "Time"
-        << std::setw(12) << "Iteration"
-        << std::setw(12) << "# columns"
-        << std::setw(24) << "Value"
-        << std::setw(24) << "Bound"
+        << std::setw(8) << "Iter"
+        << std::setw(8) << "# col"
+        << std::setw(12) << "Value"
+        << std::setw(12) << "Relaxation"
+        << std::setw(12) << "Bound"
         << std::endl
         << std::setw(12) << "----"
-        << std::setw(12) << "---------"
-        << std::setw(12) << "---------"
-        << std::setw(24) << "-----"
-        << std::setw(24) << "-----"
+        << std::setw(8) << "----"
+        << std::setw(8) << "-----"
+        << std::setw(12) << "-----"
+        << std::setw(12) << "----------"
+        << std::setw(12) << "-----"
         << std::endl;
 }
 
@@ -66,10 +68,11 @@ void AlgorithmFormatter::print_column_generation_iteration(
     std::streamsize precision = std::cout.precision();
     *os_
         << std::setw(12) << std::fixed << std::setprecision(3) << output_.time << std::defaultfloat << std::setprecision(precision)
-        << std::setw(12) << iteration
-        << std::setw(12) << number_of_columns
-        << std::setw(24) << value
-        << std::setw(24) << bound
+        << std::setw(8) << iteration
+        << std::setw(8) << number_of_columns
+        << std::setw(12) << output_.solution_value()
+        << std::setw(12) << value
+        << std::setw(12) << bound
         << std::endl;
 }
 
