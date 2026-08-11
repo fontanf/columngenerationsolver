@@ -53,8 +53,7 @@ struct BranchAndPriceNode
      * search space (there's no way to express an inequality bound on a
      * shared, pooled Column), so it's unsound for anything claiming a
      * proof of optimality. Column branching is exclusively a heuristic
-     * technique, used by limited_discrepancy_search /
-     * heuristic_tree_search.
+     * technique, used by limited_discrepancy_search.
      */
     std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
 };

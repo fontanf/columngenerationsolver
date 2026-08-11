@@ -1,7 +1,6 @@
 #include "columngenerationsolver/algorithms/column_generation.hpp"
 #include "columngenerationsolver/algorithms/greedy.hpp"
 #include "columngenerationsolver/algorithms/limited_discrepancy_search.hpp"
-#include "columngenerationsolver/algorithms/heuristic_tree_search.hpp"
 #include "columngenerationsolver/algorithms/branch_and_price.hpp"
 
 #include <boost/program_options.hpp>
@@ -188,34 +187,6 @@ inline const Output run_limited_discrepancy_search(
     return output;
 }
 
-inline const Output run_heuristic_tree_search(
-        const Model& model,
-        const WriteSolutionFunction& write_solution,
-        const boost::program_options::variables_map& vm,
-        const std::vector<std::shared_ptr<const Column>>& column_pool,
-        const std::vector<std::shared_ptr<const Column>>& initial_columns)
-{
-    HeuristicTreeSearchParameters parameters;
-    read_args(parameters, write_solution, vm, column_pool, initial_columns);
-    if (vm.count("linear-programming-solver")) {
-        parameters.column_generation_parameters.solver_name
-            = vm["linear-programming-solver"].as<SolverName>();
-    }
-#if XPRESS_FOUND
-    if (parameters.column_generation_parameters.solver_name
-            == SolverName::Xpress)
-        XPRSinit(NULL);
-#endif
-    const Output output = heuristic_tree_search(model, parameters);
-#if XPRESS_FOUND
-    if (parameters.column_generation_parameters.solver_name
-            == SolverName::Xpress)
-        XPRSfree();
-#endif
-    write_output(write_solution, vm, output);
-    return output;
-}
-
 inline const Output run_branch_and_price(
         const Model& model,
         const WriteSolutionFunction& write_solution,
@@ -262,8 +233,6 @@ inline Output run(
         return run_greedy(model, write_solution, vm, column_pool, initial_columns);
     } else if (algorithm == "limited-discrepancy-search") {
         return run_limited_discrepancy_search(model, write_solution, vm, column_pool, initial_columns);
-    } else if (algorithm == "heuristic-tree-search") {
-        return run_heuristic_tree_search(model, write_solution, vm, column_pool, initial_columns);
     } else if (algorithm == "branch-and-price") {
         return run_branch_and_price(model, write_solution, vm, column_pool, initial_columns);
     } else {
