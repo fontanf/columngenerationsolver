@@ -195,6 +195,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     || (parameters.cutting_planes == 1 && node->depth == 0)) {
                 column_generation_parameters.cutting_planes = 1;
             }
+            if (parameters.rounding_heuristic == 2
+                    || (parameters.rounding_heuristic == 1 && node->depth == 0)) {
+                column_generation_parameters.rounding_heuristic = 1;
+            }
+            column_generation_parameters.new_solution_callback = [&algorithm_formatter](
+                    const Output& cg_output)
+            {
+                algorithm_formatter.update_solution(cg_output.solution);
+            };
             if (node->depth == 0) {
                 algorithm_formatter.print_column_generation_header();
                 column_generation_parameters.iteration_callback = [&algorithm_formatter](
@@ -240,6 +249,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             // Update output statistics.
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
+            output.time_rounding_heuristic += cg_output.time_rounding_heuristic;
             output.dummy_column_objective_coefficient = cg_output.dummy_column_objective_coefficient;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
             output.columns.insert(

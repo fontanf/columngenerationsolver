@@ -925,6 +925,15 @@ struct Output: optimizationtools::Output
     /** Time spent solving the pricing subproblems. */
     double time_pricing = 0.0;
 
+    /**
+     * Time spent in the rounding heuristic (Phase 1 greedy fixing plus,
+     * when entered, Phase 2's fix/price/fix completion loop). Included in,
+     * not additional to, 'time'; kept separate from 'time_pricing' since
+     * it's a distinct, optional side computation, not part of the regular
+     * per-iteration pricing.
+     */
+    double time_rounding_heuristic = 0.0;
+
     /** Objective coefficient of the dummy columns. */
     Value dummy_column_objective_coefficient;
 
@@ -990,6 +999,7 @@ struct Output: optimizationtools::Output
             {"Time", time},
             {"PricingTime", time_pricing},
             {"LpTime", time_lpsolve},
+            {"RoundingHeuristicTime", time_rounding_heuristic},
             {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
             {"DummyColumnObjectiveCoefficient", dummy_column_objective_coefficient},
         };
@@ -1008,6 +1018,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Time: " << time << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
             << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
             << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
@@ -1122,6 +1133,16 @@ struct Parameters: optimizationtools::Parameters
      */
     int cutting_planes = 0;
 
+    /**
+     * Enable the inline rounding heuristic (run at every column generation
+     * iteration; see 'ColumnGenerationParameters::
+     * rounding_heuristic_infeasibility_threshold' for its stop condition):
+     * - 0: not enabled
+     * - 1: enabled at the root node
+     * - 2: enabled at all nodes
+     */
+    int rounding_heuristic = 0;
+
 
     virtual nlohmann::json to_json() const override
     {
@@ -1134,6 +1155,7 @@ struct Parameters: optimizationtools::Parameters
                 {"NumberOfInitialCuts", initial_cuts.size()},
                 {"InternalDiving", internal_diving},
                 {"CuttingPlanes", cutting_planes},
+                {"RoundingHeuristic", rounding_heuristic},
                 });
         return json;
     }
@@ -1152,6 +1174,7 @@ struct Parameters: optimizationtools::Parameters
             << std::setw(width) << std::left << "Number of initial cuts: " << initial_cuts.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             << std::setw(width) << std::left << "Cutting planes: " << cutting_planes << std::endl
+            << std::setw(width) << std::left << "Rounding heuristic: " << rounding_heuristic << std::endl
             ;
     }
 };

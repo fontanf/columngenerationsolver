@@ -6,6 +6,379 @@
 
 using namespace columngenerationsolver;
 
+namespace
+{
+
+/** Violation of bound ['lower_bound', 'upper_bound'] at 'value'. */
+Value rounding_heuristic_violation(
+        Value lower_bound,
+        Value upper_bound,
+        Value value)
+{
+    return (std::max)(0.0, lower_bound - value) + (std::max)(0.0, value - upper_bound);
+}
+
+/**
+ * A single row's (or the objective's) contribution to the rounding
+ * heuristic's total infeasibility at 'value': the ratio of its current
+ * violation to its violation at the start of the call ('violation_start'),
+ * or 0 if it was already satisfied then (0 either because it genuinely
+ * was, or because there is no incumbent yet to violate) — the greedy
+ * fixing the rounding heuristic does never lets a row/the objective become
+ * violated once it wasn't at the start.
+ */
+Value rounding_heuristic_infeasibility_contribution(
+        Value lower_bound,
+        Value upper_bound,
+        Value value,
+        Value violation_start)
+{
+    if (violation_start <= 0.0)
+        return 0.0;
+    return rounding_heuristic_violation(lower_bound, upper_bound, value) / violation_start;
+}
+
+using ColumnPool = std::unordered_set<
+    std::shared_ptr<const Column>,
+    const ColumnHasher&,
+    const ColumnHasher&>;
+
+/**
+ * Input/state for the inline rounding heuristic (see
+ * 'ColumnGenerationParameters::rounding_heuristic'): the pieces of
+ * 'column_generation()'s state it needs to read and/or mutate, bundled
+ * here since there are too many for a plain parameter list to stay
+ * readable — plain data only, no behavior (see the free functions below).
+ *
+ * Built once (references stay valid: the referenced containers get
+ * mutated in place across iterations, never reallocated to a new object),
+ * then 'run_rounding_heuristic()' is called every iteration. Never
+ * touches the master LP, 'active_cuts', or the real
+ * 'parameters.fixed_columns' — it's a side computation, working on its
+ * own local copies of 'row_values'/'c0' — except for 'column_pool'/
+ * 'column_highest_cost'/'output.columns', which it updates the same way
+ * regular pricing discoveries do, so newly found columns are available
+ * for reuse by the real pricing loop too.
+ */
+struct RoundingHeuristicInput
+{
+    // Real column generation state, read-only.
+    const Model& model;
+    const ColumnGenerationParameters& parameters;
+    const std::vector<Value>& row_values;
+    Value c0;
+    LinearProgrammingSolver* solver;
+    const std::vector<std::shared_ptr<const Column>>& solver_columns;
+    const std::vector<std::shared_ptr<const Cut>>& active_cuts;
+    const std::vector<Value>& duals_out;
+    const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals;
+    RowIdx number_of_rows;
+    const std::vector<RowIdx>& new_row_indices;
+    const std::vector<Value>& new_row_lower_bounds;
+    const std::vector<Value>& new_row_upper_bounds;
+
+    // Real column generation state this heuristic also updates.
+    ColumnGenerationOutput& output;
+    AlgorithmFormatter& algorithm_formatter;
+    ColumnPool& column_pool;
+    Value& column_highest_cost;
+
+    // Set fresh at the start of every 'run_rounding_heuristic()' call,
+    // from 'output.solution' as it stands then; read by
+    // 'rounding_heuristic_max_value'/'rounding_heuristic_fix_column'.
+    bool has_incumbent = false;
+    Value objective_lower_bound = 0.0;
+    Value objective_upper_bound = 0.0;
+    std::vector<Value> row_violation_start;
+    Value objective_violation_start = 0.0;
+};
+
+/**
+ * Highest value 'column' can be fixed to (rounded down for integer
+ * columns) without increasing any row's or the objective's infeasibility,
+ * given the diving state so far.
+ */
+Value rounding_heuristic_max_value(
+        const RoundingHeuristicInput& input,
+        const std::shared_ptr<const Column>& column,
+        const std::vector<Value>& row_values_tmp,
+        Value c0_tmp)
+{
+    Value value = column->upper_bound;
+    for (const LinearTerm& element: column->elements) {
+        if (element.coefficient > 0) {
+            Value v = (input.model.rows[element.row].upper_bound - row_values_tmp[element.row])
+                / element.coefficient;
+            value = (std::min)(value, v);
+        } else if (element.coefficient < 0) {
+            Value v = (row_values_tmp[element.row] - input.model.rows[element.row].lower_bound)
+                / (-element.coefficient);
+            value = (std::min)(value, v);
+        }
+    }
+    if (input.has_incumbent) {
+        if (column->objective_coefficient > 0
+                && input.objective_upper_bound != std::numeric_limits<Value>::infinity()) {
+            Value v = (input.objective_upper_bound - c0_tmp) / column->objective_coefficient;
+            value = (std::min)(value, v);
+        } else if (column->objective_coefficient < 0
+                && input.objective_lower_bound != -std::numeric_limits<Value>::infinity()) {
+            Value v = (input.objective_lower_bound - c0_tmp) / column->objective_coefficient;
+            value = (std::min)(value, v);
+        }
+    }
+    if (column->type == VariableType::Integer)
+        value = std::floor(value);
+    return (std::max)(0.0, value);
+}
+
+/**
+ * Fix 'column' at 'value', updating 'row_values_tmp'/'c0_tmp' and the
+ * running 'infeasibility' incrementally — only the rows 'column' touches,
+ * plus the objective, rather than recomputing the sum over every row.
+ */
+void rounding_heuristic_fix_column(
+        const RoundingHeuristicInput& input,
+        const std::shared_ptr<const Column>& column,
+        Value value,
+        std::vector<Value>& row_values_tmp,
+        Value& c0_tmp,
+        Value& infeasibility)
+{
+    for (const LinearTerm& element: column->elements) {
+        infeasibility -= rounding_heuristic_infeasibility_contribution(
+                input.model.rows[element.row].lower_bound,
+                input.model.rows[element.row].upper_bound,
+                row_values_tmp[element.row],
+                input.row_violation_start[element.row]);
+        row_values_tmp[element.row] += value * element.coefficient;
+        infeasibility += rounding_heuristic_infeasibility_contribution(
+                input.model.rows[element.row].lower_bound,
+                input.model.rows[element.row].upper_bound,
+                row_values_tmp[element.row],
+                input.row_violation_start[element.row]);
+    }
+    infeasibility -= rounding_heuristic_infeasibility_contribution(
+            input.objective_lower_bound,
+            input.objective_upper_bound,
+            c0_tmp,
+            input.objective_violation_start);
+    c0_tmp += value * column->objective_coefficient;
+    infeasibility += rounding_heuristic_infeasibility_contribution(
+            input.objective_lower_bound,
+            input.objective_upper_bound,
+            c0_tmp,
+            input.objective_violation_start);
+}
+
+/**
+ * Make a newly pricing-discovered column available for reuse by the real
+ * pricing loop too, exactly like the "Store these new columns" step in
+ * 'column_generation()' does for regular pricing discoveries.
+ */
+void rounding_heuristic_add_to_column_pool(
+        RoundingHeuristicInput& input,
+        const std::shared_ptr<const Column>& column)
+{
+    if (input.column_pool.find(column) != input.column_pool.end())
+        return;
+    input.column_pool.insert(column);
+    Value value_max = std::numeric_limits<Value>::infinity();
+    for (const LinearTerm& element: column->elements) {
+        RowIdx new_row_id = input.new_row_indices[element.row];
+        Value row_lower_bound = (new_row_id >= 0)?
+            input.new_row_lower_bounds[new_row_id]:
+            input.model.rows[element.row].lower_bound;
+        Value row_upper_bound = (new_row_id >= 0)?
+            input.new_row_upper_bounds[new_row_id]:
+            input.model.rows[element.row].upper_bound;
+        if (element.coefficient > 0) {
+            Value v = row_upper_bound / element.coefficient;
+            value_max = (std::min)(value_max, v);
+        } else {
+            Value v = row_lower_bound / element.coefficient;
+            value_max = (std::min)(value_max, v);
+        }
+    }
+    input.column_highest_cost = (std::max)(
+            input.column_highest_cost,
+            std::abs(column->objective_coefficient * value_max));
+    input.output.columns.push_back(column);
+}
+
+void run_rounding_heuristic(RoundingHeuristicInput& input)
+{
+    auto start = std::chrono::high_resolution_clock::now();
+
+    bool minimize = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+    input.has_incumbent = input.output.solution.feasible();
+    Value incumbent = (input.has_incumbent)? input.output.solution.objective_value(): 0.0;
+    input.objective_lower_bound = (minimize)?
+        -std::numeric_limits<Value>::infinity():
+        incumbent;
+    input.objective_upper_bound = (minimize)?
+        incumbent:
+        std::numeric_limits<Value>::infinity();
+
+    // Each row's (and, once there's an incumbent, the objective's)
+    // violation at the start of this call — the normalizing denominator
+    // 'rounding_heuristic_infeasibility_contribution' uses, and the fixed
+    // reference point that makes "0 if it was already satisfied then"
+    // meaningful. Computed once per call, not per column fixed; 0 when
+    // there's no incumbent, which then makes every
+    // 'rounding_heuristic_infeasibility_contribution' call for the
+    // objective return 0 regardless of 'value', so call sites don't need
+    // their own 'has_incumbent' check.
+    input.row_violation_start.assign(input.number_of_rows, 0.0);
+    for (RowIdx row_id = 0; row_id < input.number_of_rows; ++row_id) {
+        input.row_violation_start[row_id] = rounding_heuristic_violation(
+                input.model.rows[row_id].lower_bound,
+                input.model.rows[row_id].upper_bound,
+                input.row_values[row_id]);
+    }
+    input.objective_violation_start = (input.has_incumbent)?
+        rounding_heuristic_violation(input.objective_lower_bound, input.objective_upper_bound, input.c0):
+        0.0;
+
+    Value initial_infeasibility = 0.0;
+    for (RowIdx row_id = 0; row_id < input.number_of_rows; ++row_id) {
+        initial_infeasibility += rounding_heuristic_infeasibility_contribution(
+                input.model.rows[row_id].lower_bound,
+                input.model.rows[row_id].upper_bound,
+                input.row_values[row_id],
+                input.row_violation_start[row_id]);
+    }
+    initial_infeasibility += rounding_heuristic_infeasibility_contribution(
+            input.objective_lower_bound,
+            input.objective_upper_bound,
+            input.c0,
+            input.objective_violation_start);
+
+    if (initial_infeasibility > 0.0) {
+        std::vector<Value> rh_row_values = input.row_values;
+        Value rh_c0 = input.c0;
+        std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns;
+
+        // Phase 1: greedily fix the current relaxation's own columns, by
+        // decreasing value. No relaxation re-solve, no pricing call.
+        std::vector<std::pair<std::shared_ptr<const Column>, Value>> relaxation_columns;
+        for (ColIdx column_id = 0;
+                column_id < (ColIdx)input.solver_columns.size();
+                ++column_id) {
+            if (input.solver_columns[column_id] == nullptr)
+                continue;
+            Value v = input.solver->primal(column_id);
+            if (std::abs(v) < FFOT_TOL)
+                continue;
+            relaxation_columns.push_back({input.solver_columns[column_id], v});
+        }
+        std::sort(
+                relaxation_columns.begin(),
+                relaxation_columns.end(),
+                [](
+                    const std::pair<std::shared_ptr<const Column>, Value>& p1,
+                    const std::pair<std::shared_ptr<const Column>, Value>& p2)
+                {
+                    return p1.second > p2.second;
+                });
+
+        Value infeasibility = initial_infeasibility;
+        bool threshold_reached = false;
+        for (const auto& p: relaxation_columns) {
+            Value value = rounding_heuristic_max_value(input, p.first, rh_row_values, rh_c0);
+            if (value <= 0.0)
+                continue;
+            rounding_heuristic_fix_column(input, p.first, value, rh_row_values, rh_c0, infeasibility);
+            fixed_columns.push_back({p.first, value});
+
+            if (infeasibility <= input.parameters.rounding_heuristic_infeasibility_threshold * initial_infeasibility) {
+                threshold_reached = true;
+                break;
+            }
+        }
+
+        // Phase 2: complete the solution with a fix/price/fix loop, no
+        // relaxation re-solve (mirrors the 'internal_diving' completion
+        // loop in 'column_generation()'), only entered once Phase 1
+        // resolved enough infeasibility.
+        if (threshold_reached) {
+            if (infeasibility > 0.0) {
+                // Use the real current-iteration duals: they carry the
+                // master LP's actual price signal, so pricing keeps
+                // proposing columns that are genuinely attractive for the
+                // relaxation, not just for the rows still short after
+                // Phase 1's greedy fixing.
+                for (;;) {
+                    input.model.pricing_solver->initialize_pricing(fixed_columns, input.active_cuts);
+                    auto pricing_output = input.model.pricing_solver->solve_pricing(input.duals_out, input.cut_duals);
+                    std::vector<std::shared_ptr<const Column>> new_columns;
+                    for (const auto& column: pricing_output.columns) {
+                        if (column->elements.empty())
+                            continue;
+                        new_columns.push_back(column);
+                        rounding_heuristic_add_to_column_pool(input, column);
+                    }
+                    if (new_columns.empty())
+                        break;
+
+                    // Sort new columns by reduced cost, using the same
+                    // real duals.
+                    std::sort(
+                            new_columns.begin(),
+                            new_columns.end(),
+                            [&input, minimize](
+                                const std::shared_ptr<const Column>& column_1,
+                                const std::shared_ptr<const Column>& column_2)
+                            {
+                                Value rc1 = input.model.compute_reduced_cost(*column_1, input.duals_out, input.cut_duals);
+                                Value rc2 = input.model.compute_reduced_cost(*column_2, input.duals_out, input.cut_duals);
+                                return (minimize)? (rc1 < rc2): (rc1 > rc2);
+                            });
+
+                    bool has_fixed = false;
+                    for (const auto& column: new_columns) {
+                        Value value = rounding_heuristic_max_value(input, column, rh_row_values, rh_c0);
+                        if (value <= 0.0)
+                            continue;
+                        rounding_heuristic_fix_column(input, column, value, rh_row_values, rh_c0, infeasibility);
+                        fixed_columns.push_back({column, value});
+                        has_fixed = true;
+
+                        if (infeasibility <= 0.0)
+                            break;
+                    }
+                    if (!has_fixed || infeasibility <= 0.0)
+                        break;
+                }
+                // Restore the real pricing solver state for the pricing
+                // calls in 'column_generation()'.
+                input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts);
+            }
+
+            // Build and check the candidate solution. Always done (rather
+            // than gated on 'infeasibility <= 0.0') so 'Solution::
+            // feasible()' — not this heuristic's own approximate
+            // ratio-sum metric — is the sole authority on whether it's
+            // reported.
+            SolutionBuilder solution_builder;
+            solution_builder.set_model(input.model);
+            for (const auto& p: input.parameters.fixed_columns)
+                solution_builder.add_column(p.first, p.second);
+            for (const auto& p: fixed_columns)
+                solution_builder.add_column(p.first, p.second);
+            Solution solution = solution_builder.build();
+            if (solution.feasible())
+                input.algorithm_formatter.update_solution(solution);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto time_span = std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+    input.output.time_rounding_heuristic += time_span.count();
+}
+
+}
+
 const ColumnGenerationOutput columngenerationsolver::column_generation(
         const Model& model,
         const ColumnGenerationParameters& parameters)
@@ -561,6 +934,26 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         for (const std::shared_ptr<const Cut>& cut: active_cuts)
             cut_duals.push_back({cut, 0.0});
         double alpha = parameters.static_wentges_smoothing_parameter;
+
+        RoundingHeuristicInput rounding_heuristic_input{
+                model,
+                parameters,
+                row_values,
+                c0,
+                solver.get(),
+                solver_columns,
+                active_cuts,
+                duals_out,
+                cut_duals,
+                number_of_rows,
+                new_row_indices,
+                new_row_lower_bounds,
+                new_row_upper_bounds,
+                output,
+                algorithm_formatter,
+                column_pool,
+                column_highest_cost};
+
         for (Counter number_of_column_generation_iterations = 1;
                 ;
                 ++number_of_column_generation_iterations) {
@@ -609,6 +1002,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
                 cut_duals[cut_pos].second = solver->dual(new_number_of_rows + cut_pos);
             }
+
+            if (parameters.rounding_heuristic)
+                run_rounding_heuristic(rounding_heuristic_input);
 
             std::vector<std::shared_ptr<const Column>> new_columns;
             std::vector<Value> pricing_lagrangian_column_values;

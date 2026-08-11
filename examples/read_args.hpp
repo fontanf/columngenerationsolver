@@ -31,6 +31,7 @@ inline boost::program_options::options_description setup_args()
 
         ("linear-programming-solver", boost::program_options::value<SolverName>(), "set linear programming solver")
         ("internal-diving", boost::program_options::value<int>(), "set internal diving")
+        ("rounding-heuristic", boost::program_options::value<int>(), "set rounding heuristic")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
         ("dummy-column-objective-coefficient", boost::program_options::value<Value>(), "Set dummy coefficient value in the column generation master problem")
@@ -77,6 +78,8 @@ inline void read_args(
     parameters.column_pool = column_pool;
     if (vm.count("internal-diving"))
         parameters.internal_diving = vm["internal-diving"].as<int>();
+    if (vm.count("rounding-heuristic"))
+        parameters.rounding_heuristic = vm["rounding-heuristic"].as<int>();
     if (vm.count("dummy-column-objective-coefficient"))
         parameters.dummy_column_objective_coefficient = vm["dummy-column-objective-coefficient"].as<Value>();
 }
