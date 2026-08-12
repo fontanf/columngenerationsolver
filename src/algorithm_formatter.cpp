@@ -76,7 +76,7 @@ void AlgorithmFormatter::print_column_generation_iteration(
         << std::endl;
 }
 
-void AlgorithmFormatter::print_header()
+void AlgorithmFormatter::print_greedy_header()
 {
     if (parameters_.verbosity_level == 0)
         return;
@@ -87,23 +87,26 @@ void AlgorithmFormatter::print_header()
         << std::endl
         << std::right
         << std::setw(12) << "Time"
+        << std::setw(8) << "Node"
         << std::setw(12) << "Value"
+        << std::setw(12) << "Relaxation"
         << std::setw(12) << "Bound"
         << std::setw(12) << "Gap"
-        << std::setw(12) << "Gap (%)"
-        << std::setw(32) << "Comment"
+        << std::setw(6) << "(%)"
         << std::endl
         << std::setw(12) << "----"
+        << std::setw(8) << "----"
         << std::setw(12) << "-----"
+        << std::setw(12) << "----------"
         << std::setw(12) << "-----"
         << std::setw(12) << "---"
-        << std::setw(12) << "-------"
-        << std::setw(32) << "-------"
+        << std::setw(6) << "---"
         << std::endl;
 }
 
-void AlgorithmFormatter::print(
-        const std::string& s)
+void AlgorithmFormatter::print_greedy_iteration(
+        Counter node,
+        Value relaxation)
 {
     output_.time = parameters_.timer.elapsed_time();
     if (parameters_.verbosity_level == 0)
@@ -111,11 +114,119 @@ void AlgorithmFormatter::print(
     std::streamsize precision = std::cout.precision();
     *os_
         << std::setw(12) << std::fixed << std::setprecision(3) << output_.time << std::defaultfloat << std::setprecision(precision)
+        << std::setw(8) << node
         << std::setw(12) << output_.solution_value()
+        << std::setw(12) << relaxation
         << std::setw(12) << output_.bound
         << std::setw(12) << output_.absolute_optimality_gap()
-        << std::setw(12) << std::fixed << std::setprecision(2) << output_.relative_optimality_gap() * 100 << std::defaultfloat << std::setprecision(precision)
-        << std::setw(32) << s << std::endl;
+        << std::setw(6) << std::fixed << std::setprecision(2) << output_.relative_optimality_gap() * 100 << std::defaultfloat << std::setprecision(precision)
+        << std::endl;
+}
+
+void AlgorithmFormatter::print_limited_discrepancy_search_header()
+{
+    if (parameters_.verbosity_level == 0)
+        return;
+    *os_
+        << std::endl
+        << "Tree search" << std::endl
+        << "-----------" << std::endl
+        << std::endl
+        << std::right
+        << std::setw(12) << "Time"
+        << std::setw(8) << "Node"
+        << std::setw(8) << "Depth"
+        << std::setw(8) << "Disc"
+        << std::setw(12) << "Value"
+        << std::setw(12) << "Relaxation"
+        << std::setw(12) << "Bound"
+        << std::setw(12) << "Gap"
+        << std::setw(6) << "(%)"
+        << std::endl
+        << std::setw(12) << "----"
+        << std::setw(8) << "----"
+        << std::setw(8) << "-----"
+        << std::setw(8) << "----"
+        << std::setw(12) << "-----"
+        << std::setw(12) << "----------"
+        << std::setw(12) << "-----"
+        << std::setw(12) << "---"
+        << std::setw(6) << "---"
+        << std::endl;
+}
+
+void AlgorithmFormatter::print_limited_discrepancy_search_iteration(
+        Counter node,
+        Counter depth,
+        Counter discrepancy,
+        Value relaxation)
+{
+    output_.time = parameters_.timer.elapsed_time();
+    if (parameters_.verbosity_level == 0)
+        return;
+    std::streamsize precision = std::cout.precision();
+    *os_
+        << std::setw(12) << std::fixed << std::setprecision(3) << output_.time << std::defaultfloat << std::setprecision(precision)
+        << std::setw(8) << node
+        << std::setw(8) << depth
+        << std::setw(8) << discrepancy
+        << std::setw(12) << output_.solution_value()
+        << std::setw(12) << relaxation
+        << std::setw(12) << output_.bound
+        << std::setw(12) << output_.absolute_optimality_gap()
+        << std::setw(6) << std::fixed << std::setprecision(2) << output_.relative_optimality_gap() * 100 << std::defaultfloat << std::setprecision(precision)
+        << std::endl;
+}
+
+void AlgorithmFormatter::print_branch_and_price_header()
+{
+    if (parameters_.verbosity_level == 0)
+        return;
+    *os_
+        << std::endl
+        << "Tree search" << std::endl
+        << "-----------" << std::endl
+        << std::endl
+        << std::right
+        << std::setw(12) << "Time"
+        << std::setw(8) << "Node"
+        << std::setw(8) << "Depth"
+        << std::setw(12) << "Value"
+        << std::setw(12) << "Relaxation"
+        << std::setw(12) << "Bound"
+        << std::setw(12) << "Gap"
+        << std::setw(6) << "(%)"
+        << std::endl
+        << std::setw(12) << "----"
+        << std::setw(8) << "----"
+        << std::setw(8) << "-----"
+        << std::setw(12) << "-----"
+        << std::setw(12) << "----------"
+        << std::setw(12) << "-----"
+        << std::setw(12) << "---"
+        << std::setw(6) << "---"
+        << std::endl;
+}
+
+void AlgorithmFormatter::print_branch_and_price_iteration(
+        Counter node,
+        Counter depth,
+        Value relaxation)
+{
+    output_.time = parameters_.timer.elapsed_time();
+    if (parameters_.verbosity_level == 0)
+        return;
+    std::streamsize precision = std::cout.precision();
+    *os_
+        << std::setw(12) << std::fixed << std::setprecision(3) << output_.time << std::defaultfloat << std::setprecision(precision)
+        << std::setw(8) << node
+        << std::setw(8) << depth
+        << std::setw(12) << output_.solution_value()
+        << std::setw(12) << relaxation
+        << std::setw(12) << output_.bound
+        << std::setw(12) << output_.absolute_optimality_gap()
+        << std::setw(6) << std::fixed << std::setprecision(2) << output_.relative_optimality_gap() * 100 << std::defaultfloat << std::setprecision(precision)
+        << std::endl;
 }
 
 void AlgorithmFormatter::update_solution(

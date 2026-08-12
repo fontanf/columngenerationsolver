@@ -34,12 +34,32 @@ public:
             double value,
             double bound);
 
-    /** Print the header. */
-    void print_header();
+    /** Print the header of the 'greedy' algorithm. */
+    void print_greedy_header();
 
-    /** Print current state. */
-    void print(
-            const std::string& s);
+    /** Print current iteration of the 'greedy' algorithm. */
+    void print_greedy_iteration(
+            Counter node,
+            Value relaxation);
+
+    /** Print the header of the 'limited_discrepancy_search' algorithm. */
+    void print_limited_discrepancy_search_header();
+
+    /** Print current iteration of the 'limited_discrepancy_search' algorithm. */
+    void print_limited_discrepancy_search_iteration(
+            Counter node,
+            Counter depth,
+            Counter discrepancy,
+            Value relaxation);
+
+    /** Print the header of the 'branch_and_price' algorithm. */
+    void print_branch_and_price_header();
+
+    /** Print current iteration of the 'branch_and_price' algorithm. */
+    void print_branch_and_price_iteration(
+            Counter node,
+            Counter depth,
+            Value relaxation);
 
     /** Update the solution. */
     void update_solution(

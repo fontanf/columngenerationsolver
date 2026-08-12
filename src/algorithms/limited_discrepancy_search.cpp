@@ -156,11 +156,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.maximum_discrepancy,
                 node->discrepancy);
 
-        std::stringstream ss;
-        ss << "node " << output.number_of_nodes
-            << " depth " << node->depth
-            << " disc " << node->discrepancy;
-
         if (node->parent != nullptr) {
             //std::cout
             //    << "t " << parameters.timer.elapsed_time()
@@ -267,7 +262,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 break;
 
             if (node->depth == 0) {
-                algorithm_formatter.print_header();
+                algorithm_formatter.print_limited_discrepancy_search_header();
                 output.relaxation_solution = cg_output.relaxation_solution;
                 algorithm_formatter.update_bound(cg_output.bound);
             }
@@ -297,7 +292,11 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             // If the relaxation is (integer) feasible, save the solution and stop.
             if (cg_output.relaxation_solution.feasible()) {
                 algorithm_formatter.update_solution(cg_output.relaxation_solution);
-                algorithm_formatter.print(ss.str());
+                algorithm_formatter.print_limited_discrepancy_search_iteration(
+                        output.number_of_nodes,
+                        node->depth,
+                        node->discrepancy,
+                        cg_output.relaxation_solution.objective_value());
                 continue;
             }
 
@@ -337,7 +336,11 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
         }
 
-        algorithm_formatter.print(ss.str());
+        algorithm_formatter.print_limited_discrepancy_search_iteration(
+                output.number_of_nodes,
+                node->depth,
+                node->discrepancy,
+                node->relaxation_solution->objective_value());
 
         //std::cout << "fc";
         //for (auto p: fixed_columns.columns())
