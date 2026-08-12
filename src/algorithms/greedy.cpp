@@ -101,7 +101,7 @@ const GreedyOutput columngenerationsolver::greedy(
 
         // Print header.
         if (output.number_of_nodes == 0)
-            algorithm_formatter.print_header();
+            algorithm_formatter.print_greedy_header();
 
         // Check time.
         if (parameters.timer.needs_to_end())
@@ -120,7 +120,9 @@ const GreedyOutput columngenerationsolver::greedy(
         // If the relaxation is (integer) feasible, save the solution and stop.
         if (cg_output.relaxation_solution.feasible()) {
             algorithm_formatter.update_solution(cg_output.relaxation_solution);
-            algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
+            algorithm_formatter.print_greedy_iteration(
+                    output.number_of_nodes,
+                    cg_output.relaxation_solution.objective_value());
             break;
         }
 
@@ -138,7 +140,9 @@ const GreedyOutput columngenerationsolver::greedy(
         Solution rounded_solution = rounded_solution_builder.build();
         if (rounded_solution.feasible())
             algorithm_formatter.update_solution(rounded_solution);
-        algorithm_formatter.print("node " + std::to_string(output.number_of_nodes));
+        algorithm_formatter.print_greedy_iteration(
+                output.number_of_nodes,
+                cg_output.relaxation_solution.objective_value());
 
         // Fix columns with value >= 1 to their floor value.
         bool fixed_found = false;

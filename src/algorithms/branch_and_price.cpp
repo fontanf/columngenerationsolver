@@ -198,7 +198,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             node->relaxation_solution = std::shared_ptr<Solution>(new Solution(cg_output.relaxation_solution));
 
             if (node->parent == nullptr) {
-                algorithm_formatter.print_header();
+                algorithm_formatter.print_branch_and_price_header();
                 output.relaxation_solution = *node->relaxation_solution;
             }
         }
@@ -220,19 +220,19 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
         }
         algorithm_formatter.update_bound(global_bound);
 
-        std::stringstream ss;
-        ss << "node " << output.number_of_nodes
-            << " depth " << node->depth
-            << " bound " << node->bound;
+        // Every popped node is always fully re-solved above (any
+        // infeasible resolve already 'continue'd before reaching here), so
+        // 'relaxation_solution' is guaranteed non-null at this point.
+        Value relaxation = node->relaxation_solution->objective_value();
 
         // Prune if this node cannot improve on the incumbent.
         if (output.solution.feasible()) {
             if (minimize && node->bound >= output.solution.objective_value() - FFOT_TOL) {
-                algorithm_formatter.print(ss.str());
+                algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
                 continue;
             }
             if (!minimize && node->bound <= output.solution.objective_value() + FFOT_TOL) {
-                algorithm_formatter.print(ss.str());
+                algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
                 continue;
             }
         }
@@ -241,11 +241,11 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
         // incumbent; no children.
         if (node->relaxation_solution->feasible()) {
             algorithm_formatter.update_solution(*node->relaxation_solution);
-            algorithm_formatter.print(ss.str());
+            algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
             continue;
         }
 
-        algorithm_formatter.print(ss.str());
+        algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
 
         // Determine branching candidates. Branch-and-price never falls
         // back to branching on columns (that's exclusively a heuristic
