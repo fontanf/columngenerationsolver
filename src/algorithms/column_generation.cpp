@@ -967,22 +967,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             output.time_lpsolve += time_span_lpsolve.count();
             output.relaxation_solution_value = c0 + solver->objective();
 
-            // Update bound.
-            Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                -std::numeric_limits<Value>::infinity():
-                +std::numeric_limits<Value>::infinity();
-            if (overcost != std::numeric_limits<Value>::infinity()) {
-                bound = output.relaxation_solution_value + overcost;
-            }
-            algorithm_formatter.update_bound(bound);
-
-            // Display.
-            algorithm_formatter.print_column_generation_iteration(
-                    output.number_of_column_generation_iterations,
-                    output.number_of_columns_in_linear_subproblem,
-                    output.relaxation_solution_value,
-                    output.bound);
-            parameters.iteration_callback(output);
+            // The bound and the per-iteration display are computed after
+            // pricing below, once 'overcost' reflects a reduced cost
+            // computed at the same duals as this 'relaxation_solution_value'
+            // (rather than the previous iteration's duals) — see there.
             output.number_of_column_generation_iterations++;
 
             // Check time.
@@ -1311,6 +1299,27 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 }
 
             }
+
+            // Update bound and display this iteration, now that 'overcost'
+            // reflects a reduced cost computed at the same duals
+            // ('duals_out') as 'output.relaxation_solution_value' above —
+            // giving the tightest bound achievable from this iteration's
+            // master solve, rather than the previous iteration's (still
+            // valid, since 'relaxation_solution_value' only improves across
+            // iterations, but needlessly loose).
+            Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                -std::numeric_limits<Value>::infinity():
+                +std::numeric_limits<Value>::infinity();
+            if (overcost != std::numeric_limits<Value>::infinity()) {
+                bound = output.relaxation_solution_value + overcost;
+            }
+            algorithm_formatter.update_bound(bound);
+            algorithm_formatter.print_column_generation_iteration(
+                    output.number_of_column_generation_iterations,
+                    output.number_of_columns_in_linear_subproblem,
+                    output.relaxation_solution_value,
+                    output.bound);
+            parameters.iteration_callback(output);
 
             // Stop the column generation procedure if no negative reduced cost
             // column has been found.
@@ -1644,7 +1653,12 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             initial_columns.push_back(p.first);
     }
 
-    // Update bound.
+    // Update bound. A no-op for the common case (the per-iteration update
+    // above already reported this exact bound right before the loop
+    // converged), but still needed as a safety net for the timer/iteration-
+    // limit-hit-before-pricing case, where the loop broke before that
+    // iteration ever reached pricing, so no per-iteration update happened
+    // for it.
     Value bound = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
         -std::numeric_limits<Value>::infinity():
         +std::numeric_limits<Value>::infinity();
