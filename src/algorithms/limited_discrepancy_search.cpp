@@ -263,8 +263,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
             if (node->depth == 0) {
                 algorithm_formatter.print_limited_discrepancy_search_header();
+                // 'new_bound_callback' above already streamed the bound as
+                // column generation improved it; just record the final
+                // relaxation solution here.
                 output.relaxation_solution = cg_output.relaxation_solution;
-                algorithm_formatter.update_bound(cg_output.bound);
             }
             if (!cg_output.relaxation_solution_is_feasible) {
                 //std::cout << "no solution" << std::endl;

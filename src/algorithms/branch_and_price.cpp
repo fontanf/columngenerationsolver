@@ -167,6 +167,13 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 node->parent->cuts;
             column_generation_parameters.fixed_columns = parameters.fixed_columns;
             column_generation_parameters.branching_decisions = branching_decisions;
+            if (node->parent == nullptr) {
+                column_generation_parameters.new_bound_callback = [&algorithm_formatter](
+                        const Output& cg_output)
+                {
+                    algorithm_formatter.update_bound(cg_output.bound);
+                };
+            }
 
             auto cg_output = column_generation(
                     model,
