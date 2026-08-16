@@ -22,15 +22,26 @@ struct ColumnGenerationOutput: Output
      * containing no dummy column (i.e. 'relaxation_solution' is feasible
      * for the constraints).
      *
-     * A (heuristic, not formally proven) infeasibility signal is reported
-     * through 'bound' instead of a separate flag: by the standard extended
-     * reals convention, the optimal value of an infeasible problem is +inf
-     * (minimization) or -inf (maximization), so 'bound' reaching that value
-     * means this node/branch has no feasible solution. This is distinct
-     * from column generation simply running out of time or iterations, in
-     * which case 'bound' stays finite and 'relaxation_solution_is_feasible'
-     * is 'false', meaning the result is inconclusive rather than
-     * infeasible.
+     * Column generation proceeds in two phases per cutting-plane round: a
+     * feasibility phase, with a fixed (non-escalating) dummy column weight
+     * and a zeroed real objective, searching purely to eliminate dummy
+     * columns; then, only once that succeeds, an optimality phase with the
+     * real objective restored and no dummy columns at all. If the
+     * feasibility phase still needs dummy columns once it converges, and
+     * the pricing solver vouches for a genuine bound on the best
+     * achievable reduced cost at that point (see
+     * 'PricingSolver::PricingOutput::overcost'), that bound rigorously
+     * proves infeasibility and is reported through 'bound' instead of a
+     * separate flag: by the standard extended reals convention, the
+     * optimal value of an infeasible problem is +inf (minimization) or
+     * -inf (maximization), so 'bound' reaching that value means this
+     * node/branch has no feasible solution. Without such a bound (e.g. a
+     * pricing solver that never vouches for one — see the 3-way contract
+     * on 'overcost'), or if it doesn't cross the infeasibility threshold,
+     * the result is inconclusive rather than infeasible: 'bound' stays
+     * finite and 'relaxation_solution_is_feasible' is 'false', the same
+     * outcome as column generation simply running out of time or
+     * iterations.
      */
     bool relaxation_solution_is_feasible = false;
 
@@ -103,7 +114,18 @@ struct ColumnGenerationParameters: Parameters
     /** Linear programming solver. */
     SolverName solver_name = SolverName::CLP;
 
-    /** Maximum number of iterations. */
+    /**
+     * Maximum number of iterations.
+     *
+     * This budget is shared across both the feasibility and optimality
+     * phases within one 'column_generation()' call (see
+     * 'ColumnGenerationOutput::relaxation_solution_is_feasible'), so an
+     * expensive feasibility phase could in principle starve the
+     * optimality phase of iterations during a tightly capped call (e.g.
+     * branch-and-price's strong-branching evaluation). This degrades
+     * candidate scoring but doesn't break correctness -- the "clamp to
+     * parent's bound" safety net in 'branch_and_price' still holds.
+     */
     Counter maximum_number_of_iterations = -1;
 
     /** Maximum number of cutting-plane iterations. */

@@ -62,6 +62,7 @@ public:
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
 
     inline virtual PricingOutput solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
@@ -119,6 +120,7 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 }
 
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
@@ -182,7 +184,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
         }
     }
     output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
-    output.overcost = instance_.total_demand() * std::min(0.0, compute_reduced_cost(*output.columns.front(), duals));
+    output.overcost = instance_.total_demand() * std::min(0.0, compute_reduced_cost(solve_feasibility, *output.columns.front(), duals));
     return output;
 }
 

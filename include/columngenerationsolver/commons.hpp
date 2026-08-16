@@ -235,6 +235,30 @@ public:
     {
         std::vector<std::shared_ptr<const Column>> columns;
 
+        /**
+         * Bound on the best possible reduced cost among all columns of the
+         * pricing subproblem, not just the ones actually returned in
+         * 'columns'. Three ways a 'PricingSolver' can behave, in
+         * increasing order of usefulness for the master problem's dual
+         * bound:
+         * - Exact: always sets 'overcost' to the true optimal reduced
+         *   cost, whether or not it's negative (minimization) / positive
+         *   (maximization) enough to return as a column.
+         * - Heuristic, no bound: leaves 'overcost' at its infinity
+         *   default, even when columns are found — the framework then
+         *   can't tighten the dual bound from this pricing call at all.
+         * - Heuristic, with a bound: sets 'overcost' to a genuine bound
+         *   obtained by other means (e.g. a relaxation of the pricing
+         *   subproblem), even if the returned columns don't attain it.
+         *   Example: for a rectangle-packing pricing subproblem (a 2D
+         *   knapsack), a heuristic can find a column, while 'overcost'
+         *   comes from the pricing subproblem's 1D relaxation.
+         *
+         * Under 'solve_pricing(solve_feasibility=true, ...)', the same
+         * three-way contract applies, but against the *zeroed* objective:
+         * 'overcost' bounds the best reduced cost with every column's real
+         * 'objective_coefficient' treated as 0, not the real one.
+         */
         Value overcost = std::numeric_limits<Value>::infinity();
 
         /**
@@ -256,7 +280,19 @@ public:
             const std::vector<std::shared_ptr<const Cut>>& cuts,
             const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions) = 0;
 
+    /**
+     * Solve the pricing subproblem.
+     *
+     * When 'solve_feasibility' is 'true', search for columns that improve
+     * feasibility only: optimize purely 'duals·column' (plus 'cut_duals'
+     * contributions), ignoring each candidate's real
+     * 'objective_coefficient'. Still return ordinary 'Column' objects with
+     * their real 'objective_coefficient' field intact — it's just not what
+     * the search itself optimized for. See 'PricingOutput::overcost' for
+     * how this affects the bound contract.
+     */
     virtual PricingOutput solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals) = 0;
 
@@ -302,13 +338,18 @@ public:
      * (typically to decide whether one qualifies, or to rank several).
      * Calls 'coefficient' above for the cut contribution, so 'cut_duals'
      * must stay empty unless 'coefficient' is overridden.
+     *
+     * When 'solve_feasibility' is 'true', computed against the *zeroed*
+     * objective (see 'solve_pricing'/'PricingOutput::overcost'), i.e.
+     * 'column.objective_coefficient' is treated as 0 rather than read.
      */
     Value compute_reduced_cost(
+            bool solve_feasibility,
             const Column& column,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals = {}) const
     {
-        Value reduced_cost = column.objective_coefficient;
+        Value reduced_cost = (solve_feasibility)? 0: column.objective_coefficient;
         for (const LinearTerm& element: column.elements)
             reduced_cost -= duals[element.row] * element.coefficient;
         for (const auto& p: cut_duals)
@@ -380,11 +421,12 @@ struct Model
 
     /** Reduced cost of 'column', given 'duals' and (optionally) 'cut_duals'. */
     Value compute_reduced_cost(
+            bool solve_feasibility,
             const Column& column,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals = {}) const
     {
-        return pricing_solver->compute_reduced_cost(column, duals, cut_duals);
+        return pricing_solver->compute_reduced_cost(solve_feasibility, column, duals, cut_duals);
     }
 
     /** Column which are not dynamically generated. */
@@ -999,9 +1041,6 @@ struct Output: optimizationtools::Output
      */
     double time_rounding_heuristic = 0.0;
 
-    /** Objective coefficient of the dummy columns. */
-    Value dummy_column_objective_coefficient;
-
     /** Number of column generation iterations. */
     Counter number_of_column_generation_iterations = 0;
 
@@ -1054,6 +1093,42 @@ struct Output: optimizationtools::Output
                bound);
     }
 
+    /**
+     * 'true' iff nothing further the algorithm could find would change
+     * the outcome:
+     * - With a feasible 'solution': it already matches 'bound', so the
+     *   optimality gap is provably zero. Checked one-sided and
+     *   sense-aware (not via 'std::abs(objective_value() - bound) <
+     *   FFOT_TOL') so that a future bug putting 'bound' on the wrong side
+     *   of 'objective_value()' -- which should never happen, by weak
+     *   duality -- shows up as this staying 'false' instead of silently
+     *   still comparing "close enough".
+     * - Without one yet: 'bound' alone has reached the sense-aware
+     *   infinity sentinel, proving the model infeasible. Can't use the
+     *   same formula as the feasible case here -- 'solution.
+     *   objective_value()' reads as a meaningless 0 (not infinity) for
+     *   the default/empty solution before any incumbent is found, which
+     *   would otherwise make the comparison fire as soon as 'bound'
+     *   naturally crosses 0 during ordinary iteration, long before
+     *   'bound' actually proves anything. Must check the sense-correct
+     *   infinity only, not both signs: the *other* sign is 'bound''s
+     *   vacuous default before any real work happens (e.g. -inf for
+     *   Minimize), which would otherwise make this true from the very
+     *   first check.
+     */
+    bool optimal() const
+    {
+        bool minimize = (solution.model().objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+        if (!solution.feasible()) {
+            return bound == ((minimize)?
+                    std::numeric_limits<Value>::infinity():
+                    -std::numeric_limits<Value>::infinity());
+        }
+        return (minimize)?
+            (solution.objective_value() <= bound + FFOT_TOL):
+            (solution.objective_value() >= bound - FFOT_TOL);
+    }
+
     virtual nlohmann::json to_json() const
     {
         return {
@@ -1066,7 +1141,6 @@ struct Output: optimizationtools::Output
             {"LpTime", time_lpsolve},
             {"RoundingHeuristicTime", time_rounding_heuristic},
             {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
-            {"DummyColumnObjectiveCoefficient", dummy_column_objective_coefficient},
         };
     }
 
@@ -1084,7 +1158,6 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
             << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
             << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
-            << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
             ;
@@ -1167,9 +1240,6 @@ struct Parameters: optimizationtools::Parameters
     /** Callback function called when a new best bound is found. */
     NewSolutionCallback new_bound_callback = [](const Output&) { };
 
-    /** Objective coefficient of the dummy columns. */
-    Value dummy_column_objective_coefficient = 1;
-
     /** Column pool. */
     std::vector<std::shared_ptr<const Column>> column_pool;
 
@@ -1223,7 +1293,6 @@ struct Parameters: optimizationtools::Parameters
     {
         nlohmann::json json = optimizationtools::Parameters::to_json();
         json.merge_patch({
-                {"DummyColumnObjectiveCoefficient", dummy_column_objective_coefficient},
                 {"NumberOfColumnsInTheColumnPool", column_pool.size()},
                 {"NumberOfInitialColumns", initial_columns.size()},
                 {"NumberOfFixedColumns", fixed_columns.size()},
@@ -1243,7 +1312,6 @@ struct Parameters: optimizationtools::Parameters
         optimizationtools::Parameters::format(os);
         int width = format_width();
         os
-            << std::setw(width) << std::left << "Dummy column coef.: " << dummy_column_objective_coefficient << std::endl
             << std::setw(width) << std::left << "Number of columns in the column pool: " << column_pool.size() << std::endl
             << std::setw(width) << std::left << "Number of initial columns: " << initial_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl

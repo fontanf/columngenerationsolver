@@ -68,10 +68,18 @@ struct ColumnGenerationAttemptInput
     const std::vector<Value>& new_cut_upper_bounds;
     const std::vector<std::shared_ptr<const Column>>& initial_columns;
 
+    /**
+     * 'true' for the feasibility phase: dummy columns get a fixed weight
+     * of 1, every other column (static, initial, newly-priced) gets its
+     * objective coefficient forced to 0, and pricing is called with
+     * 'solve_feasibility=true'. 'false' for the optimality phase: no
+     * dummy columns at all, real objective coefficients throughout.
+     */
+    bool solve_feasibility;
+
     // Mutated across the whole 'column_generation()' call, not just this
     // one attempt.
     ColumnPool& column_pool;
-    Value& column_highest_cost;
     ColumnGenerationOutput& output;
     AlgorithmFormatter& algorithm_formatter;
 };
@@ -89,15 +97,15 @@ struct ColumnGenerationAttemptInput
  * touches the master LP, 'active_cuts', or the real
  * 'parameters.fixed_columns' — it's a side computation, working on its
  * own local copies of 'row_values'/'c0' — except for 'column_pool'/
- * 'column_highest_cost'/'output.columns', which it updates the same way
- * regular pricing discoveries do, so newly found columns are available
- * for reuse by the real pricing loop too.
+ * 'output.columns', which it updates the same way regular pricing
+ * discoveries do, so newly found columns are available for reuse by the
+ * real pricing loop too.
  */
 struct RoundingHeuristicInput
 {
     // Shares the read-only real column generation state, plus
-    // 'column_pool'/'column_highest_cost'/'output'/'algorithm_formatter',
-    // with the enclosing 'run_column_generation_attempt()' call.
+    // 'column_pool'/'output'/'algorithm_formatter', with the enclosing
+    // 'run_column_generation_attempt()' call.
     ColumnGenerationAttemptInput& attempt_input;
 
     LinearProgrammingSolver* solver;
@@ -205,26 +213,6 @@ void rounding_heuristic_add_to_column_pool(
     if (input.attempt_input.column_pool.find(column) != input.attempt_input.column_pool.end())
         return;
     input.attempt_input.column_pool.insert(column);
-    Value value_max = std::numeric_limits<Value>::infinity();
-    for (const LinearTerm& element: column->elements) {
-        RowIdx new_row_id = input.attempt_input.new_row_indices[element.row];
-        Value row_lower_bound = (new_row_id >= 0)?
-            input.attempt_input.new_row_lower_bounds[new_row_id]:
-            input.attempt_input.model.rows[element.row].lower_bound;
-        Value row_upper_bound = (new_row_id >= 0)?
-            input.attempt_input.new_row_upper_bounds[new_row_id]:
-            input.attempt_input.model.rows[element.row].upper_bound;
-        if (element.coefficient > 0) {
-            Value v = row_upper_bound / element.coefficient;
-            value_max = (std::min)(value_max, v);
-        } else {
-            Value v = row_lower_bound / element.coefficient;
-            value_max = (std::min)(value_max, v);
-        }
-    }
-    input.attempt_input.column_highest_cost = (std::max)(
-            input.attempt_input.column_highest_cost,
-            std::abs(column->objective_coefficient * value_max));
     input.attempt_input.output.columns.push_back(column);
 }
 
@@ -332,7 +320,7 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 // Phase 1's greedy fixing.
                 for (;;) {
                     input.attempt_input.model.pricing_solver->initialize_pricing(fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions);
-                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(input.duals_out, input.cut_duals);
+                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(false, input.duals_out, input.cut_duals);
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
                         if (column->elements.empty())
@@ -352,8 +340,8 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                                 const std::shared_ptr<const Column>& column_1,
                                 const std::shared_ptr<const Column>& column_2)
                             {
-                                Value rc1 = input.attempt_input.model.compute_reduced_cost(*column_1, input.duals_out, input.cut_duals);
-                                Value rc2 = input.attempt_input.model.compute_reduced_cost(*column_2, input.duals_out, input.cut_duals);
+                                Value rc1 = input.attempt_input.model.compute_reduced_cost(false, *column_1, input.duals_out, input.cut_duals);
+                                Value rc2 = input.attempt_input.model.compute_reduced_cost(false, *column_2, input.duals_out, input.cut_duals);
                                 return (minimize)? (rc1 < rc2): (rc1 > rc2);
                             });
 
@@ -406,25 +394,18 @@ struct ColumnGenerationAttemptResult
 {
     /** Constructor. */
     ColumnGenerationAttemptResult(const Model& model):
-        relaxation_solution(SolutionBuilder().set_model(model).build()),
-        overcost((model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                -std::numeric_limits<Value>::infinity():
-                +std::numeric_limits<Value>::infinity()) { }
+        relaxation_solution(SolutionBuilder().set_model(model).build()) { }
 
     /**
      * 'true' iff the relaxation this attempt converged to still needs
-     * dummy columns to be feasible.
+     * dummy columns to be feasible. Under 'ColumnGenerationAttemptInput::
+     * solve_feasibility', a rigorous infeasibility proof (when the
+     * pricing solver's 'overcost' allows one) has already been reported
+     * through 'ColumnGenerationAttemptInput::algorithm_formatter' by the
+     * time this is 'true' -- the caller only needs this flag to decide
+     * whether to fall through to the optimality phase.
      */
     bool has_dummy_column = false;
-
-    /**
-     * Bound on the best possible reduced cost over the whole attempt, per
-     * the 3-way contract on 'PricingOutput::overcost' (exact /
-     * heuristic-no-bound / heuristic-with-a-bound). Stays at its
-     * sense-aware infinity default until the first pricing call sets it;
-     * from then on reflects the last pricing call's value.
-     */
-    Value overcost;
 
     /**
      * 'true' iff the timer or the iteration limit fired mid-attempt: the
@@ -460,6 +441,18 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 {
     ColumnGenerationAttemptResult result(input.model);
 
+    // Bound on the best possible reduced cost over the whole attempt, per
+    // the 3-way contract on 'PricingOutput::overcost' (exact /
+    // heuristic-no-bound / heuristic-with-a-bound). Stays at its
+    // sense-aware infinity default until the first pricing call sets it;
+    // from then on reflects the last pricing call's value. Used both to
+    // stream the tightest bound achievable each iteration (below) and, if
+    // 'input.solve_feasibility' and dummy columns persist once this
+    // attempt converges, to test for a rigorous infeasibility proof.
+    Value overcost = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+        -std::numeric_limits<Value>::infinity():
+        +std::numeric_limits<Value>::infinity();
+
     // Appends the coefficients of 'column' in the active cuts to 'ri'/'rc',
     // at row indices following the model rows.
     auto append_cut_coefficients = [&input](
@@ -475,8 +468,6 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             }
         }
     };
-
-    //std::cout << "dummy_column_objective_coefficient " << input.output.dummy_column_objective_coefficient << std::endl;
 
     // Initialize solver
     //std::cout << "Initialize solver... " << input.parameters.solver_name << std::endl;
@@ -556,66 +547,70 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         = input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions);
     std::vector<int8_t> feasible(input.model.static_columns.size(), 1);
 
-    // Add dummy columns.
+    // Add dummy columns. Phase 2 (optimality) has none at all: it is only
+    // ever reached once Phase 1 has already found a dummy-free relaxation,
+    // so 'has_dummy_column' must stay 'false' by construction.
     std::vector<RowIdx> dummy_column_rows;
-    for (RowIdx row_id = 0; row_id < input.new_number_of_rows; ++row_id) {
-        if (input.new_row_lower_bounds[row_id] > 0) {
-            solver_columns.push_back(nullptr);
-            solver->add_column(
-                    {row_id},
-                    {input.new_row_lower_bounds[row_id]},
-                    (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                    +input.output.dummy_column_objective_coefficient:
-                    -input.output.dummy_column_objective_coefficient,
-                    0,
-                    std::numeric_limits<Value>::infinity());
-            input.output.number_of_columns_in_linear_subproblem++;
-            dummy_column_rows.push_back(row_id);
+    if (input.solve_feasibility) {
+        for (RowIdx row_id = 0; row_id < input.new_number_of_rows; ++row_id) {
+            if (input.new_row_lower_bounds[row_id] > 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {row_id},
+                        {input.new_row_lower_bounds[row_id]},
+                        (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +1:
+                        -1,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                input.output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(row_id);
+            }
+            if (input.new_row_upper_bounds[row_id] < 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {row_id},
+                        {input.new_row_upper_bounds[row_id]},
+                        (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +1:
+                        -1,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                input.output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(row_id);
+            }
         }
-        if (input.new_row_upper_bounds[row_id] < 0) {
-            solver_columns.push_back(nullptr);
-            solver->add_column(
-                    {row_id},
-                    {input.new_row_upper_bounds[row_id]},
-                    (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                    +input.output.dummy_column_objective_coefficient:
-                    -input.output.dummy_column_objective_coefficient,
-                    0,
-                    std::numeric_limits<Value>::infinity());
-            input.output.number_of_columns_in_linear_subproblem++;
-            dummy_column_rows.push_back(row_id);
-        }
-    }
-    // Add dummy columns for cut rows that fixed/static/initial columns
-    // alone cannot satisfy (symmetric to the input.model-row dummy columns
-    // above).
-    for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.active_cuts.size(); ++cut_pos) {
-        RowIdx cut_row_id = input.new_number_of_rows + cut_pos;
-        if (input.new_cut_lower_bounds[cut_pos] > 0) {
-            solver_columns.push_back(nullptr);
-            solver->add_column(
-                    {cut_row_id},
-                    {input.new_cut_lower_bounds[cut_pos]},
-                    (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                    +input.output.dummy_column_objective_coefficient:
-                    -input.output.dummy_column_objective_coefficient,
-                    0,
-                    std::numeric_limits<Value>::infinity());
-            input.output.number_of_columns_in_linear_subproblem++;
-            dummy_column_rows.push_back(cut_row_id);
-        }
-        if (input.new_cut_upper_bounds[cut_pos] < 0) {
-            solver_columns.push_back(nullptr);
-            solver->add_column(
-                    {cut_row_id},
-                    {input.new_cut_upper_bounds[cut_pos]},
-                    (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                    +input.output.dummy_column_objective_coefficient:
-                    -input.output.dummy_column_objective_coefficient,
-                    0,
-                    std::numeric_limits<Value>::infinity());
-            input.output.number_of_columns_in_linear_subproblem++;
-            dummy_column_rows.push_back(cut_row_id);
+        // Add dummy columns for cut rows that fixed/static/initial columns
+        // alone cannot satisfy (symmetric to the input.model-row dummy
+        // columns above).
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.active_cuts.size(); ++cut_pos) {
+            RowIdx cut_row_id = input.new_number_of_rows + cut_pos;
+            if (input.new_cut_lower_bounds[cut_pos] > 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {cut_row_id},
+                        {input.new_cut_lower_bounds[cut_pos]},
+                        (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +1:
+                        -1,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                input.output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(cut_row_id);
+            }
+            if (input.new_cut_upper_bounds[cut_pos] < 0) {
+                solver_columns.push_back(nullptr);
+                solver->add_column(
+                        {cut_row_id},
+                        {input.new_cut_upper_bounds[cut_pos]},
+                        (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        +1:
+                        -1,
+                        0,
+                        std::numeric_limits<Value>::infinity());
+                input.output.number_of_columns_in_linear_subproblem++;
+                dummy_column_rows.push_back(cut_row_id);
+            }
         }
     }
 
@@ -682,7 +677,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         solver_columns.push_back(column);
         lower_bounds.push_back(column->lower_bound);
         upper_bounds.push_back(column->upper_bound);
-        objective_coefficients.push_back(column->objective_coefficient);
+        objective_coefficients.push_back(
+                input.solve_feasibility? 0: column->objective_coefficient);
         row_ids.push_back(ri);
         row_coefficients.push_back(rc);
         input.output.number_of_columns_in_linear_subproblem++;
@@ -738,7 +734,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         solver->add_column(
                 row_ids,
                 row_coefficients,
-                column->objective_coefficient,
+                input.solve_feasibility? 0: column->objective_coefficient,
                 0,
                 std::numeric_limits<Value>::infinity());
         input.output.number_of_columns_in_linear_subproblem++;
@@ -791,7 +787,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         input.output.relaxation_solution_value = input.c0 + solver->objective();
 
         // The bound and the per-iteration display are computed after
-        // pricing below, once 'result.overcost' reflects a reduced cost
+        // pricing below, once 'overcost' reflects a reduced cost
         // computed at the same duals as this 'relaxation_solution_value'
         // (rather than the previous iteration's duals) — see there.
         input.output.number_of_column_generation_iterations++;
@@ -806,6 +802,28 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             break;
         }
 
+        // Zero-pricing-calls short circuit: if this is Phase 1's very
+        // first LP solve (built only from already-known columns) and it's
+        // already dummy-free, stop right here rather than calling pricing
+        // at all -- further column search is pointless once feasibility
+        // is already achieved. Cheap to check since Phase 1 reruns every
+        // cutting-plane round, where the previous round's columns almost
+        // always still suffice.
+        if (input.solve_feasibility && number_of_column_generation_iterations == 1) {
+            bool has_dummy_column_now = false;
+            for (ColIdx column_id = 0;
+                    column_id < (ColIdx)solver_columns.size();
+                    ++column_id) {
+                if (solver_columns[column_id] == nullptr
+                        && std::abs(solver->primal(column_id)) >= FFOT_TOL) {
+                    has_dummy_column_now = true;
+                    break;
+                }
+            }
+            if (!has_dummy_column_now)
+                break;
+        }
+
         // Get duals from linear programming solver.
         for (RowIdx row_pos = 0; row_pos < input.new_number_of_rows; ++row_pos) {
             duals_out[input.new_rows[row_pos]] = solver->dual(row_pos);
@@ -814,7 +832,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             cut_duals[cut_pos].second = solver->dual(input.new_number_of_rows + cut_pos);
         }
 
-        if (input.parameters.rounding_heuristic)
+        if (!input.solve_feasibility && input.parameters.rounding_heuristic)
             run_rounding_heuristic(rounding_heuristic_input);
 
         std::vector<std::shared_ptr<const Column>> new_columns;
@@ -833,7 +851,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 continue;
 
             // Add the column if its reduced cost is negative.
-            Value rc = input.model.compute_reduced_cost(*column, duals_out, cut_duals);
+            Value rc = input.model.compute_reduced_cost(input.solve_feasibility, *column, duals_out, cut_duals);
             if (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
                     && rc < -input.parameters.optimality_tolerance) {
                 new_columns.push_back(column);
@@ -972,9 +990,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
                 std::vector<std::shared_ptr<const Column>> all_columns;
                 if (!input.parameters.internal_diving) {
-                    auto pricing_output = input.model.pricing_solver->solve_pricing(duals_sep, cut_duals);
+                    auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals);
                     all_columns = pricing_output.columns;
-                    result.overcost = pricing_output.overcost;
+                    overcost = pricing_output.overcost;
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                     for (const auto& column: all_columns)
                         input.model.check_generated_column(column);
@@ -983,11 +1001,11 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = input.parameters.fixed_columns;
                     for (int i = 0;; ++i) {
                         input.model.pricing_solver->initialize_pricing(fixed_columns_tmp, input.active_cuts, input.parameters.branching_decisions);
-                        auto pricing_output = input.model.pricing_solver->solve_pricing(duals_sep, cut_duals);
+                        auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                             = pricing_output.columns;
                         if (i == 0) {
-                            result.overcost = pricing_output.overcost;
+                            overcost = pricing_output.overcost;
                             pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                         }
                         for (const auto& column: all_columns_tmp_0)
@@ -1010,8 +1028,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                                     const std::shared_ptr<const Column>& column_1,
                                     const std::shared_ptr<const Column>& column_2)
                                 {
-                                    Value rc1 = input.model.compute_reduced_cost(*column_1, duals_out, cut_duals);
-                                    Value rc2 = input.model.compute_reduced_cost(*column_2, duals_out, cut_duals);
+                                    Value rc1 = input.model.compute_reduced_cost(input.solve_feasibility, *column_1, duals_out, cut_duals);
+                                    Value rc2 = input.model.compute_reduced_cost(input.solve_feasibility, *column_2, duals_out, cut_duals);
                                     if (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
                                         return rc1 < rc2;
                                     } else {
@@ -1075,35 +1093,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
                     // Store these new columns.
                     input.column_pool.insert(column);
-                    Value value_max = std::numeric_limits<Value>::infinity();
-                    for (const LinearTerm& element: column->elements) {
-                        // Use the residual row bounds (after subtracting
-                        // the contribution of already fixed columns)
-                        // rather than the original input.model bounds,
-                        // otherwise the estimate can be wildly
-                        // overestimated once columns have been fixed.
-                        RowIdx new_row_id = input.new_row_indices[element.row];
-                        Value row_lower_bound = (new_row_id >= 0)?
-                            input.new_row_lower_bounds[new_row_id]:
-                            input.model.rows[element.row].lower_bound;
-                        Value row_upper_bound = (new_row_id >= 0)?
-                            input.new_row_upper_bounds[new_row_id]:
-                            input.model.rows[element.row].upper_bound;
-                        if (element.coefficient > 0) {
-                            Value v = row_upper_bound / element.coefficient;
-                            value_max = (std::min)(value_max, v);
-                        } else {
-                            Value v = row_lower_bound / element.coefficient;
-                            value_max = (std::min)(value_max, v);
-                        }
-                    }
-                    input.column_highest_cost = (std::max)(
-                            input.column_highest_cost,
-                            std::abs(column->objective_coefficient * value_max));
                   input.output.columns.push_back(column);
 
                   // Only add the ones with negative reduced cost.
-                  Value rc = input.model.compute_reduced_cost(*column, duals_out, cut_duals);
+                  Value rc = input.model.compute_reduced_cost(input.solve_feasibility, *column, duals_out, cut_duals);
                   // std::cout << "rc " << rc << std::endl;
                   if (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
                           && rc < -input.parameters.optimality_tolerance)
@@ -1123,26 +1116,66 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         }
 
-        // Update bound and display this iteration, now that 'result.overcost'
-        // reflects a reduced cost computed at the same duals
-        // ('duals_out') as 'input.output.relaxation_solution_value' above —
-        // giving the tightest bound achievable from this iteration's
-        // master solve, rather than the previous iteration's (still
-        // valid, since 'relaxation_solution_value' only improves across
-        // iterations, but needlessly loose).
-        Value bound = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-            -std::numeric_limits<Value>::infinity():
-            +std::numeric_limits<Value>::infinity();
-        if (result.overcost != std::numeric_limits<Value>::infinity()) {
-            bound = input.output.relaxation_solution_value + result.overcost;
+        if (overcost != std::numeric_limits<Value>::infinity()) {
+            if (!input.solve_feasibility) {
+                // Update bound, now that 'overcost' reflects a reduced cost
+                // computed at the same duals ('duals_out') as
+                // 'input.output.relaxation_solution_value' above — giving the
+                // tightest bound achievable from this iteration's master
+                // solve, rather than the previous iteration's (still valid,
+                // since 'relaxation_solution_value' only improves across
+                // iterations, but needlessly loose).
+                Value bound = input.output.relaxation_solution_value + overcost;
+                input.algorithm_formatter.update_bound(bound);
+            } else {
+                // Feasibility phase: 'relaxation_solution_value' (= 'input.c0'
+                // plus the LP's own objective) is *not* a valid bound on the
+                // real problem here, since every real column's objective
+                // coefficient is zeroed in this phase's LP — it would mix a
+                // real fixed-columns cost ('input.c0') with an artificial
+                // slack-only value, so it must never be streamed through
+                // 'update_bound'. The only sound claim derivable from this
+                // phase is a rigorous infeasibility proof: since there is no
+                // escalation, 'lp_objective_value + overcost' is a genuine
+                // bound on the best achievable total slack usage, and doesn't
+                // get swamped the way an ever-escalating dummy coefficient
+                // would. Sign convention matches the dummy column cost above
+                // (+1 Minimize, -1 Maximize), so 'lp_objective_value' is
+                // always a sense-consistent proxy for "total slack used": for
+                // Minimize, a lower bound > 0 proves it can never reach 0;
+                // for Maximize, an upper bound < 0 proves the same. Checked
+                // every iteration (not just at convergence) so the attempt
+                // can stop as soon as infeasibility is provable, rather
+                // than continuing to iterate uselessly.
+                Value phase1_bound = solver->objective() + overcost;
+                bool proven_infeasible
+                    = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                    (phase1_bound > FFOT_TOL):
+                    (phase1_bound < -FFOT_TOL);
+                if (proven_infeasible) {
+                    input.algorithm_formatter.update_bound(
+                            (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                            std::numeric_limits<Value>::infinity():
+                            -std::numeric_limits<Value>::infinity());
+                }
+            }
         }
-        input.algorithm_formatter.update_bound(bound);
         input.algorithm_formatter.print_column_generation_iteration(
                 input.output.number_of_column_generation_iterations,
                 input.output.number_of_columns_in_linear_subproblem,
                 input.output.relaxation_solution_value,
                 input.output.bound);
         input.parameters.iteration_callback(input.output);
+
+        // Stop as soon as nothing further this attempt could find would
+        // change the outcome (see 'Output::optimal()') -- a general
+        // criterion, not specific to either phase: covers both "already
+        // provably optimal" (a feasible incumbent matches the dual
+        // bound) and "already provably infeasible" (the feasibility
+        // phase branch above just proved it, reflected in 'bound' alone
+        // since there's no incumbent to compare it to).
+        if (input.output.optimal())
+            break;
 
         // Stop the column generation procedure if no negative reduced cost
         // column has been found.
@@ -1154,7 +1187,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         // Use the pricer-provided values when available — necessary for
         // identical subproblems (e.g. bin packing with N bins) where the
         // pricer sets lagrangian_column_values[row] = N * A[row, z*],
-        // analogous to returning result.overcost = N * rc*. Otherwise fall back
+        // analogous to returning overcost = N * rc*. Otherwise fall back
         // to summing the returned columns, which is correct when each
         // independent subproblem contributes exactly one column.
         std::fill(
@@ -1246,7 +1279,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             solver->add_column(
                     ri,
                     rc,
-                    column->objective_coefficient,
+                    input.solve_feasibility? 0: column->objective_coefficient,
                     0,
                     std::numeric_limits<double>::infinity());
             input.output.number_of_columns_in_linear_subproblem++;
@@ -1332,13 +1365,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     algorithm_formatter.start("Column generation");
     algorithm_formatter.print_column_generation_header();
 
-    if (parameters.dummy_column_objective_coefficient == 0) {
-        throw std::invalid_argument(
-                "columngenerationsolver::column_generation:"
-                " input parameter 'dummy_column_objective_coefficient'"
-                " must be non-null.");
-    }
-
     RowIdx number_of_rows = model.rows.size();
     //std::cout << "m " << m << std::endl;
     //std::cout << "parameters.fixed_columns.size() " << parameters.fixed_columns.size() << std::endl;
@@ -1417,7 +1443,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::unordered_set<std::shared_ptr<const Column>,
                        const ColumnHasher&,
                        const ColumnHasher&> column_pool(0, column_hasher, column_hasher);
-    Value column_highest_cost = 0;
     // We first add to it the columns from the input column pool.
     for (const auto& column: parameters.column_pool) {
 
@@ -1442,63 +1467,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         if (!ok)
             continue;
 
-        Value value_max = std::numeric_limits<Value>::infinity();
-        for (const LinearTerm& element: column->elements) {
-            // Use the residual row bounds (after subtracting the
-            // contribution of already fixed columns) rather than the
-            // original model bounds, otherwise the estimate can be wildly
-            // overestimated once columns have been fixed.
-            RowIdx new_row_id = new_row_indices[element.row];
-            Value row_lower_bound = (new_row_id >= 0)?
-                new_row_lower_bounds[new_row_id]:
-                model.rows[element.row].lower_bound;
-            Value row_upper_bound = (new_row_id >= 0)?
-                new_row_upper_bounds[new_row_id]:
-                model.rows[element.row].upper_bound;
-            if (element.coefficient > 0) {
-                Value v = row_upper_bound / element.coefficient;
-                value_max = (std::min)(value_max, v);
-            } else {
-                Value v = row_lower_bound / element.coefficient;
-                value_max = (std::min)(value_max, v);
-            }
-        }
-        column_highest_cost = (std::max)(
-                column_highest_cost,
-                std::abs(column->objective_coefficient * value_max));
         column_pool.insert(column);
-    }
-    // Also account for the static columns: when the real objective lives
-    // entirely on model.static_columns (e.g. columns fixed for the whole
-    // model, outside of pricing), every generated column can have an
-    // objective coefficient of 0 even though the problem isn't a pure
-    // feasibility problem. Without this, 'column_highest_cost' would stay 0
-    // and the dummy-column infeasibility check below would incorrectly fire
-    // on ordinary column-generation degeneracy.
-    for (const std::shared_ptr<const Column>& column: model.static_columns) {
-        if (column->objective_coefficient == 0)
-            continue;
-
-        Value value_max = std::numeric_limits<Value>::infinity();
-        for (const LinearTerm& element: column->elements) {
-            RowIdx new_row_id = new_row_indices[element.row];
-            Value row_lower_bound = (new_row_id >= 0)?
-                new_row_lower_bounds[new_row_id]:
-                model.rows[element.row].lower_bound;
-            Value row_upper_bound = (new_row_id >= 0)?
-                new_row_upper_bounds[new_row_id]:
-                model.rows[element.row].upper_bound;
-            if (element.coefficient > 0) {
-                Value v = row_upper_bound / element.coefficient;
-                value_max = (std::min)(value_max, v);
-            } else {
-                Value v = row_lower_bound / element.coefficient;
-                value_max = (std::min)(value_max, v);
-            }
-        }
-        column_highest_cost = (std::max)(
-                column_highest_cost,
-                std::abs(column->objective_coefficient * value_max));
     }
 
     // Active cuts. Starts from 'initial_cuts' and grows as cutting-plane
@@ -1522,11 +1491,6 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // linear scan is fine given the expected number of active cuts.
     std::vector<std::pair<std::shared_ptr<const Cut>, Value>> cut_value_at_last_removal;
 
-    // Loop for dummy columns.
-    // If the final solution contains dummy columns, then the dummy column
-    // objective value is increased and the algorithm is started again. The loop
-    // is broken when the final solution doesn't contain any dummy column.
-    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
 
     // Loop for cutting planes.
@@ -1567,12 +1531,18 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         }
     };
 
-    // Whether the dummy-column loop below converges to a feasible
-    // relaxation (no dummy column), i.e. whether it is meaningful to
-    // attempt cut separation afterwards.
+    // Whether Phase 2 (optimality) below is reached, i.e. whether it is
+    // meaningful to attempt cut separation afterwards.
     bool relaxation_is_feasible_for_cuts = false;
 
-    for (;;) {
+    // Two-phase method: Phase 1 (feasibility) searches for a dummy-column-
+    // free relaxation using a fixed, non-escalating dummy weight and a
+    // zeroed real objective; Phase 2 (optimality) re-solves the same
+    // feasible region with the real objective restored and no dummy
+    // columns at all. Phase 2 is only reached once Phase 1 has actually
+    // converged dummy-free, so its relaxation is guaranteed feasible by
+    // construction.
+    for (bool solve_feasibility : {true, false}) {
 
         ColumnGenerationAttemptInput attempt_input{
                 model,
@@ -1589,8 +1559,8 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 new_cut_lower_bounds,
                 new_cut_upper_bounds,
                 initial_columns,
+                solve_feasibility,
                 column_pool,
-                column_highest_cost,
                 output,
                 algorithm_formatter};
         ColumnGenerationAttemptResult attempt_result
@@ -1602,10 +1572,33 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             return output;
         }
 
-        // If the final solution doesn't contain any dummy column, then stop.
-        if (!attempt_result.has_dummy_column) {
+        if (solve_feasibility) {
+            // If Phase 1 converged without needing any dummy column, seed
+            // Phase 2's initial columns from the real columns its optimal
+            // basis used, then fall through to Phase 2.
+            if (!attempt_result.has_dummy_column) {
+                initial_columns = parameters.initial_columns;
+                for (const auto& p: attempt_result.relaxation_solution.columns())
+                    if (column_pool.find(p.first) != column_pool.end())
+                        initial_columns.push_back(p.first);
+                continue;
+            }
+
+            // Otherwise, dummy columns persist even at Phase 1's fixed
+            // weight. 'run_column_generation_attempt' has already tested
+            // (and, if proven, reported through 'algorithm_formatter') a
+            // rigorous infeasibility bound -- inconclusive results (no
+            // bound, or the bound doesn't prove infeasibility) leave
+            // 'output.relaxation_solution_is_feasible' as the only signal,
+            // same as running out of time.
+            output.relaxation_solution_is_feasible = false;
+            output.relaxation_solution = attempt_result.relaxation_solution;
+            break;
+        } else {
+            // Phase 2: guaranteed feasible by construction (seeded from
+            // Phase 1's own optimal basis, no dummy columns in this
+            // phase's LP at all).
             output.relaxation_solution_is_feasible = true;
-            //std::cout << "feasible" << std::endl;
             output.relaxation_solution = attempt_result.relaxation_solution;
             if (!output.relaxation_solution.feasible_relaxation()) {
                 throw std::logic_error(
@@ -1613,52 +1606,13 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                         "infeasible relaxation solution.");
             }
             relaxation_is_feasible_for_cuts = true;
-            break;
         }
-
-        // If the final solution contains some dummy columns, and the dummy
-        // column objective coefficient is significantly larger than the
-        // largest generated column objective coefficient, then we consider the
-        // problem infeasible.
-        // No 'column_highest_cost > 0' guard here: when every column has an
-        // objective coefficient of 0 (a pure feasibility problem),
-        // 'column_highest_cost' is always 0, so the threshold below already
-        // reduces to 'dummy coefficient > 0', which is the correct
-        // condition in that case (the master LP's optimal basis doesn't
-        // depend on the dummy coefficient's magnitude when the real
-        // objective is identically 0, only on whether it's positive).
-        if (std::abs(output.dummy_column_objective_coefficient)
-                > 100 * column_highest_cost) {
-            //std::cout << "infeasible" << std::endl;
-            output.relaxation_solution_is_feasible = false;
-            algorithm_formatter.update_bound(
-                    (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
-                        std::numeric_limits<Value>::infinity():
-                        -std::numeric_limits<Value>::infinity());
-            output.relaxation_solution = attempt_result.relaxation_solution;
-            break;
-        }
-        if (parameters.tabu != nullptr
-                && parameters.tabu->size() > 0) {
-            output.relaxation_solution_is_feasible = false;
-            output.relaxation_solution = attempt_result.relaxation_solution;
-            break;
-        }
-
-        // Otherwise, increase the dummy column objective coefficient and
-        // restart.
-        output.dummy_column_objective_coefficient *= 4;
-        // Use current solution as initial columns of the next loop.
-        initial_columns = parameters.initial_columns;
-        for (const auto& p: output.relaxation_solution.columns())
-            if (column_pool.find(p.first) != column_pool.end())
-                initial_columns.push_back(p.first);
     }
 
-    // If the dummy-column loop above didn't converge to a feasible
-    // relaxation (timeout/iteration-limit already returned directly;
-    // infeasible or tabu fell through to here), stop: no point separating
-    // cuts from a relaxation that still contains dummy columns.
+    // If Phase 2 above was never reached (timeout/iteration-limit already
+    // returned directly; Phase 1 stayed infeasible/inconclusive and fell
+    // through to here), stop: no point separating cuts from a relaxation
+    // that still contains dummy columns.
     if (!relaxation_is_feasible_for_cuts)
         break;
 
@@ -1758,12 +1712,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     active_cuts.insert(active_cuts.end(), new_cuts.begin(), new_cuts.end());
     output.number_of_cutting_plane_iterations++;
 
-    // Rebuild the master LP from scratch with the enlarged cut set: reset
-    // the dummy column coefficient (the previous round's inflated value has
-    // no bearing on the new LP) and seed initial columns with the columns
-    // of the relaxation solution that just converged, same as a
-    // dummy-column retry already does.
-    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
+    // Rebuild the master LP from scratch with the enlarged cut set: seed
+    // initial columns with the columns of the relaxation solution that
+    // just converged, same as Phase 1 does when it converges dummy-free.
     initial_columns = parameters.initial_columns;
     for (const auto& p: output.relaxation_solution.columns())
         if (column_pool.find(p.first) != column_pool.end())

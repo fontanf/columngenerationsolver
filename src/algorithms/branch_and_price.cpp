@@ -67,7 +67,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             output);
     algorithm_formatter.start("Branch-and-price");
     algorithm_formatter.print_column_generation_header();
-    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
 
     bool minimize = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
 
@@ -147,8 +146,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 = parameters.column_generation_parameters;
             column_generation_parameters.timer = parameters.timer;
             column_generation_parameters.verbosity_level = 0;
-            column_generation_parameters.dummy_column_objective_coefficient
-                = output.dummy_column_objective_coefficient;
             if (node->parent == nullptr) {
                 column_generation_parameters.initial_columns = parameters.initial_columns;
             } else if (node->parent->relaxation_solution != nullptr) {
@@ -181,7 +178,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
-            output.dummy_column_objective_coefficient = cg_output.dummy_column_objective_coefficient;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
             output.columns.insert(
                     output.columns.end(),
@@ -323,8 +319,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                     = parameters.column_generation_parameters;
                 column_generation_parameters.timer = parameters.timer;
                 column_generation_parameters.verbosity_level = 0;
-                column_generation_parameters.dummy_column_objective_coefficient
-                    = output.dummy_column_objective_coefficient;
                 for (const auto& p: node->relaxation_solution->columns()) {
                     bool ok = true;
                     for (const auto& column: model.static_columns)
