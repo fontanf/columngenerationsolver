@@ -91,6 +91,21 @@ public:
         return travel_times_[location_id_1][location_id_2];
     }
 
+    /**
+     * Get the arc cost between two locations, i.e. its contribution to the
+     * objective/guide/bound -- distinct from 'travel_time', which is the
+     * resource used for time-window feasibility propagation. Usually
+     * equal to 'travel_time' (that's the real problem's objective), but a
+     * caller can set it to 0 (while still feeding real travel times) to
+     * search ignoring cost without corrupting time-window feasibility.
+     */
+    inline Time cost(
+            LocationId location_id_1,
+            LocationId location_id_2) const
+    {
+        return costs_[location_id_1][location_id_2];
+    }
+
     /** Get a location. */
     inline const Location& location(LocationId location_id) const { return locations_[location_id]; }
 
@@ -187,6 +202,9 @@ private:
     /** Travel times. */
     std::vector<std::vector<Time>> travel_times_;
 
+    /** Arc costs (see 'cost'). */
+    std::vector<std::vector<Time>> costs_;
+
     friend class InstanceBuilder;
 
 };
@@ -205,10 +223,14 @@ public:
         instance_.travel_times_ = std::vector<std::vector<Time>>(
                 number_of_locations,
                 std::vector<Time>(number_of_locations, -1));
+        instance_.costs_ = std::vector<std::vector<Time>>(
+                number_of_locations,
+                std::vector<Time>(number_of_locations, -1));
         for (LocationId location_id = 0;
                 location_id < number_of_locations;
                 ++location_id) {
             instance_.travel_times_[location_id][location_id] = std::numeric_limits<Time>::max();
+            instance_.costs_[location_id][location_id] = std::numeric_limits<Time>::max();
         }
     }
 
@@ -255,6 +277,15 @@ public:
             Time travel_time)
     {
         instance_.travel_times_[location_id_1][location_id_2] = travel_time;
+    }
+
+    /** Set the arc cost between two locations (see 'Instance::cost'). */
+    void set_cost(
+            LocationId location_id_1,
+            LocationId location_id_2,
+            Time cost)
+    {
+        instance_.costs_[location_id_1][location_id_2] = cost;
     }
 
 
@@ -333,10 +364,16 @@ public:
             return nullptr;
         if (parent->demand + location.demand > instance_.capacity())
             return nullptr;
+        // 'travel_time' (a real, structural resource) always propagates
+        // 'time' for time-window feasibility, regardless of phase; 'cost'
+        // (the objective/guide/bound contribution) is separate and may be
+        // zeroed by the caller (e.g. for feasibility-only pricing) without
+        // affecting time-window correctness.
         Time t = instance_.travel_time(parent->last_location_id, next_location_id);
         Time s = std::max(parent->time + t, location.release_date);
         if (s > location.deadline)
             return nullptr;
+        Time c = instance_.cost(parent->last_location_id, next_location_id);
 
         // Compute new child.
         auto child = std::shared_ptr<Node>(new BranchingScheme::Node());
@@ -350,7 +387,7 @@ public:
         child->demand = parent->demand + location.demand;
         child->remaining_demand = parent->remaining_demand - location.demand;
         child->time = s + location.service_time;
-        child->cost = parent->cost + t;
+        child->cost = parent->cost + c;
         child->profit = parent->profit + location.profit;
         child->remaining_profit = parent->remaining_profit - location.profit;
         for (LocationId j = 0; j < instance_.number_of_locations(); ++j) {
@@ -403,16 +440,16 @@ public:
     {
         if (node_1->number_of_locations == 1)
             return false;
-        return node_1->cost + instance_.travel_time(node_1->last_location_id, 0) - node_1->profit - node_1->remaining_profit
-                >= node_2->cost + instance_.travel_time(node_2->last_location_id, 0) - node_2->profit;
+        return node_1->cost + instance_.cost(node_1->last_location_id, 0) - node_1->profit - node_1->remaining_profit
+                >= node_2->cost + instance_.cost(node_2->last_location_id, 0) - node_2->profit;
     }
 
     bool better(
             const std::shared_ptr<Node>& node_1,
             const std::shared_ptr<Node>& node_2) const
     {
-        return node_1->cost + instance_.travel_time(node_1->last_location_id, 0) - node_1->profit
-                < node_2->cost + instance_.travel_time(node_2->last_location_id, 0) - node_2->profit;
+        return node_1->cost + instance_.cost(node_1->last_location_id, 0) - node_1->profit
+                < node_2->cost + instance_.cost(node_2->last_location_id, 0) - node_2->profit;
     }
 
     bool equals(
@@ -441,9 +478,9 @@ public:
         if (node->last_location_id == 0)
             return "";
         std::stringstream ss;
-        ss << node->cost + instance_.travel_time(node->last_location_id, 0) - node->profit
+        ss << node->cost + instance_.cost(node->last_location_id, 0) - node->profit
             << " (n" << node->number_of_locations
-            << " c" << node->cost + instance_.travel_time(node->last_location_id, 0)
+            << " c" << node->cost + instance_.cost(node->last_location_id, 0)
             << " p" << node->profit
             << ")";
         return ss.str();

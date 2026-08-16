@@ -67,6 +67,7 @@ public:
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
 
     virtual inline PricingOutput solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
@@ -144,8 +145,17 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
+// Under 'solve_feasibility', distances are zeroed out before being fed to
+// the ESPPRC subproblem, so its guide/bound/dominance/objective all
+// naturally ignore distance and the search becomes pure profit
+// (duals) maximization -- no changes needed inside espprc.hpp itself,
+// since demand/capacity (the only other feasibility-relevant resource
+// there) is tracked independently of distance. The returned columns'
+// real 'objective_coefficient' is still computed from the real
+// 'distances_' below, unaffected by this.
 template <typename Distances>
 typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
@@ -185,7 +195,7 @@ typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve
             espp_instance_builder.set_distance(
                     espp_location_id,
                     espp_location_id_2,
-                    distances_.distance(location_id, location_id_2));
+                    (solve_feasibility)? 0: distances_.distance(location_id, location_id_2));
         }
     }
     columngenerationsolver::espprc::Instance espp_instance = espp_instance_builder.build();

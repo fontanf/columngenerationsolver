@@ -69,6 +69,7 @@ public:
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
 
     inline virtual PricingOutput solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
@@ -144,7 +145,15 @@ struct ColumnExtra
     std::vector<LocationId> route;
 };
 
+// Under 'solve_feasibility', the ESPPRCTW subproblem's arc 'cost' (its
+// objective/guide/bound contribution) is zeroed, while 'travel_time' (the
+// resource that propagates time-window feasibility) is always fed the
+// real value -- these are tracked separately in espprctw::Instance
+// precisely so zeroing one doesn't corrupt the other. The returned
+// columns' real 'objective_coefficient' is still computed from the real
+// 'instance_.travel_time' below, unaffected by this.
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
@@ -195,6 +204,10 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
                     espp_location_id,
                     espp_location_id_2,
                     std::round(multiplier * instance_.travel_time(location_id, location_id_2)));
+            espp_instance_builder.set_cost(
+                    espp_location_id,
+                    espp_location_id_2,
+                    (solve_feasibility)? 0: std::round(multiplier * instance_.travel_time(location_id, location_id_2)));
         }
     }
     columngenerationsolver::espprctw::Instance espp_instance = espp_instance_builder.build();

@@ -66,6 +66,7 @@ public:
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
 
     virtual inline PricingOutput solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
 
@@ -144,6 +145,7 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 }
 
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
+            bool solve_feasibility,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
 {
@@ -166,8 +168,9 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             if (fixed_items_[item_id] == 1)
                 continue;
             const Item& item = instance_.item(item_id);
-            double profit = item.profit
-                - duals[instance_.number_of_knapsacks() + item_id];
+            double profit = (solve_feasibility)?
+                -duals[instance_.number_of_knapsacks() + item_id]:
+                item.profit - duals[instance_.number_of_knapsacks() + item_id];
             if (profit <= 0 || item.weight > instance_.capacity(knapsack_id))
                 continue;
             kp_instance_builder.add_item(profit, item.weight);
@@ -197,9 +200,10 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             }
         }
         output.columns.push_back(std::shared_ptr<const columngenerationsolver::Column>(new columngenerationsolver::Column(column)));
+        Value rc = compute_reduced_cost(solve_feasibility, column, duals);
         reduced_cost_bound = (std::max)(
                 reduced_cost_bound,
-                compute_reduced_cost(column, duals));
+                rc);
     }
 
     output.overcost = instance_.number_of_knapsacks() * reduced_cost_bound;

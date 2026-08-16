@@ -63,7 +63,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             parameters,
             output);
     algorithm_formatter.start("Limited discrepancy search");
-    output.dummy_column_objective_coefficient = parameters.dummy_column_objective_coefficient;
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
@@ -108,10 +107,8 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         if (parameters.timer.needs_to_end())
             break;
 
-        if (output.solution.feasible()
-                && std::abs(output.solution.objective_value() - output.bound) < FFOT_TOL) {
+        if (output.optimal())
             break;
-        }
 
         // Get node
         node_prev = node;
@@ -180,8 +177,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 = parameters.column_generation_parameters;
             column_generation_parameters.timer = parameters.timer;
             column_generation_parameters.verbosity_level = 0;
-            column_generation_parameters.dummy_column_objective_coefficient
-                = output.dummy_column_objective_coefficient;
             if (parameters.internal_diving == 2
                     || (parameters.internal_diving == 1 && node->depth == 0)) {
                 column_generation_parameters.internal_diving = 1;
@@ -245,7 +240,6 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
             output.time_rounding_heuristic += cg_output.time_rounding_heuristic;
-            output.dummy_column_objective_coefficient = cg_output.dummy_column_objective_coefficient;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
             output.columns.insert(
                     output.columns.end(),

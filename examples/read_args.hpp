@@ -34,7 +34,6 @@ inline boost::program_options::options_description setup_args()
         ("rounding-heuristic", boost::program_options::value<int>(), "set rounding heuristic")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
         ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
-        ("dummy-column-objective-coefficient", boost::program_options::value<Value>(), "Set dummy coefficient value in the column generation master problem")
         ("maximum-number-of-branching-candidates", boost::program_options::value<Counter>(), "set the maximum number of branching candidates strong-branch evaluated per node (branch-and-price)")
         ("strong-branching-maximum-number-of-iterations", boost::program_options::value<Counter>(), "set the maximum number of column generation iterations used while strong-branch evaluating a candidate (branch-and-price)")
         ;
@@ -82,8 +81,6 @@ inline void read_args(
         parameters.internal_diving = vm["internal-diving"].as<int>();
     if (vm.count("rounding-heuristic"))
         parameters.rounding_heuristic = vm["rounding-heuristic"].as<int>();
-    if (vm.count("dummy-column-objective-coefficient"))
-        parameters.dummy_column_objective_coefficient = vm["dummy-column-objective-coefficient"].as<Value>();
 }
 
 inline void write_output(
