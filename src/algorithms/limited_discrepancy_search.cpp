@@ -205,6 +205,16 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                             cg_output.relaxation_solution_value,
                             cg_output.bound);
                 };
+                column_generation_parameters.phase_callback = [&algorithm_formatter](
+                        bool solve_feasibility)
+                {
+                    algorithm_formatter.print_column_generation_phase_header(solve_feasibility);
+                };
+                column_generation_parameters.cutting_plane_callback = [&algorithm_formatter](
+                        Counter cutting_plane_iteration)
+                {
+                    algorithm_formatter.print_column_generation_cutting_plane_header(cutting_plane_iteration);
+                };
                 column_generation_parameters.new_bound_callback = [&algorithm_formatter](
                         const Output& cg_output)
                 {

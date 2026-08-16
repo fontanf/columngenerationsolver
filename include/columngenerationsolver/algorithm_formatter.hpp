@@ -27,6 +27,25 @@ public:
     /** Print the header of the column generation algorithm. */
     void print_column_generation_header();
 
+    /**
+     * Print a section header for the start of a phase within a
+     * cutting-plane round ('true' for the feasibility phase, 'false' for
+     * the optimality phase), followed by the column generation table's
+     * column header row (a long table can otherwise lose its labels
+     * across a section break).
+     */
+    void print_column_generation_phase_header(
+            bool solve_feasibility);
+
+    /**
+     * Print a section header for the start of a cutting-plane round. Not
+     * followed by the table's column header row, unlike
+     * 'print_column_generation_phase_header' -- a phase header always
+     * immediately follows this and prints it instead.
+     */
+    void print_column_generation_cutting_plane_header(
+            Counter cutting_plane_iteration);
+
     /** Print current iteration of the column generation algorithm. */
     void print_column_generation_iteration(
             Counter iteration,
@@ -77,6 +96,9 @@ private:
     /*
      * Private methods
      */
+
+    /** Print the column generation table's column header row on its own. */
+    void print_column_generation_table_header();
 
     /*
      * Private attributes

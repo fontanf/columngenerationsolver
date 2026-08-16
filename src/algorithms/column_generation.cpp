@@ -1503,6 +1503,14 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // iteration limit is reached.
     for (Counter cutting_plane_iteration = 0; ; ++cutting_plane_iteration) {
 
+    // Round 0 doesn't need its own header -- it's already unambiguous
+    // right after the top-level "Column generation" header, with no
+    // prior round to distinguish it from.
+    if (cutting_plane_iteration > 0) {
+        algorithm_formatter.print_column_generation_cutting_plane_header(cutting_plane_iteration);
+        parameters.cutting_plane_callback(cutting_plane_iteration);
+    }
+
     // Compute residual cut bounds, after subtracting the contribution of
     // fixed columns (mirrors the row residual-bound computation above).
     std::vector<Value> new_cut_lower_bounds(active_cuts.size());
@@ -1543,6 +1551,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // converged dummy-free, so its relaxation is guaranteed feasible by
     // construction.
     for (bool solve_feasibility : {true, false}) {
+
+        algorithm_formatter.print_column_generation_phase_header(solve_feasibility);
+        parameters.phase_callback(solve_feasibility);
 
         ColumnGenerationAttemptInput attempt_input{
                 model,
