@@ -37,22 +37,56 @@ void AlgorithmFormatter::print_column_generation_header()
     *os_
         << std::endl
         << "Column generation" << std::endl
-        << "-----------------" << std::endl
+        << "-----------------" << std::endl;
+}
+
+void AlgorithmFormatter::print_column_generation_phase_header(
+        bool solve_feasibility)
+{
+    if (parameters_.verbosity_level == 0)
+        return;
+    std::string title = (solve_feasibility)?
+        "Phase 1 (feasibility)":
+        "Phase 2 (optimality)";
+    *os_
+        << std::endl
+        << title << std::endl
+        << std::string(title.size(), '-') << std::endl;
+    print_column_generation_table_header();
+}
+
+void AlgorithmFormatter::print_column_generation_cutting_plane_header(
+        Counter cutting_plane_iteration)
+{
+    if (parameters_.verbosity_level == 0)
+        return;
+    std::string title = "Cutting plane " + std::to_string(cutting_plane_iteration);
+    *os_
+        << std::endl
+        << title << std::endl
+        << std::string(title.size(), '-') << std::endl;
+}
+
+void AlgorithmFormatter::print_column_generation_table_header()
+{
+    if (parameters_.verbosity_level == 0)
+        return;
+    *os_
         << std::endl
         << std::right
         << std::setw(12) << "Time"
         << std::setw(8) << "Iter"
         << std::setw(8) << "# col"
-        << std::setw(12) << "Value"
-        << std::setw(12) << "Relaxation"
-        << std::setw(12) << "Bound"
+        << std::setw(13) << "Value"
+        << std::setw(13) << "Relaxation"
+        << std::setw(13) << "Bound"
         << std::endl
         << std::setw(12) << "----"
         << std::setw(8) << "----"
         << std::setw(8) << "-----"
-        << std::setw(12) << "-----"
-        << std::setw(12) << "----------"
-        << std::setw(12) << "-----"
+        << std::setw(13) << "-----"
+        << std::setw(13) << "----------"
+        << std::setw(13) << "-----"
         << std::endl;
 }
 
@@ -70,9 +104,9 @@ void AlgorithmFormatter::print_column_generation_iteration(
         << std::setw(12) << std::fixed << std::setprecision(3) << output_.time << std::defaultfloat << std::setprecision(precision)
         << std::setw(8) << iteration
         << std::setw(8) << number_of_columns
-        << std::setw(12) << output_.solution_value()
-        << std::setw(12) << value
-        << std::setw(12) << bound
+        << std::setw(13) << output_.solution_value()
+        << std::setw(13) << value
+        << std::setw(13) << bound
         << std::endl;
 }
 

@@ -109,6 +109,15 @@ struct ColumnGenerationOutput: Output
 
 using ColumnGenerationIterationCallback = std::function<void(const ColumnGenerationOutput&)>;
 
+/**
+ * Called once at the start of each phase within a cutting-plane round
+ * ('true' for the feasibility phase, 'false' for the optimality phase).
+ */
+using ColumnGenerationPhaseCallback = std::function<void(bool solve_feasibility)>;
+
+/** Called once at the start of each cutting-plane round. */
+using ColumnGenerationCuttingPlaneCallback = std::function<void(Counter cutting_plane_iteration)>;
+
 struct ColumnGenerationParameters: Parameters
 {
     /** Linear programming solver. */
@@ -142,6 +151,12 @@ struct ColumnGenerationParameters: Parameters
 
     /** Callback function called at each column generation iteration. */
     ColumnGenerationIterationCallback iteration_callback = [](const Output&) { };
+
+    /** Callback function called at the start of each phase. */
+    ColumnGenerationPhaseCallback phase_callback = [](bool) { };
+
+    /** Callback function called at the start of each cutting-plane round. */
+    ColumnGenerationCuttingPlaneCallback cutting_plane_callback = [](Counter) { };
 
     /*
      * Stabilization parameters

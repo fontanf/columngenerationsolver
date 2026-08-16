@@ -165,6 +165,16 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             column_generation_parameters.fixed_columns = parameters.fixed_columns;
             column_generation_parameters.branching_decisions = branching_decisions;
             if (node->parent == nullptr) {
+                column_generation_parameters.phase_callback = [&algorithm_formatter](
+                        bool solve_feasibility)
+                {
+                    algorithm_formatter.print_column_generation_phase_header(solve_feasibility);
+                };
+                column_generation_parameters.cutting_plane_callback = [&algorithm_formatter](
+                        Counter cutting_plane_iteration)
+                {
+                    algorithm_formatter.print_column_generation_cutting_plane_header(cutting_plane_iteration);
+                };
                 column_generation_parameters.new_bound_callback = [&algorithm_formatter](
                         const Output& cg_output)
                 {
