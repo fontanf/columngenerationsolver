@@ -68,7 +68,8 @@ public:
     virtual inline PricingOutput solve_pricing(
             bool solve_feasibility,
             const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
+            columngenerationsolver::Counter pricing_level);
 
 private:
 
@@ -147,7 +148,8 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
             bool solve_feasibility,
             const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
+            columngenerationsolver::Counter)
 {
     PricingOutput output;
     Value reduced_cost_bound = 0.0;

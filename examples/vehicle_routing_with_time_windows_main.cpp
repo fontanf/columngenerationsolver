@@ -71,7 +71,8 @@ public:
     inline virtual PricingOutput solve_pricing(
             bool solve_feasibility,
             const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals);
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
+            columngenerationsolver::Counter pricing_level);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
 
@@ -155,7 +156,8 @@ struct ColumnExtra
 PricingSolver::PricingOutput PricingSolver::solve_pricing(
             bool solve_feasibility,
             const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&)
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
+            columngenerationsolver::Counter)
 {
     PricingOutput output;
 
