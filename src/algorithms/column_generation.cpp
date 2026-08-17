@@ -77,6 +77,13 @@ struct ColumnGenerationAttemptInput
      */
     bool solve_feasibility;
 
+    /**
+     * Pricing thoroughness level (see 'PricingSolver::
+     * number_of_pricing_levels'), passed straight through to
+     * 'solve_pricing' regardless of phase.
+     */
+    Counter pricing_level;
+
     // Mutated across the whole 'column_generation()' call, not just this
     // one attempt.
     ColumnPool& column_pool;
@@ -320,7 +327,7 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 // Phase 1's greedy fixing.
                 for (;;) {
                     input.attempt_input.model.pricing_solver->initialize_pricing(fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions);
-                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(false, input.duals_out, input.cut_duals);
+                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(false, input.duals_out, input.cut_duals, input.attempt_input.pricing_level);
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
                         if (column->elements.empty())
@@ -392,10 +399,6 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
  */
 struct ColumnGenerationAttemptResult
 {
-    /** Constructor. */
-    ColumnGenerationAttemptResult(const Model& model):
-        relaxation_solution(SolutionBuilder().set_model(model).build()) { }
-
     /**
      * 'true' iff the relaxation this attempt converged to still needs
      * dummy columns to be feasible. Under 'ColumnGenerationAttemptInput::
@@ -414,16 +417,6 @@ struct ColumnGenerationAttemptResult
      * retry.
      */
     bool stop_now = false;
-
-    /**
-     * The relaxation solution this attempt converged to (or was cut short
-     * with, if 'stop_now'). Not assigned to 'output.relaxation_solution'
-     * automatically — only meaningful for the caller to use when
-     * 'stop_now' is 'false', since when it's 'true' the caller-visible
-     * 'output.relaxation_solution' is already set directly (see
-     * 'run_column_generation_attempt').
-     */
-    Solution relaxation_solution;
 };
 
 /**
@@ -439,7 +432,7 @@ struct ColumnGenerationAttemptResult
 ColumnGenerationAttemptResult run_column_generation_attempt(
         ColumnGenerationAttemptInput& input)
 {
-    ColumnGenerationAttemptResult result(input.model);
+    ColumnGenerationAttemptResult result;
 
     // Bound on the best possible reduced cost over the whole attempt, per
     // the 3-way contract on 'PricingOutput::overcost' (exact /
@@ -989,8 +982,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 auto start_pricing = std::chrono::high_resolution_clock::now();
 
                 std::vector<std::shared_ptr<const Column>> all_columns;
-                if (!input.parameters.internal_diving) {
-                    auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals);
+                // Internal diving calls the pricing solver repeatedly
+                // (potentially many times) to greedily fix columns as it
+                // goes -- affordable at the cheapest pricing level, but
+                // not once escalated to a more thorough (and presumably
+                // more expensive) one. Fall back to a single plain
+                // pricing call per iteration whenever pricing_level > 0.
+                if (!input.parameters.internal_diving || input.pricing_level > 0) {
+                    auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals, input.pricing_level);
                     all_columns = pricing_output.columns;
                     overcost = pricing_output.overcost;
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
@@ -1001,7 +1000,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = input.parameters.fixed_columns;
                     for (int i = 0;; ++i) {
                         input.model.pricing_solver->initialize_pricing(fixed_columns_tmp, input.active_cuts, input.parameters.branching_decisions);
-                        auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals);
+                        auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals, input.pricing_level);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                             = pricing_output.columns;
                         if (i == 0) {
@@ -1339,13 +1338,33 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         return result;
     }
 
-    // Deliberately *not* assigned to 'input.output.relaxation_solution'
-    // here: the caller only does that for the outcomes that actually
-    // need it (feasible / proven infeasible / tabu-blocked) — not for
-    // "escalate and retry", where 'output.relaxation_solution' is left
-    // whatever it was before this attempt (matching this function's
-    // pre-extraction behavior exactly).
-    result.relaxation_solution = solution_builder.build();
+    // Every attempt that reaches this point (as opposed to the 'stop_now'
+    // returns above) has a relaxation solution the caller needs to see,
+    // so record it unconditionally -- including Phase 1's own result when
+    // it succeeds, even though it's immediately superseded by Phase 2's
+    // call right after; harmless, and simpler than only conditionally
+    // assigning it (unlike the old escalate-and-retry loop this function
+    // was extracted from, there's no retry left *inside* this function
+    // any more -- that's entirely the caller's job now, calling this
+    // again with different input). 'relaxation_solution_is_feasible' is
+    // '!has_dummy_column' uniformly in both phases: Phase 2 never has
+    // dummy columns in its LP at all, so 'has_dummy_column' is always
+    // 'false' there by construction.
+    Solution relaxation_solution = solution_builder.build();
+    input.output.relaxation_solution = relaxation_solution;
+    input.output.relaxation_solution_is_feasible = !has_dummy_column;
+
+    // Only meaningful to check for Phase 2: guaranteed feasible by
+    // construction (seeded from Phase 1's own optimal basis, no dummy
+    // columns in this phase's LP at all) -- Phase 1 is explicitly allowed
+    // to still need dummy columns, that's exactly what 'has_dummy_column'
+    // tracks.
+    if (!input.solve_feasibility && !relaxation_solution.feasible_relaxation()) {
+        throw std::logic_error(
+                "columngenerationsolver::column_generation: "
+                "infeasible relaxation solution.");
+    }
+
     result.has_dummy_column = has_dummy_column;
     return result;
 }
@@ -1493,6 +1512,14 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
 
+    // Pricing thoroughness level (see 'PricingSolver::
+    // number_of_pricing_levels'). Escalated, one level at a time, only
+    // once a whole cutting-plane round finds neither a new column nor a
+    // new/removed cut at the current level -- see the bottom of the loop
+    // below. Reset to 0 whenever a round *does* find something, so the
+    // cheapest level is always retried first.
+    Counter pricing_level = 0;
+
     // Loop for cutting planes.
     // After the dummy-column loop below converges to a feasible relaxation
     // (no dummy column left), if cutting planes are enabled, cuts are
@@ -1503,233 +1530,265 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // iteration limit is reached.
     for (Counter cutting_plane_iteration = 0; ; ++cutting_plane_iteration) {
 
-    // Round 0 doesn't need its own header -- it's already unambiguous
-    // right after the top-level "Column generation" header, with no
-    // prior round to distinguish it from.
-    if (cutting_plane_iteration > 0) {
-        algorithm_formatter.print_column_generation_cutting_plane_header(cutting_plane_iteration);
-        parameters.cutting_plane_callback(cutting_plane_iteration);
-    }
+        // Round 0 doesn't need its own header -- it's already unambiguous
+        // right after the top-level "Column generation" header, with no
+        // prior round to distinguish it from.
+        if (cutting_plane_iteration > 0) {
+            algorithm_formatter.print_column_generation_cutting_plane_header(cutting_plane_iteration);
+            parameters.cutting_plane_callback(cutting_plane_iteration);
+        }
 
-    // Compute residual cut bounds, after subtracting the contribution of
-    // fixed columns (mirrors the row residual-bound computation above).
-    std::vector<Value> new_cut_lower_bounds(active_cuts.size());
-    std::vector<Value> new_cut_upper_bounds(active_cuts.size());
-    for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
-        Value cut_fixed_value = 0.0;
-        for (const auto& p: parameters.fixed_columns)
-            cut_fixed_value += p.second * model.pricing_solver->coefficient(*active_cuts[cut_pos], *p.first);
-        new_cut_lower_bounds[cut_pos] = active_cuts[cut_pos]->lower_bound - cut_fixed_value;
-        new_cut_upper_bounds[cut_pos] = active_cuts[cut_pos]->upper_bound - cut_fixed_value;
-    }
-
-    // Appends the coefficients of 'column' in the active cuts to 'ri'/'rc',
-    // at row indices following the model rows.
-    auto append_cut_coefficients = [&model, &active_cuts, new_number_of_rows](
-            const Column& column,
-            std::vector<RowIdx>& ri,
-            std::vector<Value>& rc)
-    {
+        // Compute residual cut bounds, after subtracting the contribution of
+        // fixed columns (mirrors the row residual-bound computation above).
+        std::vector<Value> new_cut_lower_bounds(active_cuts.size());
+        std::vector<Value> new_cut_upper_bounds(active_cuts.size());
         for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
-            Value coef = model.pricing_solver->coefficient(*active_cuts[cut_pos], column);
-            if (coef != 0.0) {
-                ri.push_back(new_number_of_rows + cut_pos);
-                rc.push_back(coef);
-            }
-        }
-    };
-
-    // Whether Phase 2 (optimality) below is reached, i.e. whether it is
-    // meaningful to attempt cut separation afterwards.
-    bool relaxation_is_feasible_for_cuts = false;
-
-    // Two-phase method: Phase 1 (feasibility) searches for a dummy-column-
-    // free relaxation using a fixed, non-escalating dummy weight and a
-    // zeroed real objective; Phase 2 (optimality) re-solves the same
-    // feasible region with the real objective restored and no dummy
-    // columns at all. Phase 2 is only reached once Phase 1 has actually
-    // converged dummy-free, so its relaxation is guaranteed feasible by
-    // construction.
-    for (bool solve_feasibility : {true, false}) {
-
-        algorithm_formatter.print_column_generation_phase_header(solve_feasibility);
-        parameters.phase_callback(solve_feasibility);
-
-        ColumnGenerationAttemptInput attempt_input{
-                model,
-                parameters,
-                number_of_rows,
-                row_values,
-                c0,
-                new_row_indices,
-                new_rows,
-                new_number_of_rows,
-                new_row_lower_bounds,
-                new_row_upper_bounds,
-                active_cuts,
-                new_cut_lower_bounds,
-                new_cut_upper_bounds,
-                initial_columns,
-                solve_feasibility,
-                column_pool,
-                output,
-                algorithm_formatter};
-        ColumnGenerationAttemptResult attempt_result
-            = run_column_generation_attempt(attempt_input);
-
-        if (attempt_result.stop_now) {
-            output.cuts = active_cuts;
-            algorithm_formatter.end();
-            return output;
+            Value cut_fixed_value = 0.0;
+            for (const auto& p: parameters.fixed_columns)
+                cut_fixed_value += p.second * model.pricing_solver->coefficient(*active_cuts[cut_pos], *p.first);
+            new_cut_lower_bounds[cut_pos] = active_cuts[cut_pos]->lower_bound - cut_fixed_value;
+            new_cut_upper_bounds[cut_pos] = active_cuts[cut_pos]->upper_bound - cut_fixed_value;
         }
 
-        if (solve_feasibility) {
-            // If Phase 1 converged without needing any dummy column, seed
-            // Phase 2's initial columns from the real columns its optimal
-            // basis used, then fall through to Phase 2.
-            if (!attempt_result.has_dummy_column) {
-                initial_columns = parameters.initial_columns;
-                for (const auto& p: attempt_result.relaxation_solution.columns())
-                    if (column_pool.find(p.first) != column_pool.end())
-                        initial_columns.push_back(p.first);
-                continue;
+        // Appends the coefficients of 'column' in the active cuts to 'ri'/'rc',
+        // at row indices following the model rows.
+        auto append_cut_coefficients = [&model, &active_cuts, new_number_of_rows](
+                const Column& column,
+                std::vector<RowIdx>& ri,
+                std::vector<Value>& rc)
+        {
+            for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+                Value coef = model.pricing_solver->coefficient(*active_cuts[cut_pos], column);
+                if (coef != 0.0) {
+                    ri.push_back(new_number_of_rows + cut_pos);
+                    rc.push_back(coef);
+                }
+            }
+        };
+
+        // Two-phase method: Phase 1 (feasibility) searches for a dummy-column-
+        // free relaxation using a fixed, non-escalating dummy weight and a
+        // zeroed real objective; Phase 2 (optimality) re-solves the same
+        // feasible region with the real objective restored and no dummy
+        // columns at all. Phase 2 is only reached once Phase 1 has actually
+        // converged dummy-free, so its relaxation is guaranteed feasible by
+        // construction.
+        for (bool solve_feasibility : {true, false}) {
+
+            algorithm_formatter.print_column_generation_phase_header(solve_feasibility);
+            parameters.phase_callback(solve_feasibility);
+
+            ColumnGenerationAttemptInput attempt_input{
+                    model,
+                    parameters,
+                    number_of_rows,
+                    row_values,
+                    c0,
+                    new_row_indices,
+                    new_rows,
+                    new_number_of_rows,
+                    new_row_lower_bounds,
+                    new_row_upper_bounds,
+                    active_cuts,
+                    new_cut_lower_bounds,
+                    new_cut_upper_bounds,
+                    initial_columns,
+                    solve_feasibility,
+                    pricing_level,
+                    column_pool,
+                    output,
+                    algorithm_formatter};
+            ColumnGenerationAttemptResult attempt_result
+                = run_column_generation_attempt(attempt_input);
+
+            if (attempt_result.stop_now) {
+                output.cuts = active_cuts;
+                algorithm_formatter.end();
+                return output;
             }
 
-            // Otherwise, dummy columns persist even at Phase 1's fixed
-            // weight. 'run_column_generation_attempt' has already tested
-            // (and, if proven, reported through 'algorithm_formatter') a
-            // rigorous infeasibility bound -- inconclusive results (no
-            // bound, or the bound doesn't prove infeasibility) leave
-            // 'output.relaxation_solution_is_feasible' as the only signal,
-            // same as running out of time.
-            output.relaxation_solution_is_feasible = false;
-            output.relaxation_solution = attempt_result.relaxation_solution;
+            // Warm-start columns for whichever attempt runs next (the other
+            // phase; another cutting-plane round; an escalated pricing level)
+            // -- always this attempt's own real columns, regardless of which
+            // of those it turns out to be: 'parameters.initial_columns' plus
+            // every real (non-static/fixed, i.e. present in 'column_pool')
+            // column 'output.relaxation_solution' used, already set above by
+            // 'run_column_generation_attempt'.
+            initial_columns = parameters.initial_columns;
+            for (const auto& p: output.relaxation_solution.columns())
+                if (column_pool.find(p.first) != column_pool.end())
+                    initial_columns.push_back(p.first);
+
+            if (solve_feasibility) {
+                // If Phase 1 converged without needing any dummy column, fall
+                // through to Phase 2 (already warm-started above from Phase
+                // 1's own optimal basis).
+                if (!attempt_result.has_dummy_column)
+                    continue;
+
+                // Otherwise, dummy columns persist even at Phase 1's fixed
+                // weight: stop the phase loop here, Phase 2 needs Phase 1 to
+                // have succeeded first. 'run_column_generation_attempt' has
+                // already tested (and, if proven, reported through
+                // 'algorithm_formatter') a rigorous infeasibility bound, and
+                // recorded the outcome in 'output.relaxation_solution'/
+                // 'output.relaxation_solution_is_feasible' either way -- an
+                // inconclusive result (no bound, or the bound doesn't prove
+                // infeasibility) leaves 'output.relaxation_solution_is_feasible'
+                // as the only signal, same as running out of time.
+                break;
+            }
+            // Phase 2: 'run_column_generation_attempt' already validated
+            // (guaranteed feasible by construction, seeded from Phase 1's own
+            // optimal basis, no dummy columns in this phase's LP at all) and
+            // recorded the result in 'output.relaxation_solution'/
+            // 'output.relaxation_solution_is_feasible' above -- nothing left
+            // to do here.
+        }
+
+        // Already solved to optimality -- either Phase 1 just rigorously
+        // proved infeasibility above ('output.optimal()' reads that exact
+        // proof, since no feasible incumbent exists yet -- see its doc
+        // comment), or a feasible incumbent (e.g. from the rounding heuristic,
+        // which can run during Phase 2 above) already matches 'bound'. Either
+        // way, nothing further to try: stop right away, don't bother
+        // separating cuts or escalating the pricing level.
+        if (output.optimal())
             break;
-        } else {
-            // Phase 2: guaranteed feasible by construction (seeded from
-            // Phase 1's own optimal basis, no dummy columns in this
-            // phase's LP at all).
-            output.relaxation_solution_is_feasible = true;
-            output.relaxation_solution = attempt_result.relaxation_solution;
-            if (!output.relaxation_solution.feasible_relaxation()) {
-                throw std::logic_error(
-                        "columngenerationsolver::column_generation: "
-                        "infeasible relaxation solution.");
+
+        // Cutting planes disabled for this call, or the iteration limit already
+        // reached: if the relaxation is genuinely feasible (Phase 2 succeeded),
+        // stop here, exactly like before cuts existed. If it's still only
+        // inconclusive (Phase 1 failed but wasn't proven infeasible), pricing-
+        // level escalation below is an independent knob, unrelated to cutting
+        // planes, and still worth a try.
+        bool try_cutting_planes = parameters.cutting_planes
+            && (parameters.maximum_number_of_cutting_plane_iterations == -1
+                    || cutting_plane_iteration < parameters.maximum_number_of_cutting_plane_iterations);
+        if (!try_cutting_planes && output.relaxation_solution_is_feasible)
+            break;
+
+        std::vector<std::shared_ptr<const Cut>> new_cuts;
+        bool removed_a_cut = false;
+        if (try_cutting_planes) {
+            // Separate cuts from the current relaxation solution -- the full
+            // feasible one from Phase 2, or, if Phase 1 stayed inconclusive
+            // instead, the partial one it left behind (dummy columns excluded
+            // from it by construction). A cut found on that partial solution
+            // might let a later Phase 1 attempt restore feasibility where this
+            // one couldn't.
+            new_cuts = model.pricing_solver->separate_cuts(output.relaxation_solution);
+
+            // Remove cuts that are no longer active: their value at the
+            // current relaxation solution has slack on both sides, more than
+            // their own 'feasibility_tolerance', relative to their bounds (the
+            // same check 'Row::feasibility_tolerance' does for rows). Checking
+            // the value rather than the dual avoids a false "inactive" reading
+            // under LP degeneracy — common in exactly the set-partitioning-
+            // style formulations this framework targets — where a constraint
+            // can be geometrically at its bound yet still be reported with a
+            // zero dual, because multiple dual solutions can correspond to the
+            // same primal optimum. Non-robust cuts especially can make pricing
+            // significantly harder, so don't keep paying for ones that aren't
+            // helping. Applies just as well to an inconclusive (partial)
+            // relaxation as to a genuinely feasible one: a cut's value against
+            // the real columns used so far is well-defined and meaningful
+            // regardless of whether every row is already fully satisfied by
+            // them.
+            //
+            // A cut that has already been removed once may only be removed
+            // again if the relaxation has genuinely improved since then
+            // (sense-aware, guarded by FFOT_TOL against numerical noise) --
+            // otherwise a cut that gets removed, found needed again, then
+            // found inactive again without any real progress in between would
+            // cycle indefinitely. This still lets a cut be removed multiple
+            // times over a long search, as long as each removal is preceded by
+            // real progress, rather than forbidding it outright after a single
+            // bounce-back.
+            //
+            // 'output.cuts' (see 'ColumnGenerationOutput::cuts') mirrors
+            // 'active_cuts' by the time this call returns, so a cut dropped
+            // here — whether it came in via 'parameters.initial_cuts' or was
+            // newly separated this call — is dropped from 'output.cuts' too,
+            // and a caller feeding 'output.cuts' into a follow-up call won't
+            // keep reinstating it.
+            //
+            // 'PricingSolver::equal' is only called once a cut has already
+            // been removed at least once this call (i.e.
+            // 'cut_value_at_last_removal' is non-empty), and only for cuts
+            // that are themselves candidates for removal — so a
+            // 'PricingSolver' that never triggers a removal, or doesn't use
+            // cuts at all, never needs to implement it.
+            bool minimize = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+            Value current_value = output.relaxation_solution.objective_value();
+            std::vector<std::shared_ptr<const Cut>> still_active_cuts;
+            for (const std::shared_ptr<const Cut>& cut: active_cuts) {
+                Value cut_value = 0.0;
+                for (const auto& p: output.relaxation_solution.columns())
+                    cut_value += p.second * model.pricing_solver->coefficient(*cut, *p.first);
+
+                bool has_slack_below = (cut_value > cut->lower_bound + cut->feasibility_tolerance);
+                bool has_slack_above = (cut_value < cut->upper_bound - cut->feasibility_tolerance);
+                bool eligible_for_removal = has_slack_below && has_slack_above;
+
+                auto previous_removal = cut_value_at_last_removal.end();
+                if (eligible_for_removal && !cut_value_at_last_removal.empty()) {
+                    previous_removal = std::find_if(
+                            cut_value_at_last_removal.begin(),
+                            cut_value_at_last_removal.end(),
+                            [&model, &cut](
+                                const std::pair<std::shared_ptr<const Cut>, Value>& p)
+                            {
+                                return model.pricing_solver->equal(*cut, *p.first);
+                            });
+                    if (previous_removal != cut_value_at_last_removal.end()) {
+                        eligible_for_removal = (minimize)?
+                            (current_value < previous_removal->second - FFOT_TOL):
+                            (current_value > previous_removal->second + FFOT_TOL);
+                    }
+                }
+
+                if (eligible_for_removal) {
+                    removed_a_cut = true;
+                    if (previous_removal != cut_value_at_last_removal.end()) {
+                        previous_removal->second = current_value;
+                    } else {
+                        cut_value_at_last_removal.push_back({cut, current_value});
+                    }
+                } else {
+                    still_active_cuts.push_back(cut);
+                }
             }
-            relaxation_is_feasible_for_cuts = true;
-        }
-    }
-
-    // If Phase 2 above was never reached (timeout/iteration-limit already
-    // returned directly; Phase 1 stayed infeasible/inconclusive and fell
-    // through to here), stop: no point separating cuts from a relaxation
-    // that still contains dummy columns.
-    if (!relaxation_is_feasible_for_cuts)
-        break;
-
-    // Cutting planes disabled for this call: stop after the first feasible
-    // relaxation, exactly like before cuts existed.
-    if (!parameters.cutting_planes)
-        break;
-
-    // Check cutting-plane iteration limit.
-    if (parameters.maximum_number_of_cutting_plane_iterations != -1
-            && cutting_plane_iteration >= parameters.maximum_number_of_cutting_plane_iterations) {
-        break;
-    }
-
-    // Separate cuts from the current (feasible) relaxation solution.
-    std::vector<std::shared_ptr<const Cut>> new_cuts
-        = model.pricing_solver->separate_cuts(output.relaxation_solution);
-
-    // Remove cuts that are no longer active: their value at the current
-    // relaxation solution has slack on both sides, more than their own
-    // 'feasibility_tolerance', relative to their bounds (the same check
-    // 'Row::feasibility_tolerance' does for rows). Checking the value
-    // rather than the dual avoids a false "inactive" reading under LP
-    // degeneracy — common in exactly the set-partitioning-style
-    // formulations this framework targets — where a constraint can be
-    // geometrically at its bound yet still be reported with a zero dual,
-    // because multiple dual solutions can correspond to the same primal
-    // optimum. Non-robust cuts especially can make pricing significantly
-    // harder, so don't keep paying for ones that aren't helping.
-    //
-    // A cut that has already been removed once may only be removed again
-    // if the relaxation has genuinely improved since then (sense-aware,
-    // guarded by FFOT_TOL against numerical noise) — otherwise a cut that
-    // gets removed, found needed again, then found inactive again without
-    // any real progress in between would cycle indefinitely. This still
-    // lets a cut be removed multiple times over a long search, as long as
-    // each removal is preceded by real progress, rather than forbidding
-    // it outright after a single bounce-back.
-    //
-    // 'output.cuts' (see 'ColumnGenerationOutput::cuts') mirrors
-    // 'active_cuts' by the time this call returns, so a cut dropped here —
-    // whether it came in via 'parameters.initial_cuts' or was newly separated
-    // this call — is dropped from 'output.cuts' too, and a caller feeding
-    // 'output.cuts' into a follow-up call won't keep reinstating it.
-    //
-    // 'PricingSolver::equal' is only called once a cut has already been
-    // removed at least once this call (i.e. 'cut_value_at_last_removal' is
-    // non-empty), and only for cuts that are themselves candidates for
-    // removal — so a 'PricingSolver' that never triggers a removal, or
-    // doesn't use cuts at all, never needs to implement it.
-    bool minimize = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
-    Value current_value = output.relaxation_solution.objective_value();
-    std::vector<std::shared_ptr<const Cut>> still_active_cuts;
-    bool removed_a_cut = false;
-    for (const std::shared_ptr<const Cut>& cut: active_cuts) {
-        Value cut_value = 0.0;
-        for (const auto& p: output.relaxation_solution.columns())
-            cut_value += p.second * model.pricing_solver->coefficient(*cut, *p.first);
-
-        bool has_slack_below = (cut_value > cut->lower_bound + cut->feasibility_tolerance);
-        bool has_slack_above = (cut_value < cut->upper_bound - cut->feasibility_tolerance);
-        bool eligible_for_removal = has_slack_below && has_slack_above;
-
-        auto previous_removal = cut_value_at_last_removal.end();
-        if (eligible_for_removal && !cut_value_at_last_removal.empty()) {
-            previous_removal = std::find_if(
-                    cut_value_at_last_removal.begin(),
-                    cut_value_at_last_removal.end(),
-                    [&model, &cut](
-                        const std::pair<std::shared_ptr<const Cut>, Value>& p)
-                    {
-                        return model.pricing_solver->equal(*cut, *p.first);
-                    });
-            if (previous_removal != cut_value_at_last_removal.end()) {
-                eligible_for_removal = (minimize)?
-                    (current_value < previous_removal->second - FFOT_TOL):
-                    (current_value > previous_removal->second + FFOT_TOL);
-            }
+            active_cuts = std::move(still_active_cuts);
         }
 
-        if (eligible_for_removal) {
-            removed_a_cut = true;
-            if (previous_removal != cut_value_at_last_removal.end()) {
-                previous_removal->second = current_value;
+        if (new_cuts.empty() && !removed_a_cut) {
+            // Nothing found (cutting planes disabled/capped, or a genuinely
+            // empty attempt; no removal either) at the current pricing level:
+            // escalate to a more thorough level and retry the whole
+            // cutting-plane fixed point there, rather than giving up -- a
+            // stronger pricing level might still find a column or a cut that a
+            // cheaper one couldn't. Only truly done once every level has
+            // already been tried.
+            if (pricing_level < model.pricing_solver->number_of_pricing_levels() - 1) {
+                ++pricing_level;
             } else {
-                cut_value_at_last_removal.push_back({cut, current_value});
+                break;
             }
         } else {
-            still_active_cuts.push_back(cut);
+            // Found something at the current level: reset to the cheapest
+            // level for the next round, since a genuinely different
+            // relaxation (the enlarged/shrunk cut set) might make it
+            // productive again.
+            pricing_level = 0;
+            active_cuts.insert(active_cuts.end(), new_cuts.begin(), new_cuts.end());
+            output.number_of_cutting_plane_iterations++;
         }
-    }
-    active_cuts = std::move(still_active_cuts);
 
-    if (new_cuts.empty() && !removed_a_cut)
-        break;
-
-    active_cuts.insert(active_cuts.end(), new_cuts.begin(), new_cuts.end());
-    output.number_of_cutting_plane_iterations++;
-
-    // Rebuild the master LP from scratch with the enlarged cut set: seed
-    // initial columns with the columns of the relaxation solution that
-    // just converged, same as Phase 1 does when it converges dummy-free.
-    initial_columns = parameters.initial_columns;
-    for (const auto& p: output.relaxation_solution.columns())
-        if (column_pool.find(p.first) != column_pool.end())
-            initial_columns.push_back(p.first);
+        // Rebuild the master LP from scratch next round (with the enlarged cut
+        // set, if any -- unchanged otherwise, if this round only escalated the
+        // pricing level): 'initial_columns' is already warm-started from this
+        // attempt's own relaxation solution, set right after it ran, above.
     }
 
     output.cuts = active_cuts;

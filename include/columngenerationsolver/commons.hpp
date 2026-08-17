@@ -281,6 +281,21 @@ public:
             const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions) = 0;
 
     /**
+     * Number of pricing levels this solver supports (>= 1), e.g. a fast
+     * heuristic (level 0), a more expensive heuristic, an exact algorithm,
+     * ... ordered from cheapest/least thorough to most expensive/thorough.
+     * 'column_generation' starts every call at level 0 and only escalates
+     * once a whole cutting-plane fixed point is reached at the current
+     * level (no new column, no new or removed cut) — see 'solve_pricing'.
+     * The default of 1 (single level) means it never escalates, i.e. a
+     * solver that doesn't override this is unaffected.
+     */
+    virtual Counter number_of_pricing_levels() const
+    {
+        return 1;
+    }
+
+    /**
      * Solve the pricing subproblem.
      *
      * When 'solve_feasibility' is 'true', search for columns that improve
@@ -290,18 +305,29 @@ public:
      * their real 'objective_coefficient' field intact — it's just not what
      * the search itself optimized for. See 'PricingOutput::overcost' for
      * how this affects the bound contract.
+     *
+     * 'pricing_level' (see 'number_of_pricing_levels') selects how
+     * thorough the search should be, independently of 'solve_feasibility'
+     * -- both phases escalate through the same levels together.
      */
     virtual PricingOutput solve_pricing(
             bool solve_feasibility,
             const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals) = 0;
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals,
+            Counter pricing_level) = 0;
 
     /**
      * Separate cutting planes from the current relaxation solution.
      *
-     * Called by 'column_generation' once the relaxation has converged to a
-     * feasible (dummy-column-free) solution, when cutting planes are
-     * enabled. The default implementation generates no cuts.
+     * Called by 'column_generation' once the relaxation has converged, when
+     * cutting planes are enabled -- either genuinely feasible (Phase 2,
+     * dummy-column-free by construction), or, if Phase 1 (feasibility)
+     * fails to reach one but isn't proven infeasible either, from that
+     * inconclusive attempt's own relaxation solution instead: a partial
+     * solution, since dummy columns are excluded from it by construction.
+     * A cut found this way might let a later Phase 1 attempt restore
+     * feasibility where this one couldn't. The default implementation
+     * generates no cuts.
      */
     virtual std::vector<std::shared_ptr<const Cut>> separate_cuts(
             const Solution& solution)
