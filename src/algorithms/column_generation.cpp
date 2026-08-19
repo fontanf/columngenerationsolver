@@ -301,6 +301,20 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
 
         Value infeasibility = initial_infeasibility;
         bool threshold_reached = false;
+        // Estimate how many more columns would still be needed to resolve
+        // the remaining infeasibility, assuming further columns resolve
+        // about as much infeasibility each as the last 'rate_window_size'
+        // did - not the average since the start of Phase 1.
+        // 'relaxation_columns' is sorted by decreasing value, so the first
+        // columns fixed are the most useful ones and resolve much more
+        // infeasibility each than the ones fixed later; a cumulative
+        // average stays optimistic long after the marginal rate has
+        // actually collapsed, understating how many columns are really
+        // still needed. Recomputing the rate over a small trailing window
+        // instead tracks the current, not historical, marginal cost.
+        const ColIdx rate_window_size = 10;
+        Value window_start_infeasibility = initial_infeasibility;
+        ColIdx window_start_columns = 0;
         for (const auto& p: relaxation_columns) {
             Value value = rounding_heuristic_max_value(input, p.first, rh_row_values, rh_c0);
             if (value <= 0.0)
@@ -308,16 +322,34 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
             rounding_heuristic_fix_column(input, p.first, value, rh_row_values, rh_c0, infeasibility);
             fixed_columns.push_back({p.first, value});
 
-            if (infeasibility <= input.attempt_input.parameters.rounding_heuristic_infeasibility_threshold * initial_infeasibility) {
-                threshold_reached = true;
-                break;
+            ColIdx window_columns = (ColIdx)fixed_columns.size() - window_start_columns;
+            Value window_infeasibility_resolved = window_start_infeasibility - infeasibility;
+            if (window_infeasibility_resolved > 0.0) {
+                Value average_infeasibility_per_column = window_infeasibility_resolved / window_columns;
+                Value estimated_remaining_columns = infeasibility / average_infeasibility_per_column;
+                if (estimated_remaining_columns < 2.0) {
+                    threshold_reached = true;
+                    break;
+                }
+            }
+            if (window_columns >= rate_window_size) {
+                window_start_infeasibility = infeasibility;
+                window_start_columns = (ColIdx)fixed_columns.size();
             }
         }
+        // Phase 1 has fixed every relaxation column it had to offer (no
+        // more candidates left) but infeasibility remains: there is
+        // nothing more this phase can do on its own, so fall through to
+        // Phase 2 regardless of the estimate above - completing the
+        // solution from here on requires pricing new columns.
+        if (!threshold_reached && infeasibility > 0.0)
+            threshold_reached = true;
 
         // Phase 2: complete the solution with a fix/price/fix loop, no
         // relaxation re-solve (mirrors the 'internal_diving' completion
         // loop in 'column_generation()'), only entered once Phase 1
-        // resolved enough infeasibility.
+        // resolved enough infeasibility (or ran out of its own columns
+        // while infeasibility remained).
         if (threshold_reached) {
             if (infeasibility > 0.0) {
                 // Use the real current-iteration duals: they carry the
@@ -766,6 +798,18 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             duals_out,
             cut_duals};
 
+    // Whether the previous iteration actually had to call the pricing
+    // solver to find new columns (as opposed to finding enough from the
+    // column pool alone, without any dual-informed search). Gates the
+    // rounding heuristic below: when the pool has been keeping the master
+    // fed, the pool's columns were themselves priced against duals close
+    // to the current ones, so there is nothing genuinely new for the
+    // heuristic's own pricing calls to find yet, and running it would
+    // just pay for repeated, redundant pricing work at every iteration.
+    // Initialized 'true' so the heuristic still gets a chance to run at
+    // the first opportunity.
+    bool pricing_called_previous_iteration = true;
+
     for (Counter number_of_column_generation_iterations = 1;
             ;
             ++number_of_column_generation_iterations) {
@@ -825,8 +869,11 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             cut_duals[cut_pos].second = solver->dual(input.new_number_of_rows + cut_pos);
         }
 
-        if (!input.solve_feasibility && input.parameters.rounding_heuristic)
+        if (!input.solve_feasibility
+                && input.parameters.rounding_heuristic
+                && pricing_called_previous_iteration) {
             run_rounding_heuristic(rounding_heuristic_input);
+        }
 
         std::vector<std::shared_ptr<const Column>> new_columns;
         std::vector<Value> pricing_lagrangian_column_values;
@@ -855,6 +902,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             }
 
         }
+
+        // Record, for the *next* iteration's rounding heuristic gate above,
+        // whether real pricing is about to be called this iteration.
+        pricing_called_previous_iteration = new_columns.empty();
 
         if (new_columns.empty()) {
             // Search for new columns by solving the pricing problem.
