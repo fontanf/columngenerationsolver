@@ -358,14 +358,27 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 // relaxation, not just for the rows still short after
                 // Phase 1's greedy fixing.
                 for (;;) {
-                    input.attempt_input.model.pricing_solver->initialize_pricing(fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions);
+                    input.attempt_input.model.pricing_solver->initialize_pricing(fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions, input.attempt_input.parameters.tabu);
                     auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(false, input.duals_out, input.cut_duals, input.attempt_input.pricing_level);
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
                         if (column->elements.empty())
                             continue;
-                        new_columns.push_back(column);
+                        // Pooling a tabu column is harmless -- the pool is
+                        // just a cache of discovered columns, reusable
+                        // later once it isn't tabu, and doesn't by itself
+                        // add anything to any LP -- so do it unconditionally.
                         rounding_heuristic_add_to_column_pool(input, column);
+                        // Passing 'tabu' to 'initialize_pricing' above only
+                        // lets the pricing solver *choose* to avoid these
+                        // columns -- it isn't required to, so still filter
+                        // defensively here: this heuristic's own greedy
+                        // fixing has no other check keeping a
+                        // branching-excluded column out of the candidate
+                        // solution it builds.
+                        if (input.attempt_input.parameters.tabu.find(column) != input.attempt_input.parameters.tabu.end())
+                            continue;
+                        new_columns.push_back(column);
                     }
                     if (new_columns.empty())
                         break;
@@ -401,7 +414,7 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 }
                 // Restore the real pricing solver state for the pricing
                 // calls in 'column_generation()'.
-                input.attempt_input.model.pricing_solver->initialize_pricing(input.attempt_input.parameters.fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions);
+                input.attempt_input.model.pricing_solver->initialize_pricing(input.attempt_input.parameters.fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions, input.attempt_input.parameters.tabu);
             }
 
             // Build and check the candidate solution. Always done (rather
@@ -569,7 +582,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // Initialize pricing solver.
     //std::cout << "Initialize pricing solver..." << std::endl;
     std::vector<std::shared_ptr<const Column>> infeasible_columns
-        = input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions);
+        = input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
     std::vector<int8_t> feasible(input.model.static_columns.size(), 1);
 
     // Add dummy columns. Phase 2 (optimality) has none at all: it is only
@@ -725,8 +738,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             continue;
 
         // Don't add a tabu column.
-        if (input.parameters.tabu != nullptr
-                && input.parameters.tabu->find(column) != input.parameters.tabu->end())
+        if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
             continue;
 
         std::vector<RowIdx> row_ids;
@@ -886,8 +898,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 continue;
 
             // Don't add a tabu column.
-            if (input.parameters.tabu != nullptr
-                    && input.parameters.tabu->find(column) != input.parameters.tabu->end())
+            if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
                 continue;
 
             // Add the column if its reduced cost is negative.
@@ -1050,7 +1061,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                     std::vector<Value> row_values_tmp = input.row_values;
                     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = input.parameters.fixed_columns;
                     for (int i = 0;; ++i) {
-                        input.model.pricing_solver->initialize_pricing(fixed_columns_tmp, input.active_cuts, input.parameters.branching_decisions);
+                        input.model.pricing_solver->initialize_pricing(fixed_columns_tmp, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
                         auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals, input.pricing_level);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                             = pricing_output.columns;
@@ -1064,8 +1075,25 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                         for (const auto& column: all_columns_tmp_0) {
                             if (column->elements.empty())
                                 continue;
-                            all_columns_tmp_1.push_back(column);
+                            // Collecting a tabu column into 'all_columns'
+                            // is harmless: from there it only ever reaches
+                            // the master LP through the regular pricing
+                            // loop below, which is safe regardless (its
+                            // pool-membership check skips it -- a tabu'd
+                            // column must already be in the pool).
                             all_columns.push_back(column);
+                            // 'all_columns_tmp_1' is different: it feeds
+                            // this diving loop's own greedy fixing below
+                            // ('fixed_columns_tmp.push_back(...)'), which
+                            // has no other check keeping a
+                            // branching-excluded column out of what it
+                            // fixes, and passing 'tabu' to
+                            // 'initialize_pricing' only lets the pricing
+                            // solver *choose* to avoid these columns -- it
+                            // isn't required to.
+                            if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
+                                continue;
+                            all_columns_tmp_1.push_back(column);
                         }
                         if (all_columns_tmp_1.empty())
                             break;
@@ -1121,7 +1149,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                         if (!has_fixed)
                             break;
                     }
-                    input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions);
+                    input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
                 }
 
                 auto end_pricing = std::chrono::high_resolution_clock::now();

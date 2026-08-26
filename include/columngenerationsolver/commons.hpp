@@ -7,6 +7,7 @@
 #include <vector>
 #include <cstdint>
 #include <iomanip>
+#include <unordered_set>
 
 namespace columngenerationsolver
 {
@@ -275,10 +276,21 @@ public:
         std::vector<Value> lagrangian_column_values;
     };
 
+    /**
+     * 'tabu' lists columns the search has already branched away from at
+     * the current node (e.g. limited discrepancy search: a column fixed
+     * to a reduced value, capped so pricing can't grow it back) -- the
+     * framework itself never hands one of these to the master LP, so a
+     * 'PricingSolver' is never required to honor it, but one that can
+     * cheaply exclude specific columns from its own search (e.g. forbid
+     * an exact route/pattern) should, to avoid wasting time re-proposing
+     * columns that would just be discarded. May be empty; never null.
+     */
     virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns,
             const std::vector<std::shared_ptr<const Cut>>& cuts,
-            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions) = 0;
+            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const Column>>& tabu) = 0;
 
     /**
      * Number of pricing levels this solver supports (>= 1), e.g. a fast

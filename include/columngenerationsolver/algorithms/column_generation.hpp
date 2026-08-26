@@ -181,7 +181,7 @@ struct ColumnGenerationParameters: Parameters
      * These columns are never added to the LP solver and therefore won't be
      * part of the returned solution.
      */
-    std::unordered_set<std::shared_ptr<const Column>>* tabu = nullptr;
+    std::unordered_set<std::shared_ptr<const Column>> tabu;
 
     /**
      * Fraction of the starting infeasibility that must remain before the
@@ -209,7 +209,7 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Maximum number of iterations: " << maximum_number_of_iterations << std::endl
             << std::setw(width) << std::left << "Maximum number of cutting-plane iterations: " << maximum_number_of_cutting_plane_iterations << std::endl
             << std::setw(width) << std::left << "Optimality tolerance: " << optimality_tolerance << std::endl
-            << std::setw(width) << std::left << "Tabu size: " << (tabu == nullptr? 0: tabu->size()) << std::endl
+            << std::setw(width) << std::left << "Tabu size: " << tabu.size() << std::endl
             << std::setw(width) << std::left << "Rounding heuristic infeasibility threshold: " << rounding_heuristic_infeasibility_threshold << std::endl
             ;
     }
@@ -226,7 +226,7 @@ struct ColumnGenerationParameters: Parameters
                 {"MaximumNumberOfIterations", maximum_number_of_iterations},
                 {"MaximumNumberOfCuttingPlaneIterations", maximum_number_of_cutting_plane_iterations},
                 {"OptimalityTolerance", optimality_tolerance},
-                {"TabuSize", (tabu == nullptr? 0: tabu->size())},
+                {"TabuSize", tabu.size()},
                 {"RoundingHeuristicInfeasibilityThreshold", rounding_heuristic_infeasibility_threshold},
                 });
         return json;
