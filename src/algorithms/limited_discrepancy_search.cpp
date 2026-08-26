@@ -273,7 +273,20 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 output.relaxation_solution = cg_output.relaxation_solution;
             }
             if (!cg_output.relaxation_solution_is_feasible) {
-                //std::cout << "no solution" << std::endl;
+                // Infeasible: prune, no children. Still worth a log line
+                // (rather than vanishing silently) so the tree search's
+                // progress reflects every node it actually visited, not
+                // just the ones that produced a relaxation to branch on.
+                // 'relaxation' has no meaningful value here (no feasible
+                // point to report), so print the sense-aware infinity
+                // that means "none" elsewhere in this codebase.
+                algorithm_formatter.print_limited_discrepancy_search_iteration(
+                        output.number_of_nodes,
+                        node->depth,
+                        node->discrepancy,
+                        (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                        std::numeric_limits<Value>::infinity():
+                        -std::numeric_limits<Value>::infinity());
                 continue;
             }
 
