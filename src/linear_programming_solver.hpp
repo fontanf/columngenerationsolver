@@ -50,10 +50,25 @@ public:
             const std::vector<Value>& lower_bound,
             const std::vector<Value>& upper_bound) = 0;
     virtual void solve() = 0;
+    /** 'true' iff the last 'solve()' proved the LP infeasible. */
+    virtual bool infeasible() const = 0;
     virtual Value objective() const = 0;
     virtual Value dual(RowIdx row) const = 0;
     virtual Value primal(ColIdx col) const = 0;
 };
+
+/**
+ * Build a 'LinearProgrammingSolver' of the requested backend over the given
+ * row bounds -- the same selection logic 'run_column_generation_attempt()'
+ * needs both for its main master LP and for the smaller LP it verifies a
+ * dummy-free relaxation against, factored out here so the two don't drift
+ * apart.
+ */
+std::unique_ptr<LinearProgrammingSolver> make_linear_programming_solver(
+        SolverName solver_name,
+        optimizationtools::ObjectiveDirection objective_sense,
+        const std::vector<Value>& row_lower_bounds,
+        const std::vector<Value>& row_upper_bounds);
 
 #if CLP_FOUND
 
@@ -136,11 +151,9 @@ public:
     {
         //model_.writeLp("output");
         model_.primal();
-        if (model_.isProvenPrimalInfeasible()) {
-            model_.writeLp("output");
-            throw std::runtime_error("Infeasible model (LP written to output.lp)");
-        }
     }
+
+    bool infeasible() const { return model_.isProvenPrimalInfeasible(); }
 
     Value objective() const { return model_.objectiveValue(); }
     Value dual(RowIdx row) const { return model_.dualRowSolution()[row]; }
@@ -240,6 +253,8 @@ public:
         model_.run();
     }
 
+    bool infeasible() const { return model_.getModelStatus() == HighsModelStatus::kInfeasible; }
+
     Value objective() const { return model_.getObjectiveValue(); }
     Value dual(RowIdx row) const { return model_.getSolution().row_dual[row]; }
     Value primal(ColIdx col) const { return model_.getSolution().col_value[col]; }
@@ -316,6 +331,8 @@ public:
         //std::cout << model_ << std::endl;
         cplex_.solve();
     }
+
+    bool infeasible() const { return cplex_.getStatus() == IloAlgorithm::Infeasible; }
 
     Value objective() const { return cplex_.getObjValue(); }
     Value dual(RowIdx row) const { return cplex_.getDual(ranges_[row]); }
@@ -458,10 +475,13 @@ public:
         XPRSlpoptimize(problem_, "");
         XPRSgetlpsol(problem_, primals_.data(), NULL, duals_.data(), NULL);
         XPRSgetbasis(problem_, basis_rows_.data(), basis_cols_.data());
+        XPRSgetintattrib(problem_, XPRS_LPSTATUS, &lp_status_);
         //XPRSwriteprob(problem_, "model.lp", "l");
         //XPRSwriteprob(problem_, "model.mps", "");
         has_basis_ = true;
     }
+
+    bool infeasible() const { return lp_status_ == XPRS_LP_INFEAS; }
 
     Value objective() const
     {
@@ -483,6 +503,7 @@ private:
 
     XPRSprob problem_;
     bool has_basis_ = false;
+    int lp_status_ = 0;
     std::vector<int> ri_;
     std::vector<int> basis_rows_;
     std::vector<int> basis_cols_;
@@ -556,8 +577,10 @@ public:
 
     void solve()
     {
-        KN_solve(kc_);
+        status_ = KN_solve(kc_);
     }
+
+    bool infeasible() const { return status_ == KN_RC_INFEASIBLE; }
 
     Value objective() const
     {
@@ -581,9 +604,66 @@ public:
 private:
 
     KN_context* kc_;
+    int status_ = 0;
 
 };
 
 #endif
+
+inline std::unique_ptr<LinearProgrammingSolver> make_linear_programming_solver(
+        SolverName solver_name,
+        optimizationtools::ObjectiveDirection objective_sense,
+        const std::vector<Value>& row_lower_bounds,
+        const std::vector<Value>& row_upper_bounds)
+{
+    std::unique_ptr<LinearProgrammingSolver> solver = NULL;
+#if CPLEX_FOUND
+    if (solver_name == SolverName::CPLEX)
+        solver = std::unique_ptr<LinearProgrammingSolver>(
+                new LinearProgrammingSolverCplex(
+                    objective_sense,
+                    row_lower_bounds,
+                    row_upper_bounds));
+#endif
+#if CLP_FOUND
+    if (solver_name == SolverName::CLP) {
+        solver = std::unique_ptr<LinearProgrammingSolver>(
+                new LinearProgrammingSolverClp(
+                    objective_sense,
+                    row_lower_bounds,
+                    row_upper_bounds));
+    }
+#endif
+#if HIGHS_FOUND
+    if (solver_name == SolverName::Highs) {
+        solver = std::unique_ptr<LinearProgrammingSolver>(
+                new LinearProgrammingSolverHighs(
+                    objective_sense,
+                    row_lower_bounds,
+                    row_upper_bounds));
+    }
+#endif
+#if XPRESS_FOUND
+    if (solver_name == SolverName::Xpress) {
+        solver = std::unique_ptr<LinearProgrammingSolver>(
+                new LinearProgrammingSolverXpress(
+                    objective_sense,
+                    row_lower_bounds,
+                    row_upper_bounds));
+    }
+#endif
+#if KNITRO_FOUND
+    if (solver_name == SolverName::Knitro)
+        solver = std::unique_ptr<LinearProgrammingSolver>(
+                new LinearProgrammingSolverKnitro(
+                    objective_sense,
+                    row_lower_bounds,
+                    row_upper_bounds));
+#endif
+    if (solver == NULL) {
+        throw std::runtime_error("ERROR, no linear programming solver found");
+    }
+    return solver;
+}
 
 }
