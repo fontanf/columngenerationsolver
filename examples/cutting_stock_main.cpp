@@ -59,7 +59,8 @@ public:
     inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
             const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions);
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu);
 
     inline virtual PricingOutput solve_pricing(
             bool solve_feasibility,
@@ -106,7 +107,8 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
 std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
             const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&)
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&)
 {
     std::fill(filled_demands_.begin(), filled_demands_.end(), 0);
     for (const auto& p: fixed_columns) {

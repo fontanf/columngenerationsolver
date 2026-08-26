@@ -239,7 +239,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 parameters.initial_cuts:
                 node->parent->cuts;
             column_generation_parameters.fixed_columns = fixed_columns.columns();
-            column_generation_parameters.tabu = &tabu;
+            column_generation_parameters.tabu = tabu;
 
             // Solve.
             auto cg_output = column_generation(
