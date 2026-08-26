@@ -507,53 +507,11 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             input.new_cut_upper_bounds.begin(),
             input.new_cut_upper_bounds.end());
 
-    std::unique_ptr<LinearProgrammingSolver> solver = NULL;
-#if CPLEX_FOUND
-    if (input.parameters.solver_name == SolverName::CPLEX)
-        solver = std::unique_ptr<LinearProgrammingSolver>(
-                new LinearProgrammingSolverCplex(
-                    input.model.objective_sense,
-                    lp_row_lower_bounds,
-                    lp_row_upper_bounds));
-#endif
-#if CLP_FOUND
-    if (input.parameters.solver_name == SolverName::CLP) {
-        solver = std::unique_ptr<LinearProgrammingSolver>(
-                new LinearProgrammingSolverClp(
-                    input.model.objective_sense,
-                    lp_row_lower_bounds,
-                    lp_row_upper_bounds));
-    }
-#endif
-#if HIGHS_FOUND
-    if (input.parameters.solver_name == SolverName::Highs) {
-        solver = std::unique_ptr<LinearProgrammingSolver>(
-                new LinearProgrammingSolverHighs(
-                    input.model.objective_sense,
-                    lp_row_lower_bounds,
-                    lp_row_upper_bounds));
-    }
-#endif
-#if XPRESS_FOUND
-    if (input.parameters.solver_name == SolverName::Xpress) {
-        solver = std::unique_ptr<LinearProgrammingSolver>(
-                new LinearProgrammingSolverXpress(
-                    input.model.objective_sense,
-                    lp_row_lower_bounds,
-                    lp_row_upper_bounds));
-    }
-#endif
-#if KNITRO_FOUND
-    if (input.parameters.solver_name == SolverName::Knitro)
-        solver = std::unique_ptr<LinearProgrammingSolver>(
-                new LinearProgrammingSolverKnitro(
-                    input.model.objective_sense,
-                    lp_row_lower_bounds,
-                    lp_row_upper_bounds));
-#endif
-    if (solver == NULL) {
-        throw std::runtime_error("ERROR, no linear programming solver found");
-    }
+    std::unique_ptr<LinearProgrammingSolver> solver = make_linear_programming_solver(
+            input.parameters.solver_name,
+            input.model.objective_sense,
+            lp_row_lower_bounds,
+            lp_row_upper_bounds);
 
     // This array is used to retrieve the corresponding column from a
     // variable id in the LP solver solution.
@@ -563,6 +521,50 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // We use this set to keep track of the generated columns inside the
     // LP solver.
     std::unordered_set<std::shared_ptr<const Column>> solver_generated_columns;
+
+    // Verify that 'nonzero_real_columns' -- with no dummy columns -- can
+    // still satisfy every row on their own: builds a small LP restricted
+    // to exactly those columns (their own bounds, zero objective -- only
+    // feasibility matters) and solves it. Used to double-check every
+    // magnitude-based "no dummy column" verdict below (there are two:
+    // the zero-pricing-calls short circuit and the final relaxation
+    // check) -- a dummy column's primal value can sit just under the
+    // magnitude tolerance while still being the only thing letting a row
+    // be satisfied by the real columns currently available, and handing
+    // such a false "dummy-free" verdict to Phase 2 (no dummy columns at
+    // all) would make Phase 2's very first solve infeasible, with no
+    // duals left to price against.
+    auto verify_dummy_free = [&input, &lp_row_lower_bounds, &lp_row_upper_bounds,
+         &append_cut_coefficients, &solver_generated_columns](
+            const std::vector<std::shared_ptr<const Column>>& nonzero_real_columns) -> bool
+    {
+        std::unique_ptr<LinearProgrammingSolver> verification_solver = make_linear_programming_solver(
+                input.parameters.solver_name,
+                input.model.objective_sense,
+                lp_row_lower_bounds,
+                lp_row_upper_bounds);
+        for (const std::shared_ptr<const Column>& column: nonzero_real_columns) {
+            std::vector<RowIdx> ri;
+            std::vector<Value> rc;
+            for (const LinearTerm& element: column->elements) {
+                ri.push_back(input.new_row_indices[element.row]);
+                rc.push_back(element.coefficient);
+            }
+            append_cut_coefficients(*column, ri, rc);
+            // Static columns keep their own bounds; generated (initial or
+            // priced) columns are added with [0, +inf), matching how they
+            // were originally added to the main LP above.
+            bool is_static = (solver_generated_columns.find(column) == solver_generated_columns.end());
+            verification_solver->add_column(
+                    ri,
+                    rc,
+                    0,
+                    is_static? column->lower_bound: 0.0,
+                    is_static? column->upper_bound: std::numeric_limits<Value>::infinity());
+        }
+        verification_solver->solve();
+        return !verification_solver->infeasible();
+    };
 
     input.output.number_of_columns_in_linear_subproblem = 0;
 
@@ -841,23 +843,30 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         // Zero-pricing-calls short circuit: if this is Phase 1's very
         // first LP solve (built only from already-known columns) and it's
-        // already dummy-free, stop right here rather than calling pricing
-        // at all -- further column search is pointless once feasibility
-        // is already achieved. Cheap to check since Phase 1 reruns every
+        // already dummy-free (verified: see 'verify_dummy_free' above),
+        // stop right here rather than calling pricing at all -- further
+        // column search is pointless once feasibility is already
+        // achieved. Cheap to check since Phase 1 reruns every
         // cutting-plane round, where the previous round's columns almost
-        // always still suffice.
+        // always still suffice. If verification finds it's not actually
+        // dummy-free after all, fall through to the regular pricing call
+        // below instead of breaking -- cheaper than bailing out to the
+        // caller for a whole new attempt.
         if (input.solve_feasibility && number_of_column_generation_iterations == 1) {
             bool has_dummy_column_now = false;
+            std::vector<std::shared_ptr<const Column>> nonzero_real_columns_now;
             for (ColIdx column_id = 0;
                     column_id < (ColIdx)solver_columns.size();
                     ++column_id) {
-                if (solver_columns[column_id] == nullptr
-                        && std::abs(solver->primal(column_id)) >= FFOT_TOL) {
+                if (std::abs(solver->primal(column_id)) < FFOT_TOL)
+                    continue;
+                if (solver_columns[column_id] == nullptr) {
                     has_dummy_column_now = true;
                     break;
                 }
+                nonzero_real_columns_now.push_back(solver_columns[column_id]);
             }
-            if (!has_dummy_column_now)
+            if (!has_dummy_column_now && verify_dummy_free(nonzero_real_columns_now))
                 break;
         }
 
@@ -1345,6 +1354,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 p.second);
     }
     bool has_dummy_column = false;
+    // Real columns with a non-null value in this solution, kept only to
+    // feed the dummy-free verification below -- not needed once that's
+    // done.
+    std::vector<std::shared_ptr<const Column>> nonzero_real_columns;
     for (ColIdx column_id = 0;
             column_id < (ColIdx)solver_columns.size();
             ++column_id) {
@@ -1371,8 +1384,19 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             solution_builder.add_column(
                     solver_columns[column_id],
                     solver->primal(column_id));
+            if (input.solve_feasibility)
+                nonzero_real_columns.push_back(solver_columns[column_id]);
         }
     }
+
+    // The magnitude check above can under-report dummy-column usage (see
+    // 'verify_dummy_free' above): confirm the dummy-free verdict before
+    // trusting it, so a wrong one is reported back as 'has_dummy_column'
+    // still true (the caller retries -- escalated pricing level / cutting
+    // planes) instead of falling through to a Phase 2 doomed to the same
+    // infeasibility.
+    if (input.solve_feasibility && !has_dummy_column && !verify_dummy_free(nonzero_real_columns))
+        has_dummy_column = true;
 
     // Check time.
     if (input.parameters.timer.needs_to_end()) {
