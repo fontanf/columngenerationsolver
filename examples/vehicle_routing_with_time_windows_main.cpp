@@ -63,14 +63,11 @@ public:
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
-    inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu);
-
     inline virtual PricingOutput solve_pricing(
             bool solve_feasibility,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
             columngenerationsolver::Counter pricing_level);
@@ -120,11 +117,26 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     return model;
 }
 
-std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
+struct ColumnExtra
+{
+    std::vector<LocationId> route;
+};
+
+// Under 'solve_feasibility', the ESPPRCTW subproblem's arc 'cost' (its
+// objective/guide/bound contribution) is zeroed, while 'travel_time' (the
+// resource that propagates time-window feasibility) is always fed the
+// real value -- these are tracked separately in espprctw::Instance
+// precisely so zeroing one doesn't corrupt the other. The returned
+// columns' real 'objective_coefficient' is still computed from the real
+// 'instance_.travel_time' below, unaffected by this.
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
+            bool solve_feasibility,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&,
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&)
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&,
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
+            columngenerationsolver::Counter)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
     for (const auto& p: fixed_columns) {
@@ -140,27 +152,7 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
             visited_customers_[element.row] = 1;
         }
     }
-    return {};
-}
 
-struct ColumnExtra
-{
-    std::vector<LocationId> route;
-};
-
-// Under 'solve_feasibility', the ESPPRCTW subproblem's arc 'cost' (its
-// objective/guide/bound contribution) is zeroed, while 'travel_time' (the
-// resource that propagates time-window feasibility) is always fed the
-// real value -- these are tracked separately in espprctw::Instance
-// precisely so zeroing one doesn't corrupt the other. The returned
-// columns' real 'objective_coefficient' is still computed from the real
-// 'instance_.travel_time' below, unaffected by this.
-PricingSolver::PricingOutput PricingSolver::solve_pricing(
-            bool solve_feasibility,
-            const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
-            columngenerationsolver::Counter)
-{
     PricingOutput output;
 
     // Build subproblem instance.
@@ -279,8 +271,9 @@ inline void write_solution(
 
     file << solution.columns().size() << std::endl;
     for (auto colval: solution.columns()) {
+        const columngenerationsolver::Column& column = *(colval.first);
         std::shared_ptr<ColumnExtra> extra
-            = std::static_pointer_cast<ColumnExtra>(colval.first->extra);
+            = std::static_pointer_cast<ColumnExtra>(column.extra);
         file << extra->route.size() << " ";
         for (LocationId location_id: extra->route)
             file << " " << location_id;

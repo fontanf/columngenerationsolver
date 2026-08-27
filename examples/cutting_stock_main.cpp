@@ -56,14 +56,11 @@ public:
         filled_demands_(instance.number_of_item_types())
     { }
 
-    inline virtual std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu);
-
     inline virtual PricingOutput solve_pricing(
             bool solve_feasibility,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
             columngenerationsolver::Counter pricing_level);
@@ -104,11 +101,14 @@ inline columngenerationsolver::Model get_model(const Instance& instance)
     return model;
 }
 
-std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver::initialize_pricing(
+PricingSolver::PricingOutput PricingSolver::solve_pricing(
+            bool solve_feasibility,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&,
             const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&)
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&,
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
+            columngenerationsolver::Counter)
 {
     std::fill(filled_demands_.begin(), filled_demands_.end(), 0);
     for (const auto& p: fixed_columns) {
@@ -119,15 +119,7 @@ std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver
         for (const columngenerationsolver::LinearTerm& element: column.elements)
             filled_demands_[element.row] += value * element.coefficient;
     }
-    return {};
-}
 
-PricingSolver::PricingOutput PricingSolver::solve_pricing(
-            bool solve_feasibility,
-            const std::vector<Value>& duals,
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
-            columngenerationsolver::Counter)
-{
     PricingOutput output;
     Value reduced_cost_bound = 0.0;
 
