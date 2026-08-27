@@ -138,9 +138,10 @@ class Solution;
  * (building the LP, rechecking pooled columns' reduced costs); it is not
  * used by the pricing solver's internal search. A pricing solver that
  * wants to enforce a non-robust cut during pricing needs direct, typed
- * access to the active 'Cut' objects themselves (passed to 'PricingSolver::
- * initialize_pricing'), since a coefficient computed on a finished column
- * can't inform search-time pruning of an incomplete one.
+ * access to the active 'Cut' objects themselves, available via
+ * 'PricingSolver::solve_pricing's 'cut_duals' (each paired with its dual
+ * value), since a coefficient computed on a finished column can't inform
+ * search-time pruning of an incomplete one.
  */
 struct Cut
 {
@@ -184,13 +185,13 @@ struct Cut
  *
  * Concrete, non-polymorphic, like 'Column': unlike 'Cut', the framework
  * never invokes any behavior on a 'BranchingDecision' — it only threads it
- * through node ancestry and hands it to
- * 'PricingSolver::initialize_pricing', so there is no framework-required
- * virtual method to dispatch on. Family-specific data (e.g. which two
- * customers a Ryan-Foster decision is defined over) goes in 'extra', for
- * the same 'PricingSolver' that created the decision (via
- * 'compute_branching_candidates') to read back when it later receives the
- * decision through 'initialize_pricing'.
+ * through node ancestry and hands it to 'PricingSolver::solve_pricing'
+ * (and 'PricingSolver::infeasible_columns'), so there is no
+ * framework-required virtual method to dispatch on. Family-specific data
+ * (e.g. which two customers a Ryan-Foster decision is defined over) goes
+ * in 'extra', for the same 'PricingSolver' that created the decision (via
+ * 'compute_branching_candidates') to read back when it later receives it
+ * again there.
  */
 class BranchingDecision
 {
@@ -234,6 +235,7 @@ public:
 
     struct PricingOutput
     {
+        /** Newly-found columns. */
         std::vector<std::shared_ptr<const Column>> columns;
 
         /**
@@ -277,20 +279,45 @@ public:
     };
 
     /**
-     * 'tabu' lists columns the search has already branched away from at
-     * the current node (e.g. limited discrepancy search: a column fixed
-     * to a reduced value, capped so pricing can't grow it back) -- the
-     * framework itself never hands one of these to the master LP, so a
-     * 'PricingSolver' is never required to honor it, but one that can
-     * cheaply exclude specific columns from its own search (e.g. forbid
-     * an exact route/pattern) should, to avoid wasting time re-proposing
-     * columns that would just be discarded. May be empty; never null.
+     * Which of 'columns' (the model's static columns plus whatever
+     * generated columns are being carried over into this attempt as a
+     * warm start) 'fixed_columns' or 'branching_decisions' rule out --
+     * filtered out of the master LP entirely, before it's even built from
+     * these column sets.
+     *
+     * The two intended uses are both cases where a constraint exists but
+     * was deliberately never turned into a master 'Row' (so it has no
+     * dual, and 'solve_pricing' can't be steered by it the way it's
+     * steered by real duals):
+     * - A linking/coupling constraint between subproblems that's cheaper
+     *   to enforce by excluding the specific columns that would violate
+     *   it than by adding it as an explicit row (e.g. "the same bin/
+     *   machine can't be claimed by two different fixed columns").
+     * - A branch-and-price branching decision (e.g. Ryan-Foster). Its own
+     *   effect on 'solve_pricing' only stops *new* violating columns from
+     *   being generated going forward; it says nothing about columns that
+     *   already exist in 'columns' from before the decision was made
+     *   (static columns, or ones warm-started in from an ancestor node)
+     *   and now violate it -- this is what retroactively excludes those.
+     *
+     * Called once per column generation attempt, not once per
+     * 'solve_pricing' call, so it's the wrong place for any setup a
+     * 'PricingSolver' wants to reuse across those calls -- pass whatever
+     * it needs directly to 'solve_pricing' instead (fixed columns and
+     * branching decisions are given there too). Default implementation
+     * returns none, for a 'PricingSolver' whose columns are never
+     * affected this way.
      */
-    virtual std::vector<std::shared_ptr<const Column>> initialize_pricing(
+    virtual std::vector<std::shared_ptr<const Column>> infeasible_columns(
+            const std::vector<std::shared_ptr<const Column>>& columns,
             const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const Cut>>& cuts,
-            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions,
-            const std::unordered_set<std::shared_ptr<const Column>>& tabu) = 0;
+            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions) const
+    {
+        (void)columns;
+        (void)fixed_columns;
+        (void)branching_decisions;
+        return {};
+    }
 
     /**
      * Number of pricing levels this solver supports (>= 1), e.g. a fast
@@ -321,9 +348,28 @@ public:
      * 'pricing_level' (see 'number_of_pricing_levels') selects how
      * thorough the search should be, independently of 'solve_feasibility'
      * -- both phases escalate through the same levels together.
+     *
+     * 'fixed_columns', 'branching_decisions' and 'tabu' are given on every
+     * call rather than once via a separate setup step: within one column
+     * generation attempt they're the same on every call (only 'duals'/
+     * 'cut_duals'/'pricing_level' change call to call), and how cheaply a
+     * 'PricingSolver' can fold fixed/tabu state into its search dwarfs in
+     * cost next to the search itself for every solver in this repository,
+     * so there's nothing worth amortizing across calls by caching it from
+     * a prior setup call. A 'PricingSolver' that does need to derive
+     * something expensive from them is free to cache it keyed on the
+     * columns' own pointer identity (they're the same 'shared_ptr's
+     * across calls within one attempt) rather than recomputing
+     * unconditionally. Active cuts aren't repeated here since 'cut_duals'
+     * already pairs each one with its dual value. Honoring 'tabu' is
+     * optional -- the framework filters tabu columns out of what it adds
+     * to the master LP regardless.
      */
     virtual PricingOutput solve_pricing(
             bool solve_feasibility,
+            const std::vector<std::pair<std::shared_ptr<const Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals,
             Counter pricing_level) = 0;
@@ -467,7 +513,7 @@ struct Model
         return pricing_solver->compute_reduced_cost(solve_feasibility, column, duals, cut_duals);
     }
 
-    /** Column which are not dynamically generated. */
+    /** Columns which are not dynamically generated. */
     std::vector<std::shared_ptr<const Column>> static_columns;
 
 
@@ -927,7 +973,7 @@ private:
         }
 
         for (const auto& p: solution_.columns_) {
-            const Column& column = *(p.first);
+            const Column& column = *p.first;
             Value value = p.second;
             if (column.type == VariableType::Integer) {
                 Value fractionality = std::fabs(value - std::round(value));
@@ -994,6 +1040,15 @@ inline Value norm(
     return std::sqrt(res);
 }
 
+/**
+ * Content hash/equality functor over 'shared_ptr<const Column>': two
+ * distinct 'Column' objects with the same objective coefficient and the
+ * same multiset of (row, coefficient) elements compare/hash equal --
+ * indifferent to how many times, or in what order, a logically-identical
+ * column was discovered. Used to recognize when a freshly-priced column
+ * is logically the same as one already known (e.g. the same route/pattern
+ * rediscovered under different duals).
+ */
 struct ColumnHasher
 {
     std::hash<RowIdx> hasher_row;

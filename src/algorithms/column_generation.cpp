@@ -358,8 +358,14 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                 // relaxation, not just for the rows still short after
                 // Phase 1's greedy fixing.
                 for (;;) {
-                    input.attempt_input.model.pricing_solver->initialize_pricing(fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions, input.attempt_input.parameters.tabu);
-                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(false, input.duals_out, input.cut_duals, input.attempt_input.pricing_level);
+                    auto pricing_output = input.attempt_input.model.pricing_solver->solve_pricing(
+                            false,
+                            fixed_columns,
+                            input.attempt_input.parameters.branching_decisions,
+                            input.attempt_input.parameters.tabu,
+                            input.duals_out,
+                            input.cut_duals,
+                            input.attempt_input.pricing_level);
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
                         if (column->elements.empty())
@@ -369,8 +375,8 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                         // later once it isn't tabu, and doesn't by itself
                         // add anything to any LP -- so do it unconditionally.
                         rounding_heuristic_add_to_column_pool(input, column);
-                        // Passing 'tabu' to 'initialize_pricing' above only
-                        // lets the pricing solver *choose* to avoid these
+                        // Passing 'tabu' to 'solve_pricing' above only lets
+                        // the pricing solver *choose* to avoid these
                         // columns -- it isn't required to, so still filter
                         // defensively here: this heuristic's own greedy
                         // fixing has no other check keeping a
@@ -412,9 +418,6 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                     if (!has_fixed || infeasibility <= 0.0)
                         break;
                 }
-                // Restore the real pricing solver state for the pricing
-                // calls in 'column_generation()'.
-                input.attempt_input.model.pricing_solver->initialize_pricing(input.attempt_input.parameters.fixed_columns, input.attempt_input.active_cuts, input.attempt_input.parameters.branching_decisions, input.attempt_input.parameters.tabu);
             }
 
             // Build and check the candidate solution. Always done (rather
@@ -581,10 +584,17 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
     input.output.number_of_columns_in_linear_subproblem = 0;
 
-    // Initialize pricing solver.
-    //std::cout << "Initialize pricing solver..." << std::endl;
+    // 'infeasible_columns' can only rule out columns it's actually shown
+    // -- static columns plus whatever generated columns are being warm-
+    // started into this attempt, the same two sets 'infeasible_columns'
+    // below is checked against.
+    std::vector<std::shared_ptr<const Column>> candidate_columns = input.model.static_columns;
+    candidate_columns.insert(
+            candidate_columns.end(),
+            input.initial_columns.begin(),
+            input.initial_columns.end());
     std::vector<std::shared_ptr<const Column>> infeasible_columns
-        = input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
+        = input.model.pricing_solver->infeasible_columns(candidate_columns, input.parameters.fixed_columns, input.parameters.branching_decisions);
     std::vector<int8_t> feasible(input.model.static_columns.size(), 1);
 
     // Add dummy columns. Phase 2 (optimality) has none at all: it is only
@@ -1060,7 +1070,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 // more expensive) one. Fall back to a single plain
                 // pricing call per iteration whenever pricing_level > 0.
                 if (!input.parameters.internal_diving || input.pricing_level > 0) {
-                    auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals, input.pricing_level);
+                    auto pricing_output = input.model.pricing_solver->solve_pricing(
+                            input.solve_feasibility,
+                            input.parameters.fixed_columns,
+                            input.parameters.branching_decisions,
+                            input.parameters.tabu,
+                            duals_sep,
+                            cut_duals,
+                            input.pricing_level);
                     all_columns = pricing_output.columns;
                     overcost = pricing_output.overcost;
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
@@ -1070,8 +1087,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                     std::vector<Value> row_values_tmp = input.row_values;
                     std::vector<std::pair<std::shared_ptr<const Column>, Value>> fixed_columns_tmp = input.parameters.fixed_columns;
                     for (int i = 0;; ++i) {
-                        input.model.pricing_solver->initialize_pricing(fixed_columns_tmp, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
-                        auto pricing_output = input.model.pricing_solver->solve_pricing(input.solve_feasibility, duals_sep, cut_duals, input.pricing_level);
+                        auto pricing_output = input.model.pricing_solver->solve_pricing(
+                                input.solve_feasibility,
+                                fixed_columns_tmp,
+                                input.parameters.branching_decisions,
+                                input.parameters.tabu,
+                                duals_sep,
+                                cut_duals,
+                                input.pricing_level);
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                             = pricing_output.columns;
                         if (i == 0) {
@@ -1096,10 +1119,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             // ('fixed_columns_tmp.push_back(...)'), which
                             // has no other check keeping a
                             // branching-excluded column out of what it
-                            // fixes, and passing 'tabu' to
-                            // 'initialize_pricing' only lets the pricing
-                            // solver *choose* to avoid these columns -- it
-                            // isn't required to.
+                            // fixes, and passing 'tabu' to 'solve_pricing'
+                            // only lets the pricing solver *choose* to
+                            // avoid these columns -- it isn't required to.
                             if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
                                 continue;
                             all_columns_tmp_1.push_back(column);
@@ -1158,7 +1180,6 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                         if (!has_fixed)
                             break;
                     }
-                    input.model.pricing_solver->initialize_pricing(input.parameters.fixed_columns, input.active_cuts, input.parameters.branching_decisions, input.parameters.tabu);
                 }
 
                 auto end_pricing = std::chrono::high_resolution_clock::now();

@@ -61,14 +61,11 @@ public:
         visited_customers_(instance.number_of_locations(), 0)
     { }
 
-    virtual inline std::vector<std::shared_ptr<const columngenerationsolver::Column>> initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>& cuts,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu);
-
     virtual inline PricingOutput solve_pricing(
             bool solve_feasibility,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>& branching_decisions,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
             columngenerationsolver::Counter pricing_level);
@@ -119,30 +116,6 @@ inline columngenerationsolver::Model get_model(
     return model;
 }
 
-template <typename Distances>
-std::vector<std::shared_ptr<const columngenerationsolver::Column>> PricingSolver<Distances>::initialize_pricing(
-            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
-            const std::vector<std::shared_ptr<const columngenerationsolver::Cut>>&,
-            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&,
-            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&)
-{
-    std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
-    for (const auto& p: fixed_columns) {
-        const columngenerationsolver::Column& column = *(p.first);
-        Value value = p.second;
-        if (value < 0.5)
-            continue;
-        for (const columngenerationsolver::LinearTerm& element: column.elements) {
-            if (element.coefficient < 0.5)
-                continue;
-            // row_index + 1 since there is not constraint for location 0 which
-            // is the depot.
-            visited_customers_[element.row + 1] = 1;
-        }
-    }
-    return {};
-}
-
 struct ColumnExtra
 {
     std::vector<LocationId> route;
@@ -159,10 +132,28 @@ struct ColumnExtra
 template <typename Distances>
 typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve_pricing(
             bool solve_feasibility,
+            const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Column>, Value>>& fixed_columns,
+            const std::vector<std::shared_ptr<const columngenerationsolver::BranchingDecision>>&,
+            const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
             columngenerationsolver::Counter)
 {
+    std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
+    for (const auto& p: fixed_columns) {
+        const columngenerationsolver::Column& column = *(p.first);
+        Value value = p.second;
+        if (value < 0.5)
+            continue;
+        for (const columngenerationsolver::LinearTerm& element: column.elements) {
+            if (element.coefficient < 0.5)
+                continue;
+            // row_index + 1 since there is not constraint for location 0 which
+            // is the depot.
+            visited_customers_[element.row + 1] = 1;
+        }
+    }
+
     PricingOutput output;
 
     // Build subproblem instance.
@@ -258,8 +249,9 @@ inline void write_solution(
 
     file << solution.columns().size() << std::endl;
     for (auto colval: solution.columns()) {
+        const columngenerationsolver::Column& column = *(colval.first);
         std::shared_ptr<ColumnExtra> extra
-            = std::static_pointer_cast<ColumnExtra>(colval.first->extra);
+            = std::static_pointer_cast<ColumnExtra>(column.extra);
         file << extra->route.size() << " ";
         for (LocationId location_id: extra->route)
             file << " " << location_id;
