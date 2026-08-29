@@ -271,6 +271,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 // column generation improved it; just record the final
                 // relaxation solution here.
                 output.relaxation_solution = cg_output.relaxation_solution;
+                output.root_cuts = cg_output.cuts;
             }
             if (!cg_output.relaxation_solution_is_feasible) {
                 // Infeasible: prune, no children. Still worth a log line
@@ -290,10 +291,10 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 continue;
             }
 
-            //std::cout << "x";
-            //for (auto p: cg_output.relaxation_solution.columns())
-            //    std::cout << " " << p.first << " " << p.second << ";";
-            //std::cout << std::endl;
+            //for (auto p: cg_output.relaxation_solution.columns()) {
+            //    std::cout << "- " << *p.first << std::endl
+            //        << "  value " << p.second << std::endl;
+            //}
 
             // Check bound
             if (output.solution.feasible()
