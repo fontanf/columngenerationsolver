@@ -59,6 +59,9 @@ struct LimitedDiscrepancySearchOutput: Output
 
     Value maximum_discrepancy = -1;
 
+    /** Cuts still active at the end of the root node's relaxation. */
+    std::vector<std::shared_ptr<const Cut>> root_cuts;
+
 
     virtual int format_width() const override { return 30; }
 
@@ -70,6 +73,7 @@ struct LimitedDiscrepancySearchOutput: Output
             << std::setw(width) << std::left << "Number of nodes: " << number_of_nodes << std::endl
             << std::setw(width) << std::left << "Maximum depth: " << maximum_depth << std::endl
             << std::setw(width) << std::left << "Maximum discrepancy: " << maximum_discrepancy << std::endl
+            << std::setw(width) << std::left << "Number of root cuts: " << root_cuts.size() << std::endl
             ;
     }
 
@@ -80,6 +84,7 @@ struct LimitedDiscrepancySearchOutput: Output
                 {"NumberOfNodes", number_of_nodes},
                 {"MaximumDepth", maximum_depth},
                 {"MaximumDiscrepancy", maximum_discrepancy},
+                {"NumberOfRootCuts", root_cuts.size()},
                 });
         return json;
     }
