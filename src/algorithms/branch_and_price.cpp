@@ -72,6 +72,15 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
+    // Unlike 'node->cuts' (node-local: only a node's own lineage should
+    // ever see a cut separated on it, since it may be non-robust -- see
+    // 'limited_discrepancy_search.cpp'), 'cut_pool' is global, shared
+    // across every node exactly like 'column_pool' -- sound only if
+    // 'PricingSolver::separate_cuts' returns cuts that stay valid
+    // regardless of which node's fixed columns/branching decisions
+    // derived them.
+    std::vector<std::shared_ptr<const Cut>> cut_pool = parameters.cut_pool;
+
     // Open-node queue, ordered best-bound-first (sense-aware). The global
     // dual bound at any point is the bound of the node at the front of the
     // queue: a valid lower (minimization) / upper (maximization) bound on
@@ -162,6 +171,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             column_generation_parameters.initial_cuts = (node->parent == nullptr)?
                 parameters.initial_cuts:
                 node->parent->cuts;
+            column_generation_parameters.cut_pool = cut_pool;
             column_generation_parameters.fixed_columns = parameters.fixed_columns;
             column_generation_parameters.branching_decisions = branching_decisions;
             if (node->parent == nullptr) {
@@ -198,6 +208,14 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                     column_pool.end(),
                     cg_output.columns.begin(),
                     cg_output.columns.end());
+            output.new_cuts.insert(
+                    output.new_cuts.end(),
+                    cg_output.new_cuts.begin(),
+                    cg_output.new_cuts.end());
+            cut_pool.insert(
+                    cut_pool.end(),
+                    cg_output.new_cuts.begin(),
+                    cg_output.new_cuts.end());
             node->cuts = cg_output.cuts;
 
             if (parameters.timer.needs_to_end())

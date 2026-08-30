@@ -1148,6 +1148,16 @@ struct Output: optimizationtools::Output
     /** Columns generated during the algorithm. */
     std::vector<std::shared_ptr<const Column>> columns;
 
+    /**
+     * Cuts separated during the algorithm and confirmed genuinely
+     * violated (see 'column_generation()') -- not including ones
+     * reactivated from 'Parameters::cut_pool', which the caller already
+     * has. Meant to be folded into 'Parameters::cut_pool' for a
+     * follow-up call, the same way 'columns' is folded into
+     * 'Parameters::column_pool'.
+     */
+    std::vector<std::shared_ptr<const Cut>> new_cuts;
+
     /** Solution. */
     Solution relaxation_solution;
 
@@ -1263,6 +1273,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
+            << std::setw(width) << std::left << "Number of new cuts: " << new_cuts.size() << std::endl
             ;
     }
 };
@@ -1355,15 +1366,26 @@ struct Parameters: optimizationtools::Parameters
     /**
      * Branching decisions.
      *
-     * Unlike 'column_pool'/'initial_cuts', this is node-local, not a pool:
-     * it is expected to hold exactly the decisions on the path from the
-     * root to the current node, rebuilt per node (like 'fixed_columns'),
-     * never accumulated across the whole search.
+     * Unlike 'column_pool'/'initial_cuts'/'cut_pool', this is node-local,
+     * not a pool: it is expected to hold exactly the decisions on the
+     * path from the root to the current node, rebuilt per node (like
+     * 'fixed_columns'), never accumulated across the whole search.
      */
     std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
 
     /** Cuts to seed the active cut set with. */
     std::vector<std::shared_ptr<const Cut>> initial_cuts;
+
+    /**
+     * Cut pool: every cut separated so far, active or not. Checked for
+     * violated cuts before calling 'PricingSolver::separate_cuts' again
+     * (see 'column_generation()'), the same way 'column_pool' is checked
+     * before calling the pricing solver -- reactivating a cut that's
+     * already known is a cheap lookup instead of a fresh separation
+     * call. Grown from 'Output::new_cuts', the same way 'column_pool' is
+     * grown from 'Output::columns'.
+     */
+    std::vector<std::shared_ptr<const Cut>> cut_pool;
 
     /**
      * Enable internal diving:
@@ -1401,6 +1423,7 @@ struct Parameters: optimizationtools::Parameters
                 {"NumberOfFixedColumns", fixed_columns.size()},
                 {"NumberOfBranchingDecisions", branching_decisions.size()},
                 {"NumberOfInitialCuts", initial_cuts.size()},
+                {"NumberOfCutsInTheCutPool", cut_pool.size()},
                 {"InternalDiving", internal_diving},
                 {"CuttingPlanes", cutting_planes},
                 {"RoundingHeuristic", rounding_heuristic},
@@ -1420,6 +1443,7 @@ struct Parameters: optimizationtools::Parameters
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of branching decisions: " << branching_decisions.size() << std::endl
             << std::setw(width) << std::left << "Number of initial cuts: " << initial_cuts.size() << std::endl
+            << std::setw(width) << std::left << "Number of cuts in the cut pool: " << cut_pool.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             << std::setw(width) << std::left << "Cutting planes: " << cutting_planes << std::endl
             << std::setw(width) << std::left << "Rounding heuristic: " << rounding_heuristic << std::endl
