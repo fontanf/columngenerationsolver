@@ -44,6 +44,57 @@ using ColumnPool = std::unordered_set<
     const ColumnHasher&>;
 
 /**
+ * 'cut''s value at 'relaxation_solution': the sum of the relaxation's own
+ * column values weighted by their coefficient in 'cut'.
+ */
+Value cut_value(
+        const Model& model,
+        const Cut& cut,
+        const Solution& relaxation_solution)
+{
+    Value value = 0.0;
+    for (const auto& p: relaxation_solution.columns())
+        value += p.second * model.pricing_solver->coefficient(cut, *p.first);
+    return value;
+}
+
+/**
+ * Whether 'cut' is genuinely violated by 'relaxation_solution': its value
+ * falls outside ['lower_bound', 'upper_bound'] by more than its own
+ * 'feasibility_tolerance'. The one definition of "violated" used
+ * throughout -- for a cut pool candidate before reactivating it, and for
+ * whatever 'PricingSolver::separate_cuts' returns before it's ever
+ * trusted -- a pluggable interface's own notion of "violated" is never
+ * taken at face value.
+ */
+bool cut_is_violated(
+        const Model& model,
+        const Cut& cut,
+        const Solution& relaxation_solution)
+{
+    Value value = cut_value(model, cut, relaxation_solution);
+    return value < cut.lower_bound - cut.feasibility_tolerance
+        || value > cut.upper_bound + cut.feasibility_tolerance;
+}
+
+/**
+ * How far 'cut''s value at 'relaxation_solution' falls outside
+ * ['lower_bound', 'upper_bound'] -- 0 if it's satisfied (even if only
+ * barely, unlike 'cut_is_violated' this doesn't account for
+ * 'feasibility_tolerance'). Used to rank violated cuts against each
+ * other and activate only the most violated one per round, not to decide
+ * whether a cut is violated at all.
+ */
+Value cut_violation(
+        const Model& model,
+        const Cut& cut,
+        const Solution& relaxation_solution)
+{
+    Value value = cut_value(model, cut, relaxation_solution);
+    return (std::max)(0.0, cut.lower_bound - value) + (std::max)(0.0, value - cut.upper_bound);
+}
+
+/**
  * Input for 'run_column_generation_attempt()': one "build a master LP from
  * a given column set/weighting and run column generation to convergence"
  * attempt, matching what the dummy-column retry loop used to inline
@@ -1617,6 +1668,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // rounds find violated cuts below.
     std::vector<std::shared_ptr<const Cut>> active_cuts = parameters.initial_cuts;
 
+    // Every cut separated so far, active or not (see
+    // 'Parameters::cut_pool'). No dedup needed on insertion: a cut only
+    // ever gets added here once it's passed 'cut_is_violated' against the
+    // current relaxation, and the pool is always checked for a violated
+    // cut first (right below) before 'separate_cuts' is ever called --
+    // so nothing 'separate_cuts' returns and survives the same check can
+    // already be in the pool, or the pool check would have caught it.
+    std::vector<std::shared_ptr<const Cut>> cut_pool = parameters.cut_pool;
+
     // Relaxation value at the point each cut was last removed for being
     // inactive. A cut in this list may only be removed again once the
     // relaxation has genuinely improved relative to the value recorded
@@ -1795,17 +1855,77 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         std::vector<std::shared_ptr<const Cut>> new_cuts;
         bool removed_a_cut = false;
         if (try_cutting_planes) {
-            // Separate cuts from the current relaxation solution -- the full
-            // feasible one from Phase 2, or, if Phase 1 stayed inconclusive
-            // instead, the partial one it left behind (dummy columns excluded
-            // from it by construction). A cut found on that partial solution
-            // might let a later Phase 1 attempt restore feasibility where this
-            // one couldn't.
-            auto start_separation = std::chrono::high_resolution_clock::now();
-            new_cuts = model.pricing_solver->separate_cuts(output.relaxation_solution);
-            auto end_separation = std::chrono::high_resolution_clock::now();
-            auto time_span_separation = std::chrono::duration_cast<std::chrono::duration<double>>(end_separation - start_separation);
-            output.time_separation += time_span_separation.count();
+            // Look for a violated cut already in the pool before ever
+            // calling the (potentially expensive) separation routine --
+            // cuts don't disappear once discovered, so a cut that helped
+            // before and later went inactive (see the removal pass
+            // below) may simply be needed again, at no cost beyond
+            // evaluating it against the current relaxation. Only the
+            // single most violated one gets activated, exactly like a
+            // freshly separated cut below: adding every violated cut at
+            // once would grow the master LP faster than the relaxation
+            // actually needs, since a later round can always add another
+            // once this one alone no longer suffices.
+            {
+                std::shared_ptr<const Cut> best_cut = nullptr;
+                Value best_violation = 0.0;
+                for (const std::shared_ptr<const Cut>& cut: cut_pool) {
+                    if (std::find(active_cuts.begin(), active_cuts.end(), cut) != active_cuts.end())
+                        continue;
+                    if (!cut_is_violated(model, *cut, output.relaxation_solution))
+                        continue;
+                    Value violation = cut_violation(model, *cut, output.relaxation_solution);
+                    if (best_cut == nullptr || violation > best_violation) {
+                        best_cut = cut;
+                        best_violation = violation;
+                    }
+                }
+                if (best_cut != nullptr)
+                    new_cuts.push_back(best_cut);
+            }
+
+            // Only once the pool has nothing to offer, separate cuts from
+            // the current relaxation solution -- the full feasible one
+            // from Phase 2, or, if Phase 1 stayed inconclusive instead,
+            // the partial one it left behind (dummy columns excluded
+            // from it by construction). A cut found on that partial
+            // solution might let a later Phase 1 attempt restore
+            // feasibility where this one couldn't.
+            if (new_cuts.empty()) {
+                auto start_separation = std::chrono::high_resolution_clock::now();
+                std::vector<std::shared_ptr<const Cut>> separated_cuts
+                    = model.pricing_solver->separate_cuts(output.relaxation_solution);
+                auto end_separation = std::chrono::high_resolution_clock::now();
+                auto time_span_separation = std::chrono::duration_cast<std::chrono::duration<double>>(end_separation - start_separation);
+                output.time_separation += time_span_separation.count();
+
+                // Never trust a 'PricingSolver''s own notion of
+                // "violated" -- it's a pluggable interface, and the
+                // no-duplicates argument for 'cut_pool' above only holds
+                // if every cut that ever enters it was independently
+                // confirmed violated by this same check. Every cut that
+                // passes is still worth remembering for a possible
+                // future round (grown here, not just when a cut is
+                // chosen to stay active below -- exactly like
+                // 'column_pool' keeps every discovered column regardless
+                // of whether it ends up selected), even though only the
+                // single most violated one is activated now.
+                std::shared_ptr<const Cut> best_cut = nullptr;
+                Value best_violation = 0.0;
+                for (const std::shared_ptr<const Cut>& cut: separated_cuts) {
+                    if (!cut_is_violated(model, *cut, output.relaxation_solution))
+                        continue;
+                    cut_pool.push_back(cut);
+                    output.new_cuts.push_back(cut);
+                    Value violation = cut_violation(model, *cut, output.relaxation_solution);
+                    if (best_cut == nullptr || violation > best_violation) {
+                        best_cut = cut;
+                        best_violation = violation;
+                    }
+                }
+                if (best_cut != nullptr)
+                    new_cuts.push_back(best_cut);
+            }
 
             // Remove cuts that are no longer active: their value at the
             // current relaxation solution has slack on both sides, more than
@@ -1851,12 +1971,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             Value current_value = output.relaxation_solution.objective_value();
             std::vector<std::shared_ptr<const Cut>> still_active_cuts;
             for (const std::shared_ptr<const Cut>& cut: active_cuts) {
-                Value cut_value = 0.0;
-                for (const auto& p: output.relaxation_solution.columns())
-                    cut_value += p.second * model.pricing_solver->coefficient(*cut, *p.first);
+                Value value = cut_value(model, *cut, output.relaxation_solution);
 
-                bool has_slack_below = (cut_value > cut->lower_bound + cut->feasibility_tolerance);
-                bool has_slack_above = (cut_value < cut->upper_bound - cut->feasibility_tolerance);
+                bool has_slack_below = (value > cut->lower_bound + cut->feasibility_tolerance);
+                bool has_slack_above = (value < cut->upper_bound - cut->feasibility_tolerance);
                 bool eligible_for_removal = has_slack_below && has_slack_above;
 
                 auto previous_removal = cut_value_at_last_removal.end();

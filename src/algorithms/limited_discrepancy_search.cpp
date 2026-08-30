@@ -66,6 +66,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
+    // Unlike 'node->cuts' (node-local: only a node's own lineage should
+    // ever see a cut separated on it, since it may be non-robust -- see
+    // 'LimitedDiscrepancySearchNode::cuts'), 'cut_pool' is global, shared
+    // across every node exactly like 'column_pool' -- sound only if
+    // 'PricingSolver::separate_cuts' returns cuts that stay valid
+    // regardless of which node's fixed columns/branching decisions
+    // derived them.
+    std::vector<std::shared_ptr<const Cut>> cut_pool = parameters.cut_pool;
+
     ColumnHasher column_hasher(model);
 
     // Nodes
@@ -238,6 +247,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             column_generation_parameters.initial_cuts = (node->parent == nullptr)?
                 parameters.initial_cuts:
                 node->parent->cuts;
+            column_generation_parameters.cut_pool = cut_pool;
             column_generation_parameters.fixed_columns = fixed_columns.columns();
             column_generation_parameters.tabu = tabu;
 
@@ -260,6 +270,14 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                     column_pool.end(),
                     cg_output.columns.begin(),
                     cg_output.columns.end());
+            output.new_cuts.insert(
+                    output.new_cuts.end(),
+                    cg_output.new_cuts.begin(),
+                    cg_output.new_cuts.end());
+            cut_pool.insert(
+                    cut_pool.end(),
+                    cg_output.new_cuts.begin(),
+                    cg_output.new_cuts.end());
             node->cuts = cg_output.cuts;
 
             //std::cout << "bound " << cg_output.solution_value << std::endl;
