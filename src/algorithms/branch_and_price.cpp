@@ -188,6 +188,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
+            output.time_separation += cg_output.time_separation;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
             output.columns.insert(
                     output.columns.end(),
@@ -359,6 +360,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
                 output.time_lpsolve += cg_output.time_lpsolve;
                 output.time_pricing += cg_output.time_pricing;
+                output.time_separation += cg_output.time_separation;
                 output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
                 output.columns.insert(
                         output.columns.end(),

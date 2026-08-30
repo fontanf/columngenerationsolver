@@ -1126,6 +1126,14 @@ struct Output: optimizationtools::Output
     double time_pricing = 0.0;
 
     /**
+     * Time spent separating cuts (i.e. in 'PricingSolver::
+     * separate_cuts'). Included in, not additional to, 'time'; kept
+     * separate from 'time_pricing' since it's a distinct step, only run
+     * once per cutting-plane round rather than once per iteration.
+     */
+    double time_separation = 0.0;
+
+    /**
      * Time spent in the rounding heuristic (Phase 1 greedy fixing plus,
      * when entered, Phase 2's fix/price/fix completion loop). Included in,
      * not additional to, 'time'; kept separate from 'time_pricing' since
@@ -1232,6 +1240,7 @@ struct Output: optimizationtools::Output
             {"Time", time},
             {"PricingTime", time_pricing},
             {"LpTime", time_lpsolve},
+            {"SeparationTime", time_separation},
             {"RoundingHeuristicTime", time_rounding_heuristic},
             {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
         };
@@ -1250,6 +1259,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Time: " << time << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
             << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "Separation time: " << time_separation << std::endl
             << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
