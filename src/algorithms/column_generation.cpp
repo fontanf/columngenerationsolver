@@ -1801,7 +1801,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // from it by construction). A cut found on that partial solution
             // might let a later Phase 1 attempt restore feasibility where this
             // one couldn't.
+            auto start_separation = std::chrono::high_resolution_clock::now();
             new_cuts = model.pricing_solver->separate_cuts(output.relaxation_solution);
+            auto end_separation = std::chrono::high_resolution_clock::now();
+            auto time_span_separation = std::chrono::duration_cast<std::chrono::duration<double>>(end_separation - start_separation);
+            output.time_separation += time_span_separation.count();
 
             // Remove cuts that are no longer active: their value at the
             // current relaxation solution has slack on both sides, more than
