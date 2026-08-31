@@ -135,6 +135,23 @@ struct ColumnGenerationAttemptInput
      */
     Counter pricing_level;
 
+    /**
+     * 'output.relaxation_solution_value' as it stood at the end of the
+     * previous cutting-plane iteration (optimality phase), or an
+     * unreachable sentinel (+inf minimizing, -inf maximizing) for the very
+     * first iteration, when there is no previous round to compare against.
+     * Cutting planes only ever shrink the relaxation's feasible region, so
+     * this value can never get worse from one cutting-plane iteration to
+     * the next -- once the current attempt's relaxation, mid-convergence,
+     * already matches or beats it, further 'solve_pricing' calls this
+     * round would only spend time re-deriving a bound this round was
+     * already guaranteed to reach, before the next round's cut narrows
+     * things further anyway. Only meaningful for the optimality phase: the
+     * feasibility phase's LP value is a different, non-comparable
+     * objective (see 'solve_feasibility').
+     */
+    Value previous_cutting_plane_relaxation_value;
+
     // Mutated across the whole 'column_generation()' call, not just this
     // one attempt.
     ColumnPool& column_pool;
@@ -984,11 +1001,29 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         }
 
+        // Cutting planes only ever shrink the relaxation's feasible region,
+        // so this attempt's optimality-phase value can never end up worse
+        // than the previous cutting-plane iteration's converged value (see
+        // 'ColumnGenerationAttemptInput::
+        // previous_cutting_plane_relaxation_value'). Once this iteration's
+        // LP solve already matches or beats it -- even without a fresh
+        // pricing call -- there is nothing to gain from calling the
+        // (potentially expensive) pricing solver this round: the next
+        // cutting-plane round's tighter cut set will refine things further
+        // regardless.
+        bool already_matches_previous_cutting_plane_round
+            = !input.solve_feasibility
+            && ((input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                    input.output.relaxation_solution_value >= input.previous_cutting_plane_relaxation_value:
+                    input.output.relaxation_solution_value <= input.previous_cutting_plane_relaxation_value);
+
+        bool call_pricing = new_columns.empty() && !already_matches_previous_cutting_plane_round;
+
         // Record, for the *next* iteration's rounding heuristic gate above,
         // whether real pricing is about to be called this iteration.
-        pricing_called_previous_iteration = new_columns.empty();
+        pricing_called_previous_iteration = call_pricing;
 
-        if (new_columns.empty()) {
+        if (call_pricing) {
             // Search for new columns by solving the pricing problem.
 
             duals_in = duals_sep; // The last shall be the first.
@@ -1704,6 +1739,14 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // cheapest level is always retried first.
     Counter pricing_level = 0;
 
+    // See 'ColumnGenerationAttemptInput::previous_cutting_plane_relaxation_
+    // value': unreachable at the first iteration, since there is no
+    // previous round yet.
+    Value previous_cutting_plane_relaxation_value
+        = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+        std::numeric_limits<Value>::infinity():
+        -std::numeric_limits<Value>::infinity();
+
     // Loop for cutting planes.
     // After the dummy-column loop below converges to a feasible relaxation
     // (no dummy column left), if cutting planes are enabled, cuts are
@@ -1779,6 +1822,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     initial_columns,
                     solve_feasibility,
                     pricing_level,
+                    previous_cutting_plane_relaxation_value,
                     column_pool,
                     output,
                     algorithm_formatter};
@@ -1829,6 +1873,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // 'output.relaxation_solution_is_feasible' above -- nothing left
             // to do here.
         }
+
+        // Record this round's converged optimality-phase value for the
+        // next cutting-plane iteration's 'previous_cutting_plane_
+        // relaxation_value' (see its doc comment) -- only meaningful once
+        // Phase 2 actually ran and reached a genuinely feasible relaxation;
+        // left untouched otherwise (Phase 1 alone failing leaves nothing
+        // comparable to record).
+        if (output.relaxation_solution_is_feasible)
+            previous_cutting_plane_relaxation_value = output.relaxation_solution_value;
 
         // Already solved to optimality -- either Phase 1 just rigorously
         // proved infeasibility above ('output.optimal()' reads that exact
