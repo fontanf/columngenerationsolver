@@ -130,8 +130,11 @@ const GreedyOutput columngenerationsolver::greedy(
         // 'new_bound_callback' above already streamed the bound as column
         // generation improved it; just record the final relaxation
         // solution here.
-        if (output.number_of_nodes == 0)
+        if (output.number_of_nodes == 0) {
             output.relaxation_solution = cg_output.relaxation_solution;
+            output.root_relaxation_solution = cg_output.relaxation_solution;
+            output.root_cuts = cg_output.cuts;
+        }
 
         // If the relaxation is (integer) feasible, save the solution and stop.
         if (cg_output.relaxation_solution.feasible()) {

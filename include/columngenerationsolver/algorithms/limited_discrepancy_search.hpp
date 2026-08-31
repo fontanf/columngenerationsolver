@@ -50,7 +50,8 @@ struct LimitedDiscrepancySearchOutput: Output
 {
     /** Constructor. */
     LimitedDiscrepancySearchOutput(const Model& model):
-        Output(model) { }
+        Output(model),
+        root_relaxation_solution(SolutionBuilder().set_model(model).build()) { }
 
 
     Counter number_of_nodes = 0;
@@ -58,6 +59,9 @@ struct LimitedDiscrepancySearchOutput: Output
     Counter maximum_depth = 0;
 
     Value maximum_discrepancy = -1;
+
+    /** The root node's relaxation solution. */
+    Solution root_relaxation_solution;
 
     /** Cuts still active at the end of the root node's relaxation. */
     std::vector<std::shared_ptr<const Cut>> root_cuts;
