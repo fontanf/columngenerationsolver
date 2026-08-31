@@ -95,6 +95,10 @@ const GreedyOutput columngenerationsolver::greedy(
         // Update output statistics.
         output.time_lpsolve += cg_output.time_lpsolve;
         output.time_pricing += cg_output.time_pricing;
+        output.time_column_pool_search += cg_output.time_column_pool_search;
+        output.time_lp_construction += cg_output.time_lp_construction;
+        output.time_cut_pool_search += cg_output.time_cut_pool_search;
+        output.time_dummy_free_verification += cg_output.time_dummy_free_verification;
         output.time_separation += cg_output.time_separation;
         output.time_rounding_heuristic += cg_output.time_rounding_heuristic;
         output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;

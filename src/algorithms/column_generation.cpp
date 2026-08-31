@@ -622,6 +622,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
          &append_cut_coefficients, &solver_generated_columns](
             const std::vector<std::shared_ptr<const Column>>& nonzero_real_columns) -> bool
     {
+        auto start_dummy_free_verification = std::chrono::high_resolution_clock::now();
         std::unique_ptr<LinearProgrammingSolver> verification_solver = make_linear_programming_solver(
                 input.parameters.solver_name,
                 input.model.objective_sense,
@@ -647,8 +648,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                     is_static? column->upper_bound: std::numeric_limits<Value>::infinity());
         }
         verification_solver->solve();
-        return !verification_solver->infeasible();
+        bool ok = !verification_solver->infeasible();
+        auto end_dummy_free_verification = std::chrono::high_resolution_clock::now();
+        input.output.time_dummy_free_verification += std::chrono::duration_cast<std::chrono::duration<double>>(
+                end_dummy_free_verification - start_dummy_free_verification).count();
+        return ok;
     };
+
+    auto start_lp_construction = std::chrono::high_resolution_clock::now();
 
     input.output.number_of_columns_in_linear_subproblem = 0;
 
@@ -857,6 +864,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         input.output.number_of_columns_in_linear_subproblem++;
     }
 
+    auto end_lp_construction = std::chrono::high_resolution_clock::now();
+    input.output.time_lp_construction += std::chrono::duration_cast<std::chrono::duration<double>>(
+            end_lp_construction - start_lp_construction).count();
+
     // Duals given to the pricing solver.
     std::vector<Value> duals_sep(input.number_of_rows, 0);
     // π_in, duals at the previous point.
@@ -978,6 +989,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         std::vector<Value> pricing_lagrangian_column_values;
 
         // Search for new columns from the column pool.
+        auto start_column_pool_search = std::chrono::high_resolution_clock::now();
         for (const std::shared_ptr<const Column>& column: input.column_pool) {
 
             // Don't add a column which is already in the LP.
@@ -1000,6 +1012,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             }
 
         }
+        auto end_column_pool_search = std::chrono::high_resolution_clock::now();
+        input.output.time_column_pool_search += std::chrono::duration_cast<std::chrono::duration<double>>(
+                end_column_pool_search - start_column_pool_search).count();
 
         // Cutting planes only ever shrink the relaxation's feasible region,
         // so this attempt's optimality-phase value can never end up worse
@@ -1920,6 +1935,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // actually needs, since a later round can always add another
             // once this one alone no longer suffices.
             {
+                auto start_cut_pool_search = std::chrono::high_resolution_clock::now();
                 std::shared_ptr<const Cut> best_cut = nullptr;
                 Value best_violation = 0.0;
                 for (const std::shared_ptr<const Cut>& cut: cut_pool) {
@@ -1935,6 +1951,9 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 }
                 if (best_cut != nullptr)
                     new_cuts.push_back(best_cut);
+                auto end_cut_pool_search = std::chrono::high_resolution_clock::now();
+                output.time_cut_pool_search += std::chrono::duration_cast<std::chrono::duration<double>>(
+                        end_cut_pool_search - start_cut_pool_search).count();
             }
 
             // Only once the pool has nothing to offer, separate cuts from

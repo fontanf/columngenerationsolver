@@ -252,13 +252,28 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             column_generation_parameters.tabu = tabu;
 
             // Solve.
+            // 'cg_output.time' isn't usable here: 'Timer::elapsed_time'
+            // is cumulative since the timer was constructed (shared down
+            // from 'parameters.timer' into every node's call), not
+            // per-call -- so this call is timed directly instead, to
+            // learn whether time missing from the four timers below is
+            // spent inside 'column_generation()' itself or in this
+            // function's own per-node overhead around it.
+            auto start_column_generation = std::chrono::high_resolution_clock::now();
             auto cg_output = column_generation(
                     model,
                     column_generation_parameters);
+            auto end_column_generation = std::chrono::high_resolution_clock::now();
+            output.time_column_generation += std::chrono::duration_cast<std::chrono::duration<double>>(
+                    end_column_generation - start_column_generation).count();
 
             // Update output statistics.
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
+            output.time_column_pool_search += cg_output.time_column_pool_search;
+            output.time_lp_construction += cg_output.time_lp_construction;
+            output.time_cut_pool_search += cg_output.time_cut_pool_search;
+            output.time_dummy_free_verification += cg_output.time_dummy_free_verification;
             output.time_separation += cg_output.time_separation;
             output.time_rounding_heuristic += cg_output.time_rounding_heuristic;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
