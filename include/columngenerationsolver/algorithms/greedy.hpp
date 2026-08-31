@@ -33,10 +33,17 @@ struct GreedyOutput: Output
 {
     /** Constructor. */
     GreedyOutput(const Model& model):
-        Output(model) { }
+        Output(model),
+        root_relaxation_solution(SolutionBuilder().set_model(model).build()) { }
 
 
     Counter number_of_nodes = 0;
+
+    /** The root node's relaxation solution. */
+    Solution root_relaxation_solution;
+
+    /** Cuts still active at the end of the root node's relaxation. */
+    std::vector<std::shared_ptr<const Cut>> root_cuts;
 
 
     virtual int format_width() const override { return 31; }
@@ -47,6 +54,7 @@ struct GreedyOutput: Output
         int width = format_width();
         os
             << std::setw(width) << std::left << "Number of nodes: " << number_of_nodes << std::endl
+            << std::setw(width) << std::left << "Number of root cuts: " << root_cuts.size() << std::endl
             ;
     }
 
@@ -55,6 +63,7 @@ struct GreedyOutput: Output
         nlohmann::json json = Output::to_json();
         json.merge_patch({
                 {"NumberOfNodes", number_of_nodes},
+                {"NumberOfRootCuts", root_cuts.size()},
                 });
         return json;
     }

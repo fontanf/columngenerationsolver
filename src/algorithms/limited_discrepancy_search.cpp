@@ -305,6 +305,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 // column generation improved it; just record the final
                 // relaxation solution here.
                 output.relaxation_solution = cg_output.relaxation_solution;
+                output.root_relaxation_solution = cg_output.relaxation_solution;
                 output.root_cuts = cg_output.cuts;
             }
             if (!cg_output.relaxation_solution_is_feasible) {
