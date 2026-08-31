@@ -1126,6 +1126,29 @@ struct Output: optimizationtools::Output
     double time_pricing = 0.0;
 
     /**
+     * Time spent scanning 'Parameters::column_pool' for a column of
+     * negative reduced cost, before ever calling the pricing solver (see
+     * "Search for new columns from the column pool" in
+     * 'column_generation()'). Included in, not additional to, 'time';
+     * kept separate from 'time_pricing' since it's a distinct step that
+     * runs every iteration regardless of whether pricing itself does,
+     * and its cost scales with the pool's size, not with anything the
+     * pricing solver does.
+     */
+    double time_column_pool_search = 0.0;
+
+    /**
+     * Time spent scanning 'Parameters::cut_pool' for a violated cut,
+     * before ever calling 'PricingSolver::separate_cuts' (see
+     * 'column_generation()'). Included in, not additional to, 'time';
+     * kept separate from 'time_separation' the same way
+     * 'time_column_pool_search' is kept separate from 'time_pricing' --
+     * its cost scales with the cut pool's size, not with the separation
+     * routine.
+     */
+    double time_cut_pool_search = 0.0;
+
+    /**
      * Time spent separating cuts (i.e. in 'PricingSolver::
      * separate_cuts'). Included in, not additional to, 'time'; kept
      * separate from 'time_pricing' since it's a distinct step, only run
@@ -1141,6 +1164,45 @@ struct Output: optimizationtools::Output
      * per-iteration pricing.
      */
     double time_rounding_heuristic = 0.0;
+
+    /**
+     * For an algorithm built on top of 'column_generation()' (greedy,
+     * limited discrepancy search, branch-and-price): total wall-clock
+     * time spent inside 'column_generation()' calls, as measured by the
+     * caller wrapping each call -- unlike 'time_lpsolve'/'time_pricing'/
+     * 'time_separation'/'time_rounding_heuristic', this can't be rolled
+     * up from 'ColumnGenerationOutput::time', since 'Timer::elapsed_time'
+     * is cumulative since the timer was constructed (typically once for
+     * the whole run, shared down into every node's call), not per call.
+     * Included in, not additional to, 'time'. Comparing this against the
+     * sum of the four timers above tells you whether time missing from
+     * that sum is inside 'column_generation()' itself (LP/master
+     * rebuilding, cut/column bookkeeping between pricing calls, etc.) or
+     * in this algorithm's own per-node overhead outside it.
+     */
+    double time_column_generation = 0.0;
+
+    /**
+     * Time spent building each attempt's master LP from scratch (static
+     * columns, dummy columns, and warm-start/initial columns), once per
+     * attempt (i.e. per phase per cutting-plane round) before its
+     * iteration loop starts. Included in, not additional to, 'time'; not
+     * part of 'time_lpsolve' (which only covers 'solve()' itself, not
+     * the 'add_column' calls that build up what gets solved).
+     */
+    double time_lp_construction = 0.0;
+
+    /**
+     * Time spent re-verifying a magnitude-based "no dummy column"
+     * verdict by building and solving a small dedicated LP restricted to
+     * exactly the nonzero real columns in question (see
+     * 'run_column_generation_attempt''s 'verify_dummy_free'). Runs at
+     * most twice per attempt (the iteration-1 short circuit and the
+     * final relaxation check), but each call is a full extra solver
+     * construction and solve, so it's kept separate from
+     * 'time_lpsolve'. Included in, not additional to, 'time'.
+     */
+    double time_dummy_free_verification = 0.0;
 
     /** Number of column generation iterations. */
     Counter number_of_column_generation_iterations = 0;
@@ -1248,10 +1310,15 @@ struct Output: optimizationtools::Output
             {"AbsoluteOptimalityGap", absolute_optimality_gap()},
             {"RelativeOptimalityGap", relative_optimality_gap()},
             {"Time", time},
+            {"ColumnGenerationTime", time_column_generation},
             {"PricingTime", time_pricing},
-            {"LpTime", time_lpsolve},
+            {"ColumnPoolSearchTime", time_column_pool_search},
             {"SeparationTime", time_separation},
+            {"CutPoolSearchTime", time_cut_pool_search},
+            {"LpTime", time_lpsolve},
             {"RoundingHeuristicTime", time_rounding_heuristic},
+            {"DummyFreeVerificationTime", time_dummy_free_verification},
+            {"LpConstructionTime", time_lp_construction},
             {"NumberOfColumnGenerationIterations", number_of_column_generation_iterations},
         };
     }
@@ -1267,10 +1334,15 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Absolute optimality gap: " << absolute_optimality_gap() << std::endl
             << std::setw(width) << std::left << "Relative optimality gap (%): " << relative_optimality_gap() * 100 << std::endl
             << std::setw(width) << std::left << "Time: " << time << std::endl
+            << std::setw(width) << std::left << "Column generation time: " << time_column_generation << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
-            << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
+            << std::setw(width) << std::left << "Column pool search time: " << time_column_pool_search << std::endl
             << std::setw(width) << std::left << "Separation time: " << time_separation << std::endl
+            << std::setw(width) << std::left << "Cut pool search time: " << time_cut_pool_search << std::endl
+            << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
             << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
+            << std::setw(width) << std::left << "Dummy-free verification time: " << time_dummy_free_verification << std::endl
+            << std::setw(width) << std::left << "LP construction time: " << time_lp_construction << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
             << std::setw(width) << std::left << "Number of new cuts: " << new_cuts.size() << std::endl
