@@ -270,6 +270,7 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             // Update output statistics.
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
+            output.time_dual_pricing += cg_output.time_dual_pricing;
             output.time_column_pool_search += cg_output.time_column_pool_search;
             output.time_lp_construction += cg_output.time_lp_construction;
             output.time_cut_pool_search += cg_output.time_cut_pool_search;

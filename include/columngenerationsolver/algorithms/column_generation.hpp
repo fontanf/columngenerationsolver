@@ -57,6 +57,9 @@ struct ColumnGenerationOutput: Output
 
     Counter number_of_no_stab_pricings = 0;
 
+    /** Number of times 'solve_pricing' has been called with 'PricingSolver::PricingType::Dual'. */
+    Counter number_of_dual_pricings = 0;
+
     /** Number of cutting-plane iterations. */
     Counter number_of_cutting_plane_iterations = 0;
 
@@ -86,6 +89,7 @@ struct ColumnGenerationOutput: Output
             << std::setw(width) << std::left << "Number of first-try pricings: " << number_of_first_try_pricings << std::endl
             << std::setw(width) << std::left << "Number of mispricings: " << number_of_mispricings << std::endl
             << std::setw(width) << std::left << "Number of no-stab pricings: " << number_of_no_stab_pricings << std::endl
+            << std::setw(width) << std::left << "Number of dual pricings: " << number_of_dual_pricings << std::endl
             << std::setw(width) << std::left << "Number of cutting-plane iterations: " << number_of_cutting_plane_iterations << std::endl
             << std::setw(width) << std::left << "Number of cuts: " << cuts.size() << std::endl
             ;
@@ -100,6 +104,7 @@ struct ColumnGenerationOutput: Output
                 {"NumberOfFirstTryPricings", number_of_first_try_pricings},
                 {"NumberOfMispricings", number_of_mispricings},
                 {"NumberOfNoStabPricings", number_of_no_stab_pricings},
+                {"NumberOfDualPricings", number_of_dual_pricings},
                 {"NumberOfCuttingPlaneIterations", number_of_cutting_plane_iterations},
                 {"NumberOfCuts", cuts.size()},
                 });
@@ -139,6 +144,26 @@ struct ColumnGenerationParameters: Parameters
 
     /** Maximum number of cutting-plane iterations. */
     Counter maximum_number_of_cutting_plane_iterations = -1;
+
+    /**
+     * Objective cutoff: this call need not find or prove anything for a
+     * solution that would not be strictly better than this value
+     * (sense-aware: strictly less for Minimize, strictly greater for
+     * Maximize). Defaults to +infinity, a sentinel meaning "no cutoff,
+     * interested in anything" -- checked by value-equality, never used as
+     * a literal bound, so the same default works unchanged for both
+     * objective senses.
+     *
+     * Set by a caller that already knows a solution's value from
+     * elsewhere (e.g. 'branch_and_price''s running incumbent) so this call
+     * can stop as soon as it can prove it has nothing to offer -- both
+     * directly (see the early-stopping checks around 'Output::bound' in
+     * 'column_generation()') and by gating the 'PricingSolver::PricingType::
+     * Dual' pricing escalation (only worth calling when succeeding would
+     * prove the current node can be cut against this cutoff) -- rather
+     * than always solving to full convergence first.
+     */
+    Value objective_cutoff = std::numeric_limits<Value>::infinity();
 
     /**
      * Tolerance for the reduced cost optimality check.
@@ -208,6 +233,7 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Automatic directional smoothing: " << automatic_directional_smoothing << std::endl
             << std::setw(width) << std::left << "Maximum number of iterations: " << maximum_number_of_iterations << std::endl
             << std::setw(width) << std::left << "Maximum number of cutting-plane iterations: " << maximum_number_of_cutting_plane_iterations << std::endl
+            << std::setw(width) << std::left << "Objective cutoff: " << objective_cutoff << std::endl
             << std::setw(width) << std::left << "Optimality tolerance: " << optimality_tolerance << std::endl
             << std::setw(width) << std::left << "Tabu size: " << tabu.size() << std::endl
             << std::setw(width) << std::left << "Rounding heuristic infeasibility threshold: " << rounding_heuristic_infeasibility_threshold << std::endl
@@ -225,6 +251,7 @@ struct ColumnGenerationParameters: Parameters
                 {"AutomaticDirectionalSmoothing", automatic_directional_smoothing},
                 {"MaximumNumberOfIterations", maximum_number_of_iterations},
                 {"MaximumNumberOfCuttingPlaneIterations", maximum_number_of_cutting_plane_iterations},
+                {"ObjectiveCutoff", objective_cutoff},
                 {"OptimalityTolerance", optimality_tolerance},
                 {"TabuSize", tabu.size()},
                 {"RoundingHeuristicInfeasibilityThreshold", rounding_heuristic_infeasibility_threshold},

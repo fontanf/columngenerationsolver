@@ -68,7 +68,7 @@ public:
             const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
-            columngenerationsolver::Counter pricing_level);
+            PricingType pricing_type);
 
     void set_beam_search_size_of_the_queue(treesearchsolver::NodeId bs_size_of_the_queue) { bs_size_of_the_queue_ = bs_size_of_the_queue; }
 
@@ -137,7 +137,7 @@ typename PricingSolver<Distances>::PricingOutput PricingSolver<Distances>::solve
             const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
-            columngenerationsolver::Counter)
+            PricingType)
 {
     std::fill(visited_customers_.begin(), visited_customers_.end(), 0);
     for (const auto& p: fixed_columns) {
