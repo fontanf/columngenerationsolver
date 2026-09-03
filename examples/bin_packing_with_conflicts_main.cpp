@@ -65,7 +65,7 @@ public:
             const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>& cut_duals,
-            columngenerationsolver::Counter pricing_level);
+            PricingType pricing_type);
 
 private:
 
@@ -111,7 +111,7 @@ PricingSolver::PricingOutput PricingSolver::solve_pricing(
             const std::unordered_set<std::shared_ptr<const columngenerationsolver::Column>>&,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const columngenerationsolver::Cut>, Value>>&,
-            columngenerationsolver::Counter)
+            PricingType)
 {
     std::fill(packed_items_.begin(), packed_items_.end(), 0);
     for (auto p: fixed_columns) {

@@ -174,6 +174,13 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             column_generation_parameters.cut_pool = cut_pool;
             column_generation_parameters.fixed_columns = parameters.fixed_columns;
             column_generation_parameters.branching_decisions = branching_decisions;
+            // Let this call bail out (directly, or by skipping the
+            // 'PricingSolver::PricingType::Dual' pricing escalation) as
+            // soon as it can prove this node has nothing to offer against
+            // the running incumbent, instead of always solving to full
+            // convergence first.
+            if (output.solution.feasible())
+                column_generation_parameters.objective_cutoff = output.solution.objective_value();
             if (node->parent == nullptr) {
                 column_generation_parameters.phase_callback = [&algorithm_formatter](
                         bool solve_feasibility)
@@ -198,6 +205,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
             output.time_lpsolve += cg_output.time_lpsolve;
             output.time_pricing += cg_output.time_pricing;
+            output.time_dual_pricing += cg_output.time_dual_pricing;
             output.time_column_pool_search += cg_output.time_column_pool_search;
             output.time_lp_construction += cg_output.time_lp_construction;
             output.time_cut_pool_search += cg_output.time_cut_pool_search;
@@ -364,6 +372,8 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 column_generation_parameters.initial_cuts = node->cuts;
                 column_generation_parameters.fixed_columns = parameters.fixed_columns;
                 column_generation_parameters.branching_decisions = child_branching_decisions;
+                if (output.solution.feasible())
+                    column_generation_parameters.objective_cutoff = output.solution.objective_value();
                 column_generation_parameters.maximum_number_of_iterations
                     = parameters.strong_branching_maximum_number_of_iterations;
                 // Strong-branching evaluations are capped, throwaway
@@ -382,6 +392,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
                 output.time_lpsolve += cg_output.time_lpsolve;
                 output.time_pricing += cg_output.time_pricing;
+                output.time_dual_pricing += cg_output.time_dual_pricing;
                 output.time_column_pool_search += cg_output.time_column_pool_search;
                 output.time_lp_construction += cg_output.time_lp_construction;
                 output.time_cut_pool_search += cg_output.time_cut_pool_search;

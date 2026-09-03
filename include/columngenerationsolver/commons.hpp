@@ -320,19 +320,16 @@ public:
     }
 
     /**
-     * Number of pricing levels this solver supports (>= 1), e.g. a fast
-     * heuristic (level 0), a more expensive heuristic, an exact algorithm,
-     * ... ordered from cheapest/least thorough to most expensive/thorough.
-     * 'column_generation' starts every call at level 0 and only escalates
-     * once a whole cutting-plane fixed point is reached at the current
-     * level (no new column, no new or removed cut) — see 'solve_pricing'.
-     * The default of 1 (single level) means it never escalates, i.e. a
-     * solver that doesn't override this is unaffected.
+     * Which role a 'solve_pricing' call is playing -- see 'solve_pricing'
+     * and 'has_pricing_bound'.
      */
-    virtual Counter number_of_pricing_levels() const
+    enum class PricingType
     {
-        return 1;
-    }
+        /** Cheap, primal-oriented: called every column generation iteration. */
+        Primal,
+        /** Expensive, dual-oriented: called at most twice per call, only to prove a bound. */
+        Dual,
+    };
 
     /**
      * Solve the pricing subproblem.
@@ -345,14 +342,27 @@ public:
      * the search itself optimized for. See 'PricingOutput::overcost' for
      * how this affects the bound contract.
      *
-     * 'pricing_level' (see 'number_of_pricing_levels') selects how
-     * thorough the search should be, independently of 'solve_feasibility'
-     * -- both phases escalate through the same levels together.
+     * 'pricing_type' distinguishes two roles, independent of
+     * 'solve_feasibility':
+     * - 'Primal': called every column generation iteration, in search of
+     *   columns to add. Cheap enough to be worth that; need not prove
+     *   anything about 'overcost' (see the 3-way contract there).
+     * - 'Dual': called by 'column_generation' at most twice per call, and
+     *   only once 'Primal' pricing alone has already converged (no more
+     *   columns found) at a point where succeeding here would let the
+     *   current node be cut: infeasible (feasibility phase, dummy columns
+     *   remain), or a value no better than 'ColumnGenerationParameters::
+     *   objective_cutoff' (optimality phase). Reserved for an attempt
+     *   genuinely aimed at *proving* a bound (exact, or
+     *   heuristic-with-a-bound in the 'overcost' contract) cheaply enough
+     *   to justify calling it at all -- e.g. an exact algorithm kept in
+     *   reserve behind a cheaper 'Primal' heuristic. Never called unless
+     *   'has_pricing_bound' returns 'true'.
      *
      * 'fixed_columns', 'branching_decisions' and 'tabu' are given on every
      * call rather than once via a separate setup step: within one column
      * generation attempt they're the same on every call (only 'duals'/
-     * 'cut_duals'/'pricing_level' change call to call), and how cheaply a
+     * 'cut_duals'/'pricing_type' change call to call), and how cheaply a
      * 'PricingSolver' can fold fixed/tabu state into its search dwarfs in
      * cost next to the search itself for every solver in this repository,
      * so there's nothing worth amortizing across calls by caching it from
@@ -372,7 +382,21 @@ public:
             const std::unordered_set<std::shared_ptr<const Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals,
-            Counter pricing_level) = 0;
+            PricingType pricing_type) = 0;
+
+    /**
+     * Whether this 'PricingSolver' has a genuinely useful 'solve_pricing'
+     * implementation for 'PricingType::Dual' -- see 'solve_pricing'.
+     * Default 'false': 'column_generation' then never calls 'solve_pricing'
+     * with 'PricingType::Dual' at all, so a 'PricingSolver' with no cheaper
+     * way to prove optimality than its own 'PricingType::Primal' pricing
+     * doesn't need to give 'PricingType::Dual' any special handling in
+     * 'solve_pricing' either -- it simply never sees it.
+     */
+    virtual bool has_pricing_bound() const
+    {
+        return false;
+    }
 
     /**
      * Separate cutting planes from the current relaxation solution.
@@ -1122,8 +1146,19 @@ struct Output: optimizationtools::Output
     /** Time spent solving the LP subproblems. */
     double time_lpsolve = 0.0;
 
-    /** Time spent solving the pricing subproblems. */
+    /** Time spent solving the pricing subproblems (all of it, 'Primal' and 'Dual' alike). */
     double time_pricing = 0.0;
+
+    /**
+     * Portion of 'time_pricing' spent specifically in 'PricingSolver::
+     * PricingType::Dual' calls -- included in, not additional to,
+     * 'time_pricing'. Broken out separately since a 'Dual' call is
+     * typically far more expensive per call than a 'Primal' one (see
+     * 'PricingSolver::solve_pricing'), so lumping them together would
+     * hide how much of the pricing time actually went to the rare,
+     * heavyweight escalation calls versus the frequent, cheap ones.
+     */
+    double time_dual_pricing = 0.0;
 
     /**
      * Time spent scanning 'Parameters::column_pool' for a column of
@@ -1312,6 +1347,7 @@ struct Output: optimizationtools::Output
             {"Time", time},
             {"ColumnGenerationTime", time_column_generation},
             {"PricingTime", time_pricing},
+            {"DualPricingTime", time_dual_pricing},
             {"ColumnPoolSearchTime", time_column_pool_search},
             {"SeparationTime", time_separation},
             {"CutPoolSearchTime", time_cut_pool_search},
@@ -1336,6 +1372,7 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Time: " << time << std::endl
             << std::setw(width) << std::left << "Column generation time: " << time_column_generation << std::endl
             << std::setw(width) << std::left << "Pricing time: " << time_pricing << std::endl
+            << std::setw(width) << std::left << "Dual pricing time: " << time_dual_pricing << std::endl
             << std::setw(width) << std::left << "Column pool search time: " << time_column_pool_search << std::endl
             << std::setw(width) << std::left << "Separation time: " << time_separation << std::endl
             << std::setw(width) << std::left << "Cut pool search time: " << time_cut_pool_search << std::endl
