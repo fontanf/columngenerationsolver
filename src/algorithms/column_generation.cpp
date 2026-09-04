@@ -135,7 +135,10 @@ struct ColumnGenerationAttemptInput
     RowIdx new_number_of_rows;
     const std::vector<Value>& new_row_lower_bounds;
     const std::vector<Value>& new_row_upper_bounds;
-    const std::vector<std::shared_ptr<const Cut>>& active_cuts;
+    // Paired with the relaxation value at the point each cut joined this
+    // vector (see 'column_generation()''s own 'solver_cuts' for how that's
+    // used to decide when a cut is stale enough to remove).
+    const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& solver_cuts;
     const std::vector<Value>& new_cut_lower_bounds;
     const std::vector<Value>& new_cut_upper_bounds;
     const std::vector<std::shared_ptr<const Column>>& initial_columns;
@@ -193,7 +196,7 @@ struct ColumnGenerationAttemptInput
  * Built once (references stay valid: the referenced containers get
  * mutated in place across iterations, never reallocated to a new object),
  * then 'run_rounding_heuristic()' is called every iteration. Never
- * touches the master LP, 'active_cuts', or the real
+ * touches the master LP, 'solver_cuts', or the real
  * 'parameters.fixed_columns' — it's a side computation, working on its
  * own local copies of 'row_values'/'c0' — except for 'column_pool'/
  * 'output.columns', which it updates the same way regular pricing
@@ -593,8 +596,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             std::vector<RowIdx>& ri,
             std::vector<Value>& rc)
     {
-        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.active_cuts.size(); ++cut_pos) {
-            Value coef = input.model.pricing_solver->coefficient(*input.active_cuts[cut_pos], column);
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.solver_cuts.size(); ++cut_pos) {
+            Value coef = input.model.pricing_solver->coefficient(*input.solver_cuts[cut_pos].first, column);
             if (coef != 0.0) {
                 ri.push_back(input.new_number_of_rows + cut_pos);
                 rc.push_back(coef);
@@ -732,7 +735,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         // Add dummy columns for cut rows that fixed/static/initial columns
         // alone cannot satisfy (symmetric to the input.model-row dummy
         // columns above).
-        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.active_cuts.size(); ++cut_pos) {
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.solver_cuts.size(); ++cut_pos) {
             RowIdx cut_row_id = input.new_number_of_rows + cut_pos;
             if (input.new_cut_lower_bounds[cut_pos] > 0) {
                 solver_columns.push_back(nullptr);
@@ -911,11 +914,11 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // whole CG loop, so there is no smoothing history to maintain).
     // Paired with the cut itself (like 'fixed_columns' already is),
     // so 'solve_pricing'/'compute_reduced_cost' callers don't have to
-    // separately track 'input.active_cuts' just to correlate the two.
+    // separately track 'input.solver_cuts' just to correlate the two.
     std::vector<std::pair<std::shared_ptr<const Cut>, Value>> cut_duals;
-    cut_duals.reserve(input.active_cuts.size());
-    for (const std::shared_ptr<const Cut>& cut: input.active_cuts)
-        cut_duals.push_back({cut, 0.0});
+    cut_duals.reserve(input.solver_cuts.size());
+    for (const auto& p: input.solver_cuts)
+        cut_duals.push_back({p.first, 0.0});
     double alpha = input.parameters.static_wentges_smoothing_parameter;
 
     RoundingHeuristicInput rounding_heuristic_input{
@@ -1116,7 +1119,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         for (RowIdx row_pos = 0; row_pos < input.new_number_of_rows; ++row_pos) {
             duals_out[input.new_rows[row_pos]] = solver->dual(row_pos);
         }
-        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.active_cuts.size(); ++cut_pos) {
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)input.solver_cuts.size(); ++cut_pos) {
             cut_duals[cut_pos].second = solver->dual(input.new_number_of_rows + cut_pos);
         }
 
@@ -1861,35 +1864,49 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         column_pool.insert(column);
     }
 
-    // Active cuts. Starts from 'initial_cuts' and grows as cutting-plane
-    // rounds find violated cuts below.
-    std::vector<std::shared_ptr<const Cut>> active_cuts = parameters.initial_cuts;
+    // Active cuts, each paired with the relaxation's objective value at the
+    // point it joined -- a cut from 'parameters.initial_cuts' (inherited
+    // from a parent node, not "added" this call at all) gets a sense-aware
+    // sentinel that's trivially already exceeded, matching how such a cut
+    // could always be removed on first sight of slack before this scheme
+    // existed. Grows (with a genuine baseline this time) as cutting-plane
+    // rounds find violated cuts below, and is how the removal pass further
+    // down decides a cut is stale enough to drop: see there.
+    std::vector<std::pair<std::shared_ptr<const Cut>, Value>> solver_cuts;
+    for (const std::shared_ptr<const Cut>& cut: parameters.initial_cuts) {
+        solver_cuts.push_back({
+                cut,
+                (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+                -std::numeric_limits<Value>::infinity():
+                std::numeric_limits<Value>::infinity()});
+    }
 
-    // Every cut separated so far, active or not (see
-    // 'Parameters::cut_pool'). No dedup needed on insertion: a cut only
-    // ever gets added here once it's passed 'cut_is_violated' against the
-    // current relaxation, and the pool is always checked for a violated
-    // cut first (right below) before 'separate_cuts' is ever called --
-    // so nothing 'separate_cuts' returns and survives the same check can
-    // already be in the pool, or the pool check would have caught it.
-    std::vector<std::shared_ptr<const Cut>> cut_pool = parameters.cut_pool;
+    // 'ColumnGenerationOutput::cuts' is a plain cut list (no caller needs
+    // to see the internal per-cut removal bookkeeping) -- this is how
+    // 'solver_cuts' gets projected down to it, at every point this
+    // function can return.
+    auto extract_cuts = [](const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cuts)
+    {
+        std::vector<std::shared_ptr<const Cut>> result;
+        result.reserve(cuts.size());
+        for (const auto& p: cuts)
+            result.push_back(p.first);
+        return result;
+    };
 
-    // Relaxation value at the point each cut was last removed for being
-    // inactive. A cut in this list may only be removed again once the
-    // relaxation has genuinely improved relative to the value recorded
-    // here — otherwise a cut that gets removed, then found needed again,
-    // then found inactive again without any real progress in between
-    // would cycle indefinitely (remove, rebuild, re-add, rebuild, remove,
-    // ...). Persists across cutting-plane rounds for the whole call,
-    // unlike 'active_cuts' itself.
-    //
-    // Looked up by 'PricingSolver::equal' rather than by shared_ptr
-    // identity or a hash map, since 'separate_cuts' may return a
-    // different 'Cut' instance for the same constraint each time it
-    // becomes violated again, and a custom equality without a matching
-    // custom hash would break an unordered_map's bucket invariant. A
-    // linear scan is fine given the expected number of active cuts.
-    std::vector<std::pair<std::shared_ptr<const Cut>, Value>> cut_value_at_last_removal;
+    // Cuts the most recent 'separate_cuts' call confirmed violated but
+    // didn't activate this round (only the single most violated cut ever
+    // gets activated per round -- see below). Checked first, before
+    // calling 'separate_cuts' again, so a cut that isn't needed yet but
+    // will be in a round or two doesn't cost a fresh (potentially
+    // expensive) separation call. Replaced wholesale by the next
+    // 'separate_cuts' call's own results rather than accumulated --
+    // unlike a real cut pool, this deliberately doesn't remember a cut
+    // beyond the batch it was found in: once none of a batch's cuts are
+    // violated any more, a later round's fresh 'separate_cuts' call is
+    // trusted to rediscover whatever's still relevant, rather than an
+    // ever-growing history being kept across the whole call to avoid that.
+    std::vector<std::shared_ptr<const Cut>> pending_separated_cuts;
 
     std::vector<std::shared_ptr<const Column>> initial_columns = parameters.initial_columns;
 
@@ -1928,25 +1945,25 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
 
         // Compute residual cut bounds, after subtracting the contribution of
         // fixed columns (mirrors the row residual-bound computation above).
-        std::vector<Value> new_cut_lower_bounds(active_cuts.size());
-        std::vector<Value> new_cut_upper_bounds(active_cuts.size());
-        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
+        std::vector<Value> new_cut_lower_bounds(solver_cuts.size());
+        std::vector<Value> new_cut_upper_bounds(solver_cuts.size());
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)solver_cuts.size(); ++cut_pos) {
             Value cut_fixed_value = 0.0;
             for (const auto& p: parameters.fixed_columns)
-                cut_fixed_value += p.second * model.pricing_solver->coefficient(*active_cuts[cut_pos], *p.first);
-            new_cut_lower_bounds[cut_pos] = active_cuts[cut_pos]->lower_bound - cut_fixed_value;
-            new_cut_upper_bounds[cut_pos] = active_cuts[cut_pos]->upper_bound - cut_fixed_value;
+                cut_fixed_value += p.second * model.pricing_solver->coefficient(*solver_cuts[cut_pos].first, *p.first);
+            new_cut_lower_bounds[cut_pos] = solver_cuts[cut_pos].first->lower_bound - cut_fixed_value;
+            new_cut_upper_bounds[cut_pos] = solver_cuts[cut_pos].first->upper_bound - cut_fixed_value;
         }
 
         // Appends the coefficients of 'column' in the active cuts to 'ri'/'rc',
         // at row indices following the model rows.
-        auto append_cut_coefficients = [&model, &active_cuts, new_number_of_rows](
+        auto append_cut_coefficients = [&model, &solver_cuts, new_number_of_rows](
                 const Column& column,
                 std::vector<RowIdx>& ri,
                 std::vector<Value>& rc)
         {
-            for (CutIdx cut_pos = 0; cut_pos < (CutIdx)active_cuts.size(); ++cut_pos) {
-                Value coef = model.pricing_solver->coefficient(*active_cuts[cut_pos], column);
+            for (CutIdx cut_pos = 0; cut_pos < (CutIdx)solver_cuts.size(); ++cut_pos) {
+                Value coef = model.pricing_solver->coefficient(*solver_cuts[cut_pos].first, column);
                 if (coef != 0.0) {
                     ri.push_back(new_number_of_rows + cut_pos);
                     rc.push_back(coef);
@@ -1977,7 +1994,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     new_number_of_rows,
                     new_row_lower_bounds,
                     new_row_upper_bounds,
-                    active_cuts,
+                    solver_cuts,
                     new_cut_lower_bounds,
                     new_cut_upper_bounds,
                     initial_columns,
@@ -1991,7 +2008,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 = run_column_generation_attempt(attempt_input);
 
             if (attempt_result.stop_now) {
-                output.cuts = active_cuts;
+                output.cuts = extract_cuts(solver_cuts);
                 algorithm_formatter.end();
                 return output;
             }
@@ -2072,25 +2089,30 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             break;
 
         std::vector<std::shared_ptr<const Cut>> new_cuts;
-        bool removed_a_cut = false;
         if (try_cutting_planes) {
-            // Look for a violated cut already in the pool before ever
-            // calling the (potentially expensive) separation routine --
-            // cuts don't disappear once discovered, so a cut that helped
-            // before and later went inactive (see the removal pass
-            // below) may simply be needed again, at no cost beyond
-            // evaluating it against the current relaxation. Only the
-            // single most violated one gets activated, exactly like a
-            // freshly separated cut below: adding every violated cut at
-            // once would grow the master LP faster than the relaxation
+            // Look for a still-violated cut among 'pending_separated_cuts'
+            // (the last 'separate_cuts' call's own leftovers) before ever
+            // calling the (potentially expensive) separation routine
+            // again -- a cut that isn't needed yet but was violated a
+            // round or two ago (see the removal pass below) is often
+            // needed again very soon, at no cost beyond evaluating it
+            // against the current relaxation. Only the single most
+            // violated one gets activated, exactly like a freshly
+            // separated cut below: adding every violated cut at once
+            // would grow the master LP faster than the relaxation
             // actually needs, since a later round can always add another
             // once this one alone no longer suffices.
             {
-                auto start_cut_pool_search = std::chrono::high_resolution_clock::now();
                 std::shared_ptr<const Cut> best_cut = nullptr;
                 Value best_violation = 0.0;
-                for (const std::shared_ptr<const Cut>& cut: cut_pool) {
-                    if (std::find(active_cuts.begin(), active_cuts.end(), cut) != active_cuts.end())
+                for (const std::shared_ptr<const Cut>& cut: pending_separated_cuts) {
+                    bool already_active = std::any_of(
+                            solver_cuts.begin(), solver_cuts.end(),
+                            [&cut](const std::pair<std::shared_ptr<const Cut>, Value>& p)
+                            {
+                                return p.first == cut;
+                            });
+                    if (already_active)
                         continue;
                     if (!cut_is_violated(model, *cut, output.relaxation_solution))
                         continue;
@@ -2102,18 +2124,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 }
                 if (best_cut != nullptr)
                     new_cuts.push_back(best_cut);
-                auto end_cut_pool_search = std::chrono::high_resolution_clock::now();
-                output.time_cut_pool_search += std::chrono::duration_cast<std::chrono::duration<double>>(
-                        end_cut_pool_search - start_cut_pool_search).count();
             }
 
-            // Only once the pool has nothing to offer, separate cuts from
-            // the current relaxation solution -- the full feasible one
-            // from Phase 2, or, if Phase 1 stayed inconclusive instead,
-            // the partial one it left behind (dummy columns excluded
-            // from it by construction). A cut found on that partial
-            // solution might let a later Phase 1 attempt restore
-            // feasibility where this one couldn't.
+            // Only once that has nothing to offer, separate cuts from the
+            // current relaxation solution -- the full feasible one from
+            // Phase 2, or, if Phase 1 stayed inconclusive instead, the
+            // partial one it left behind (dummy columns excluded from it
+            // by construction). A cut found on that partial solution
+            // might let a later Phase 1 attempt restore feasibility where
+            // this one couldn't.
             if (new_cuts.empty()) {
                 auto start_separation = std::chrono::high_resolution_clock::now();
                 std::vector<std::shared_ptr<const Cut>> separated_cuts
@@ -2123,23 +2142,21 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 output.time_separation += time_span_separation.count();
 
                 // Never trust a 'PricingSolver''s own notion of
-                // "violated" -- it's a pluggable interface, and the
-                // no-duplicates argument for 'cut_pool' above only holds
-                // if every cut that ever enters it was independently
-                // confirmed violated by this same check. Every cut that
-                // passes is still worth remembering for a possible
-                // future round (grown here, not just when a cut is
-                // chosen to stay active below -- exactly like
-                // 'column_pool' keeps every discovered column regardless
-                // of whether it ends up selected), even though only the
-                // single most violated one is activated now.
+                // "violated" -- it's a pluggable interface, so every cut
+                // this call returns is independently confirmed here
+                // before being trusted at all. Replaces
+                // 'pending_separated_cuts' wholesale (see its own doc
+                // comment) with every cut that passes -- not just the one
+                // chosen to stay active below -- so a round or two from
+                // now can pick up one of this same batch's other cuts
+                // without a fresh separation call.
+                pending_separated_cuts.clear();
                 std::shared_ptr<const Cut> best_cut = nullptr;
                 Value best_violation = 0.0;
                 for (const std::shared_ptr<const Cut>& cut: separated_cuts) {
                     if (!cut_is_violated(model, *cut, output.relaxation_solution))
                         continue;
-                    cut_pool.push_back(cut);
-                    output.new_cuts.push_back(cut);
+                    pending_separated_cuts.push_back(cut);
                     Value violation = cut_violation(model, *cut, output.relaxation_solution);
                     if (best_cut == nullptr || violation > best_violation) {
                         best_cut = cut;
@@ -2167,83 +2184,104 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // regardless of whether every row is already fully satisfied by
             // them.
             //
-            // A cut that has already been removed once may only be removed
-            // again if the relaxation has genuinely improved since then
-            // (sense-aware, guarded by FFOT_TOL against numerical noise) --
-            // otherwise a cut that gets removed, found needed again, then
-            // found inactive again without any real progress in between would
-            // cycle indefinitely. This still lets a cut be removed multiple
-            // times over a long search, as long as each removal is preceded by
-            // real progress, rather than forbidding it outright after a single
-            // bounce-back.
+            // On top of that, a cut is only actually dropped once the
+            // relaxation has moved on by more than 1% (sense-aware, relative
+            // to the magnitude of the value recorded when it joined
+            // 'solver_cuts', with an absolute 'FFOT_TOL' floor so a
+            // near-zero baseline doesn't collapse the threshold to
+            // nothing) -- otherwise a cut that's merely momentarily slack,
+            // with nothing else having genuinely changed since it was
+            // added, would get removed only to need re-deriving again
+            // almost immediately, for no real gain. This also naturally
+            // prevents the remove/rebuild/re-add/rebuild/remove cycling a
+            // purely slack-based check alone would risk, without having to
+            // separately recognize a cut across being removed and later
+            // re-added, possibly as a different 'Cut' instance for the
+            // same constraint (see 'separate_cuts'). A cut inherited via
+            // 'parameters.initial_cuts' (not "added" this call at all) has
+            // no such baseline -- its sense-aware sentinel (see where
+            // 'solver_cuts' is built) always counts as "moved on enough",
+            // matching how a cut could always be removed on first sight of
+            // slack before this scheme existed.
+            //
+            // That 1% gate only guards against cycling that could still
+            // cost something later *this* call -- it's dropped entirely
+            // once 'new_cuts' is empty here, since by construction that
+            // only happens after a genuine 'separate_cuts' call (not just
+            // the cheap 'pending_separated_cuts' check above) has just
+            // confirmed nothing is violated at this exact relaxation: the
+            // loop is ending this round regardless (see the break below),
+            // so there is no future re-derivation cost left to protect a
+            // slack cut's baseline against -- may as well hand back the
+            // leanest possible 'output.cuts' to whoever called this. Never
+            // worsens the relaxation value either way: dropping a cut with
+            // genuine slack at the optimum can only loosen constraints the
+            // solution wasn't using, not change what was achievable.
             //
             // 'output.cuts' (see 'ColumnGenerationOutput::cuts') mirrors
-            // 'active_cuts' by the time this call returns, so a cut dropped
+            // 'solver_cuts' by the time this call returns, so a cut dropped
             // here — whether it came in via 'parameters.initial_cuts' or was
             // newly separated this call — is dropped from 'output.cuts' too,
             // and a caller feeding 'output.cuts' into a follow-up call won't
             // keep reinstating it.
-            //
-            // 'PricingSolver::equal' is only called once a cut has already
-            // been removed at least once this call (i.e.
-            // 'cut_value_at_last_removal' is non-empty), and only for cuts
-            // that are themselves candidates for removal — so a
-            // 'PricingSolver' that never triggers a removal, or doesn't use
-            // cuts at all, never needs to implement it.
             bool minimize = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
             Value current_value = output.relaxation_solution.objective_value();
-            std::vector<std::shared_ptr<const Cut>> still_active_cuts;
-            for (const std::shared_ptr<const Cut>& cut: active_cuts) {
+            Value no_baseline_sentinel = (minimize)?
+                -std::numeric_limits<Value>::infinity():
+                std::numeric_limits<Value>::infinity();
+            std::vector<std::pair<std::shared_ptr<const Cut>, Value>> still_solver_cuts;
+            for (const auto& p: solver_cuts) {
+                const std::shared_ptr<const Cut>& cut = p.first;
+                Value value_at_addition = p.second;
                 Value value = cut_value(model, *cut, output.relaxation_solution);
 
                 bool has_slack_below = (value > cut->lower_bound + cut->feasibility_tolerance);
                 bool has_slack_above = (value < cut->upper_bound - cut->feasibility_tolerance);
                 bool eligible_for_removal = has_slack_below && has_slack_above;
 
-                auto previous_removal = cut_value_at_last_removal.end();
-                if (eligible_for_removal && !cut_value_at_last_removal.empty()) {
-                    previous_removal = std::find_if(
-                            cut_value_at_last_removal.begin(),
-                            cut_value_at_last_removal.end(),
-                            [&model, &cut](
-                                const std::pair<std::shared_ptr<const Cut>, Value>& p)
-                            {
-                                return model.pricing_solver->equal(*cut, *p.first);
-                            });
-                    if (previous_removal != cut_value_at_last_removal.end()) {
-                        eligible_for_removal = (minimize)?
-                            (current_value < previous_removal->second - FFOT_TOL):
-                            (current_value > previous_removal->second + FFOT_TOL);
-                    }
+                if (eligible_for_removal
+                        && !new_cuts.empty()
+                        && value_at_addition != no_baseline_sentinel) {
+                    Value progress = (minimize)?
+                        (current_value - value_at_addition):
+                        (value_at_addition - current_value);
+                    Value progress_threshold = 0.01 * std::abs(value_at_addition) + FFOT_TOL;
+                    eligible_for_removal = (progress > progress_threshold);
                 }
 
                 if (eligible_for_removal) {
-                    removed_a_cut = true;
-                    if (previous_removal != cut_value_at_last_removal.end()) {
-                        previous_removal->second = current_value;
-                    } else {
-                        cut_value_at_last_removal.push_back({cut, current_value});
-                    }
+                    // Not tracked any further: since 'new_cuts.empty()'
+                    // alone now decides whether the loop keeps going (see
+                    // below), a removal happening here can never be the
+                    // reason for another round.
                 } else {
-                    still_active_cuts.push_back(cut);
+                    still_solver_cuts.push_back(p);
                 }
             }
-            active_cuts = std::move(still_active_cuts);
+            solver_cuts = std::move(still_solver_cuts);
         }
 
-        if (new_cuts.empty() && !removed_a_cut) {
+        if (new_cuts.empty()) {
             // Nothing found this round (cutting planes disabled/capped, or
-            // a genuinely empty attempt; no removal either): nothing left
-            // to try. (This is also, incidentally, the last chance for the
-            // next round's 'run_column_generation_attempt' call -- there
-            // won't be one -- so the dual-oriented pricing escalation
-            // inside the *current* round's attempts, gated by the same
+            // a genuinely empty attempt): nothing left to try -- including,
+            // as of the removal pass above, any cut that was merely slack.
+            // (This is also, incidentally, the last chance for the next
+            // round's 'run_column_generation_attempt' call -- there won't
+            // be one -- so the dual-oriented pricing escalation inside the
+            // *current* round's attempts, gated by the same
             // 'number_of_dual_pricing_calls < 2' budget, already got
             // whatever shot at proving a cut this call is going to give
             // it.)
             break;
         } else {
-            active_cuts.insert(active_cuts.end(), new_cuts.begin(), new_cuts.end());
+            // Baseline each newly-activated cut against this round's own
+            // converged relaxation value -- the value the system had right
+            // as it's joining, before it can have had any effect yet (see
+            // 'solver_cuts''s own doc comment for how the removal pass
+            // further up uses this).
+            Value new_cut_baseline_value = output.relaxation_solution.objective_value();
+            for (const std::shared_ptr<const Cut>& cut: new_cuts)
+                solver_cuts.push_back({cut, new_cut_baseline_value});
             output.number_of_cutting_plane_iterations++;
         }
 
@@ -2253,7 +2291,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // attempt's own relaxation solution, set right after it ran, above.
     }
 
-    output.cuts = active_cuts;
+    output.cuts = extract_cuts(solver_cuts);
     algorithm_formatter.end();
     return output;
 }

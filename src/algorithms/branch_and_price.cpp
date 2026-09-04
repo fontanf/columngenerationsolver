@@ -72,15 +72,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
-    // Unlike 'node->cuts' (node-local: only a node's own lineage should
-    // ever see a cut separated on it, since it may be non-robust -- see
-    // 'limited_discrepancy_search.cpp'), 'cut_pool' is global, shared
-    // across every node exactly like 'column_pool' -- sound only if
-    // 'PricingSolver::separate_cuts' returns cuts that stay valid
-    // regardless of which node's fixed columns/branching decisions
-    // derived them.
-    std::vector<std::shared_ptr<const Cut>> cut_pool = parameters.cut_pool;
-
     // Open-node queue, ordered best-bound-first (sense-aware). The global
     // dual bound at any point is the bound of the node at the front of the
     // queue: a valid lower (minimization) / upper (maximization) bound on
@@ -171,7 +162,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             column_generation_parameters.initial_cuts = (node->parent == nullptr)?
                 parameters.initial_cuts:
                 node->parent->cuts;
-            column_generation_parameters.cut_pool = cut_pool;
             column_generation_parameters.fixed_columns = parameters.fixed_columns;
             column_generation_parameters.branching_decisions = branching_decisions;
             // Let this call bail out (directly, or by skipping the
@@ -208,7 +198,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             output.time_dual_pricing += cg_output.time_dual_pricing;
             output.time_column_pool_search += cg_output.time_column_pool_search;
             output.time_lp_construction += cg_output.time_lp_construction;
-            output.time_cut_pool_search += cg_output.time_cut_pool_search;
             output.time_dummy_free_verification += cg_output.time_dummy_free_verification;
             output.time_separation += cg_output.time_separation;
             output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
@@ -220,14 +209,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                     column_pool.end(),
                     cg_output.columns.begin(),
                     cg_output.columns.end());
-            output.new_cuts.insert(
-                    output.new_cuts.end(),
-                    cg_output.new_cuts.begin(),
-                    cg_output.new_cuts.end());
-            cut_pool.insert(
-                    cut_pool.end(),
-                    cg_output.new_cuts.begin(),
-                    cg_output.new_cuts.end());
             node->cuts = cg_output.cuts;
 
             if (parameters.timer.needs_to_end())
@@ -395,7 +376,6 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 output.time_dual_pricing += cg_output.time_dual_pricing;
                 output.time_column_pool_search += cg_output.time_column_pool_search;
                 output.time_lp_construction += cg_output.time_lp_construction;
-                output.time_cut_pool_search += cg_output.time_cut_pool_search;
                 output.time_dummy_free_verification += cg_output.time_dummy_free_verification;
                 output.time_separation += cg_output.time_separation;
                 output.number_of_column_generation_iterations += cg_output.number_of_column_generation_iterations;
