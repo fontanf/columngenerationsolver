@@ -171,9 +171,8 @@ struct Cut
     /**
      * Extra information.
      *
-     * Problem-specific data needed to compute this cut's coefficients and
-     * to recognize it against other cuts, read back by 'PricingSolver::
-     * coefficient' and 'PricingSolver::equal' via a 'static_cast' to the
+     * Problem-specific data needed to compute this cut's coefficients,
+     * read back by 'PricingSolver::coefficient' via a 'static_cast' to the
      * concrete type the code that built the cut knows about. Same idiom as
      * 'Column::extra'.
      */
@@ -463,32 +462,6 @@ public:
         for (const auto& p: cut_duals)
             reduced_cost -= p.second * coefficient(*p.first, column);
         return reduced_cost;
-    }
-
-    /**
-     * Return whether two cuts are the same constraint.
-     *
-     * 'column_generation' uses this to recognize a cut it has previously
-     * removed from the active set for being inactive, even though
-     * 'separate_cuts' may return a different 'Cut' instance for the same
-     * constraint each time it becomes violated again — pointer identity
-     * cannot be relied on for that. Only called once a cut has already
-     * been removed at least once in the current call, so a 'PricingSolver'
-     * that doesn't use cuts, or whose cuts are never removed, never
-     * triggers it and never needs to override it. Throws by default so
-     * that a 'PricingSolver' that does need it fails loudly if it forgets
-     * to override it, rather than silently falling back to an incorrect
-     * comparison.
-     */
-    virtual bool equal(
-            const Cut& cut_1,
-            const Cut& cut_2) const
-    {
-        (void)cut_1;
-        (void)cut_2;
-        throw std::logic_error(
-                "columngenerationsolver::PricingSolver::equal: "
-                "not implemented.");
     }
 
     /**
@@ -1173,17 +1146,6 @@ struct Output: optimizationtools::Output
     double time_column_pool_search = 0.0;
 
     /**
-     * Time spent scanning 'Parameters::cut_pool' for a violated cut,
-     * before ever calling 'PricingSolver::separate_cuts' (see
-     * 'column_generation()'). Included in, not additional to, 'time';
-     * kept separate from 'time_separation' the same way
-     * 'time_column_pool_search' is kept separate from 'time_pricing' --
-     * its cost scales with the cut pool's size, not with the separation
-     * routine.
-     */
-    double time_cut_pool_search = 0.0;
-
-    /**
      * Time spent separating cuts (i.e. in 'PricingSolver::
      * separate_cuts'). Included in, not additional to, 'time'; kept
      * separate from 'time_pricing' since it's a distinct step, only run
@@ -1244,16 +1206,6 @@ struct Output: optimizationtools::Output
 
     /** Columns generated during the algorithm. */
     std::vector<std::shared_ptr<const Column>> columns;
-
-    /**
-     * Cuts separated during the algorithm and confirmed genuinely
-     * violated (see 'column_generation()') -- not including ones
-     * reactivated from 'Parameters::cut_pool', which the caller already
-     * has. Meant to be folded into 'Parameters::cut_pool' for a
-     * follow-up call, the same way 'columns' is folded into
-     * 'Parameters::column_pool'.
-     */
-    std::vector<std::shared_ptr<const Cut>> new_cuts;
 
     /** Solution. */
     Solution relaxation_solution;
@@ -1350,7 +1302,6 @@ struct Output: optimizationtools::Output
             {"DualPricingTime", time_dual_pricing},
             {"ColumnPoolSearchTime", time_column_pool_search},
             {"SeparationTime", time_separation},
-            {"CutPoolSearchTime", time_cut_pool_search},
             {"LpTime", time_lpsolve},
             {"RoundingHeuristicTime", time_rounding_heuristic},
             {"DummyFreeVerificationTime", time_dummy_free_verification},
@@ -1375,14 +1326,12 @@ struct Output: optimizationtools::Output
             << std::setw(width) << std::left << "Dual pricing time: " << time_dual_pricing << std::endl
             << std::setw(width) << std::left << "Column pool search time: " << time_column_pool_search << std::endl
             << std::setw(width) << std::left << "Separation time: " << time_separation << std::endl
-            << std::setw(width) << std::left << "Cut pool search time: " << time_cut_pool_search << std::endl
             << std::setw(width) << std::left << "Linear programming time: " << time_lpsolve << std::endl
             << std::setw(width) << std::left << "Rounding heuristic time: " << time_rounding_heuristic << std::endl
             << std::setw(width) << std::left << "Dummy-free verification time: " << time_dummy_free_verification << std::endl
             << std::setw(width) << std::left << "LP construction time: " << time_lp_construction << std::endl
             << std::setw(width) << std::left << "Number of CG iterations: " << number_of_column_generation_iterations << std::endl
             << std::setw(width) << std::left << "Number of new columns: " << columns.size() << std::endl
-            << std::setw(width) << std::left << "Number of new cuts: " << new_cuts.size() << std::endl
             ;
     }
 };
@@ -1475,26 +1424,22 @@ struct Parameters: optimizationtools::Parameters
     /**
      * Branching decisions.
      *
-     * Unlike 'column_pool'/'initial_cuts'/'cut_pool', this is node-local,
-     * not a pool: it is expected to hold exactly the decisions on the
-     * path from the root to the current node, rebuilt per node (like
+     * Unlike 'column_pool'/'initial_cuts', this is node-local, not a
+     * pool: it is expected to hold exactly the decisions on the path from
+     * the root to the current node, rebuilt per node (like
      * 'fixed_columns'), never accumulated across the whole search.
      */
     std::vector<std::shared_ptr<const BranchingDecision>> branching_decisions;
 
-    /** Cuts to seed the active cut set with. */
-    std::vector<std::shared_ptr<const Cut>> initial_cuts;
-
     /**
-     * Cut pool: every cut separated so far, active or not. Checked for
-     * violated cuts before calling 'PricingSolver::separate_cuts' again
-     * (see 'column_generation()'), the same way 'column_pool' is checked
-     * before calling the pricing solver -- reactivating a cut that's
-     * already known is a cheap lookup instead of a fresh separation
-     * call. Grown from 'Output::new_cuts', the same way 'column_pool' is
-     * grown from 'Output::columns'.
+     * Cuts to seed the active cut set with -- unlike 'column_pool', there
+     * is no analogous cut pool: a cut is either currently active (here, or
+     * grown into 'ColumnGenerationOutput::cuts' as the call progresses) or
+     * forgotten, never kept around inactive on the chance it's needed
+     * again later (see 'column_generation()''s own,
+     * call-local-only rediscovery of a recently separated cut for that).
      */
-    std::vector<std::shared_ptr<const Cut>> cut_pool;
+    std::vector<std::shared_ptr<const Cut>> initial_cuts;
 
     /**
      * Enable internal diving:
@@ -1532,7 +1477,6 @@ struct Parameters: optimizationtools::Parameters
                 {"NumberOfFixedColumns", fixed_columns.size()},
                 {"NumberOfBranchingDecisions", branching_decisions.size()},
                 {"NumberOfInitialCuts", initial_cuts.size()},
-                {"NumberOfCutsInTheCutPool", cut_pool.size()},
                 {"InternalDiving", internal_diving},
                 {"CuttingPlanes", cutting_planes},
                 {"RoundingHeuristic", rounding_heuristic},
@@ -1552,7 +1496,6 @@ struct Parameters: optimizationtools::Parameters
             << std::setw(width) << std::left << "Number of fixed columns: " << fixed_columns.size() << std::endl
             << std::setw(width) << std::left << "Number of branching decisions: " << branching_decisions.size() << std::endl
             << std::setw(width) << std::left << "Number of initial cuts: " << initial_cuts.size() << std::endl
-            << std::setw(width) << std::left << "Number of cuts in the cut pool: " << cut_pool.size() << std::endl
             << std::setw(width) << std::left << "Internal diving: " << internal_diving << std::endl
             << std::setw(width) << std::left << "Cutting planes: " << cutting_planes << std::endl
             << std::setw(width) << std::left << "Rounding heuristic: " << rounding_heuristic << std::endl
