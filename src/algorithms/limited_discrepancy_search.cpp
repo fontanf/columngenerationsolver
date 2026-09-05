@@ -177,18 +177,12 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
                 = parameters.column_generation_parameters;
             column_generation_parameters.timer = parameters.timer;
             column_generation_parameters.verbosity_level = 0;
-            if (parameters.internal_diving == 2
-                    || (parameters.internal_diving == 1 && node->depth == 0)) {
-                column_generation_parameters.internal_diving = 1;
-            }
-            if (parameters.cutting_planes == 2
-                    || (parameters.cutting_planes == 1 && node->depth == 0)) {
-                column_generation_parameters.cutting_planes = 1;
-            }
-            if (parameters.rounding_heuristic == 2
-                    || (parameters.rounding_heuristic == 1 && node->depth == 0)) {
-                column_generation_parameters.rounding_heuristic = 1;
-            }
+            column_generation_parameters.internal_diving = node_activation(
+                    parameters.internal_diving, node->depth == 0);
+            column_generation_parameters.cutting_planes = node_activation(
+                    parameters.cutting_planes, node->depth == 0);
+            column_generation_parameters.rounding_heuristic = node_activation(
+                    parameters.rounding_heuristic, node->depth == 0);
             column_generation_parameters.new_solution_callback = [&algorithm_formatter](
                     const Output& cg_output)
             {

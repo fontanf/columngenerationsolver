@@ -153,6 +153,14 @@ struct ColumnGenerationAttemptInput
     bool solve_feasibility;
 
     /**
+     * Which cutting-plane round this attempt belongs to (0 for the very
+     * first one, before any cut has been added). Used to restrict
+     * 'ColumnGenerationParameters::internal_diving' at level 1 to that
+     * very first round -- see 'run_column_generation_attempt'.
+     */
+    Counter cutting_plane_iteration;
+
+    /**
      * Budget, shared across every phase and cutting-plane round of the
      * whole 'column_generation()' call (not just this one attempt), of how
      * many more times 'solve_pricing' may still be called with
@@ -1124,7 +1132,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         }
 
         if (!input.solve_feasibility
-                && input.parameters.rounding_heuristic
+                && input.parameters.rounding_heuristic != Activation::Never
                 && pricing_called_previous_iteration) {
             run_rounding_heuristic(rounding_heuristic_input);
         }
@@ -1311,8 +1319,17 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 // Internal diving calls the pricing solver repeatedly
                 // (potentially many times) to greedily fix columns as it
                 // goes. Fall back to a single plain pricing call per
-                // iteration whenever it's disabled.
-                if (!input.parameters.internal_diving) {
+                // iteration whenever it's disabled -- always at 'Never',
+                // and, at 'Initial', once this attempt is no longer the
+                // very first cutting-plane round (see
+                // 'ColumnGenerationParameters::internal_diving'): worth its
+                // cost to seed things well before any cut exists, but not
+                // worth repeating fresh every round after that.
+                bool use_internal_diving =
+                    (input.parameters.internal_diving == Activation::Always)
+                    || (input.parameters.internal_diving == Activation::Initial
+                            && input.cutting_plane_iteration == 0);
+                if (!use_internal_diving) {
                     auto pricing_output = input.model.pricing_solver->solve_pricing(
                             input.solve_feasibility,
                             input.parameters.fixed_columns,
@@ -1999,6 +2016,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                     new_cut_upper_bounds,
                     initial_columns,
                     solve_feasibility,
+                    cutting_plane_iteration,
                     number_of_dual_pricing_calls,
                     previous_cutting_plane_relaxation_value,
                     column_pool,
@@ -2082,7 +2100,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
         // dual-oriented pricing escalation inside the next
         // 'run_column_generation_attempt' call is an independent knob,
         // unrelated to cutting planes, and still worth a try.
-        bool try_cutting_planes = parameters.cutting_planes
+        bool try_cutting_planes = (parameters.cutting_planes != Activation::Never)
             && (parameters.maximum_number_of_cutting_plane_iterations == -1
                     || cutting_plane_iteration < parameters.maximum_number_of_cutting_plane_iterations);
         if (!try_cutting_planes && output.relaxation_solution_is_feasible)

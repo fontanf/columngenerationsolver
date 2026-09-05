@@ -55,7 +55,7 @@ if args.tests is None or "bin-packing-with-conflicts" in args.tests:
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm greedy"
-                + " --internal-diving 1"
+                + " --internal-diving initial"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)
@@ -153,7 +153,7 @@ if args.tests is None or "cutting-stock" in args.tests:
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm greedy"
-                + " --internal-diving 1"
+                + " --internal-diving initial"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)
@@ -203,7 +203,7 @@ if args.tests is None or "multiple-knapsack" in args.tests:
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm greedy"
-                + " --internal-diving 1"
+                + " --internal-diving initial"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)
@@ -251,7 +251,7 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm limited-discrepancy-search"
                 + " --automatic-stop 1"
-                + " --internal-diving 1"
+                + " --internal-diving initial"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)

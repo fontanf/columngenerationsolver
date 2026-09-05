@@ -146,6 +146,12 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 = parameters.column_generation_parameters;
             column_generation_parameters.timer = parameters.timer;
             column_generation_parameters.verbosity_level = 0;
+            column_generation_parameters.internal_diving = node_activation(
+                    parameters.internal_diving, node->parent == nullptr);
+            column_generation_parameters.cutting_planes = node_activation(
+                    parameters.cutting_planes, node->parent == nullptr);
+            column_generation_parameters.rounding_heuristic = node_activation(
+                    parameters.rounding_heuristic, node->parent == nullptr);
             if (node->parent == nullptr) {
                 column_generation_parameters.initial_columns = parameters.initial_columns;
             } else if (node->parent->relaxation_solution != nullptr) {
@@ -365,7 +371,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 // (see above), nothing here depends on this evaluation
                 // having any cuts beyond the ones already active at the
                 // parent.
-                column_generation_parameters.cutting_planes = 0;
+                column_generation_parameters.cutting_planes = Activation::Never;
 
                 auto cg_output = column_generation(
                         model,

@@ -1404,6 +1404,79 @@ inline SolverName s2lps(const std::string& s)
     }
 }
 
+/**
+ * How much a node/round-based algorithm feature (internal diving, cutting
+ * planes, the rounding heuristic) is enabled across a search:
+ * - 'Never': not enabled at all.
+ * - 'Initial': enabled only for the very first opportunity -- the root
+ *   node for a node-based algorithm (branch-and-price, greedy, limited
+ *   discrepancy search), and, for 'ColumnGenerationParameters::
+ *   internal_diving' specifically, additionally only for that node's
+ *   very first attempt inside 'column_generation()' itself, before any
+ *   cutting plane has been added (see there).
+ * - 'Always': enabled at every opportunity.
+ */
+enum class Activation { Never, Initial, Always };
+
+inline std::istream& operator>>(
+        std::istream& in,
+        Activation& activation)
+{
+    std::string token;
+    in >> token;
+    if (token == "never" || token == "Never" || token == "NEVER") {
+        activation = Activation::Never;
+    } else if (token == "initial" || token == "Initial" || token == "INITIAL") {
+        activation = Activation::Initial;
+    } else if (token == "always" || token == "Always" || token == "ALWAYS") {
+        activation = Activation::Always;
+    } else {
+        in.setstate(std::ios_base::failbit);
+    }
+    return in;
+}
+
+inline std::ostream& operator<<(
+        std::ostream& os,
+        Activation activation)
+{
+    switch (activation) {
+    case Activation::Never: {
+        os << "Never";
+        break;
+    } case Activation::Initial: {
+        os << "Initial";
+        break;
+    } case Activation::Always: {
+        os << "Always";
+        break;
+    }
+    }
+    return os;
+}
+
+/**
+ * Resolve a search-wide 'Activation' setting down to whether one specific
+ * node should have the feature enabled -- shared by 'branch_and_price',
+ * 'greedy' and 'limited_discrepancy_search' for 'internal_diving',
+ * 'cutting_planes' and 'rounding_heuristic' alike, all three sharing this
+ * exact "never / root node only / every node" convention.
+ */
+inline Activation node_activation(
+        Activation search_wide_activation,
+        bool is_root_node)
+{
+    switch (search_wide_activation) {
+    case Activation::Always:
+        return Activation::Always;
+    case Activation::Initial:
+        return (is_root_node)? Activation::Initial: Activation::Never;
+    case Activation::Never:
+    default:
+        return Activation::Never;
+    }
+}
+
 struct Parameters: optimizationtools::Parameters
 {
     /** Callback function called when a new best solution is found. */
@@ -1442,30 +1515,26 @@ struct Parameters: optimizationtools::Parameters
     std::vector<std::shared_ptr<const Cut>> initial_cuts;
 
     /**
-     * Enable internal diving:
-     * - 0: not enabled
-     * - 1: enabled at the root node
-     * - 2: enabled at all nodes
+     * Enable internal diving -- see 'Activation'. At 'Initial', on top of
+     * the root-node restriction, also only for that node's very first
+     * attempt inside 'column_generation()' itself, before any cutting
+     * plane has been added (see there): worth its cost (repeated pricing
+     * calls to greedily fix columns) to seed things well from a clean
+     * slate, but not worth repeating fresh every cutting-plane round
+     * after that.
      */
-    int internal_diving = 0;
+    Activation internal_diving = Activation::Never;
 
-    /**
-     * Enable cutting planes:
-     * - 0: not enabled
-     * - 1: enabled at the root node
-     * - 2: enabled at all nodes
-     */
-    int cutting_planes = 0;
+    /** Enable cutting planes -- see 'Activation'. */
+    Activation cutting_planes = Activation::Never;
 
     /**
      * Enable the inline rounding heuristic (run at every column generation
      * iteration; see 'ColumnGenerationParameters::
-     * rounding_heuristic_infeasibility_threshold' for its stop condition):
-     * - 0: not enabled
-     * - 1: enabled at the root node
-     * - 2: enabled at all nodes
+     * rounding_heuristic_infeasibility_threshold' for its stop condition)
+     * -- see 'Activation'.
      */
-    int rounding_heuristic = 0;
+    Activation rounding_heuristic = Activation::Never;
 
 
     virtual nlohmann::json to_json() const override
