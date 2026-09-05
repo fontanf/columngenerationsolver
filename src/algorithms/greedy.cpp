@@ -32,18 +32,12 @@ const GreedyOutput columngenerationsolver::greedy(
             = parameters.column_generation_parameters;
         column_generation_parameters.timer = parameters.timer;
         column_generation_parameters.verbosity_level = 0;
-        if (parameters.internal_diving == 2
-                || (parameters.internal_diving == 1 && output.number_of_nodes == 0)) {
-            column_generation_parameters.internal_diving = 1;
-        }
-        if (parameters.cutting_planes == 2
-                || (parameters.cutting_planes == 1 && output.number_of_nodes == 0)) {
-            column_generation_parameters.cutting_planes = 1;
-        }
-        if (parameters.rounding_heuristic == 2
-                || (parameters.rounding_heuristic == 1 && output.number_of_nodes == 0)) {
-            column_generation_parameters.rounding_heuristic = 1;
-        }
+        column_generation_parameters.internal_diving = node_activation(
+                parameters.internal_diving, output.number_of_nodes == 0);
+        column_generation_parameters.cutting_planes = node_activation(
+                parameters.cutting_planes, output.number_of_nodes == 0);
+        column_generation_parameters.rounding_heuristic = node_activation(
+                parameters.rounding_heuristic, output.number_of_nodes == 0);
         column_generation_parameters.new_solution_callback = [&algorithm_formatter](
                 const Output& cg_output)
         {
@@ -51,7 +45,6 @@ const GreedyOutput columngenerationsolver::greedy(
         };
         if (output.number_of_nodes == 0) {
             algorithm_formatter.print_column_generation_header();
-            column_generation_parameters.internal_diving = parameters.internal_diving;
             column_generation_parameters.iteration_callback = [&algorithm_formatter](
                     const ColumnGenerationOutput& cg_output)
             {
