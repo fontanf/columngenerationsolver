@@ -84,6 +84,7 @@ public:
     {
         model_.messageHandler()->setLogLevel(0);
         //model_.setLogLevel(99);
+        model_.setDualTolerance(1e-9);
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.setOptimizationDirection(1);
         } else {
@@ -182,6 +183,7 @@ public:
         // Reduce printout.
         model_.setOptionValue("log_to_console", false);
         model_.setOptionValue("simplex_strategy", 4);
+        model_.setOptionValue("dual_feasibility_tolerance", 1e-9);
 
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.changeObjectiveSense(ObjSense::kMinimize);
@@ -299,6 +301,7 @@ public:
                         (row_upper_bounds[i] !=  std::numeric_limits<Value>::infinity())? row_upper_bounds[i]: IloInfinity));
         model_.add(ranges_);
         cplex_.setOut(env_.getNullStream()); // Remove standard output
+        cplex_.setParam(IloCplex::Param::Simplex::Tolerances::Optimality, 1e-9);
         //cplex_.setParam(IloCplex::Param::Threads, 1);
         //cplex_.setParam(IloCplex::Param::Preprocessing::Presolve, 0);
     }
@@ -366,6 +369,7 @@ public:
         //std::cout << "LinearProgrammingSolverXpress::LinearProgrammingSolverXpress" << std::endl;
         XPRScreateprob(&problem_);
         XPRSsetintcontrol(problem_, XPRS_THREADS, 1);
+        XPRSsetdblcontrol(problem_, XPRS_OPTIMALITYTOL, 1e-9);
         //XPRSsetlogfile(problem_, "xpress.log");
         // Objective.
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
@@ -528,6 +532,7 @@ public:
     {
         KN_new(&kc_);
         KN_set_param_by_name(kc_, "outlev", 0);
+        KN_set_param_by_name(kc_, "opttol", 1e-9);
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             KN_set_obj_goal(kc_, KN_OBJGOAL_MINIMIZE);
         } else {
