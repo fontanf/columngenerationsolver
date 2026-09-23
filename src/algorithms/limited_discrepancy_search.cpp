@@ -426,11 +426,53 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             continue;
         }
 
+        // Whether fixing 'column_best' to 'value_best' still leaves room
+        // for at least one copy of every column currently in the
+        // relaxation solution. A single fix is "safe" relative to its own
+        // immediate parent (the parent's own witnessed value already
+        // satisfies the new floor), but that says nothing about whether it
+        // starves some *other*, already-used column of the row capacity it
+        // needs -- and 'n >= 2' alone doesn't check that. Skipping the
+        // re-solve on a fix that already breaks this is what lets the
+        // resulting infeasibility go undetected for many further levels,
+        // until some much later node's own reconstruction fails outright
+        // instead of being caught here, immediately, when it happens.
+        bool skip_relaxation_ok = (n >= 2);
+        if (skip_relaxation_ok) {
+            std::vector<Value> hypothetical_row_values(model.rows.size(), 0.0);
+            bool column_best_already_fixed = false;
+            for (const auto& p: fixed_columns.columns()) {
+                if (p.first.get() == column_best.get())
+                    column_best_already_fixed = true;
+                Value v = (p.first.get() == column_best.get())? value_best: p.second;
+                for (const LinearTerm& element: p.first->elements)
+                    hypothetical_row_values[element.row] += v * element.coefficient;
+            }
+            if (!column_best_already_fixed) {
+                for (const LinearTerm& element: column_best->elements)
+                    hypothetical_row_values[element.row] += value_best * element.coefficient;
+            }
+            for (const auto& p: node->relaxation_solution->columns()) {
+                if (std::abs(std::round(p.second) - p.second) < 1e-6)
+                    continue;
+                for (const LinearTerm& element: p.first->elements) {
+                    if (model.rows[element.row].coefficient_lower_bound >= 0
+                            && hypothetical_row_values[element.row] + element.coefficient
+                            > model.rows[element.row].upper_bound + FFOT_TOL) {
+                        skip_relaxation_ok = false;
+                        break;
+                    }
+                }
+                if (!skip_relaxation_ok)
+                    break;
+            }
+        }
+
         // Create child nodes and add them to the queue.
         auto child_1 = std::make_shared<LimitedDiscrepancySearchNode>();
         child_1->parent = node;
         child_1->column = column_best;
-        child_1->skip_relaxation = (n >= 2);
+        child_1->skip_relaxation = skip_relaxation_ok;
         child_1->value = value_best;
         child_1->tabu = false;
         child_1->discrepancy = node->discrepancy;
