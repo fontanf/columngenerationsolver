@@ -373,6 +373,17 @@ public:
      * already pairs each one with its dual value. Honoring 'tabu' is
      * optional -- the framework filters tabu columns out of what it adds
      * to the master LP regardless.
+     *
+     * 'overcost_goal' is the 'overcost' that is enough for the call to be
+     * useful without any column: an 'overcost' strictly greater
+     * (minimization) / lower (maximization) than it proves that the node
+     * can be cut (infeasible in the feasibility phase, or no better than
+     * 'ColumnGenerationParameters::objective_cutoff' in the optimality
+     * phase). A 'PricingType::Dual' call can then stop as soon as it has
+     * either found improving columns or proven such an 'overcost', even
+     * if the latter isn't the optimal reduced cost. Infinite (+inf for
+     * minimization, -inf for maximization) when there is no such goal, as
+     * for every 'PricingType::Primal' call. Ignoring it is always valid.
      */
     virtual PricingOutput solve_pricing(
             bool solve_feasibility,
@@ -381,7 +392,8 @@ public:
             const std::unordered_set<std::shared_ptr<const Column>>& tabu,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals,
-            PricingType pricing_type) = 0;
+            PricingType pricing_type,
+            Value overcost_goal) = 0;
 
     /**
      * Whether this 'PricingSolver' has a genuinely useful 'solve_pricing'
