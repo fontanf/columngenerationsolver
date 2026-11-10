@@ -44,6 +44,17 @@ using ColumnPool = std::unordered_set<
     const ColumnHasher&>;
 
 /**
+ * The 'overcost_goal' of 'PricingSolver::solve_pricing' meaning that there
+ * is no goal.
+ */
+Value no_overcost_goal(const Model& model)
+{
+    return (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
+        std::numeric_limits<Value>::infinity():
+        -std::numeric_limits<Value>::infinity();
+}
+
+/**
  * Whether 'value' (sense-aware: a proven bound, or a hypothetical "best
  * case" relaxation value) is already no better than
  * 'parameters.objective_cutoff' -- i.e. whether a node stuck at 'value'
@@ -468,7 +479,8 @@ void run_rounding_heuristic(RoundingHeuristicInput& input)
                             input.attempt_input.parameters.tabu,
                             input.duals_out,
                             input.cut_duals,
-                            PricingSolver::PricingType::Primal);
+                            PricingSolver::PricingType::Primal,
+                            no_overcost_goal(input.attempt_input.model));
                     std::vector<std::shared_ptr<const Column>> new_columns;
                     for (const auto& column: pricing_output.columns) {
                         if (column->elements.empty())
@@ -1337,7 +1349,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             input.parameters.tabu,
                             duals_sep,
                             cut_duals,
-                            PricingSolver::PricingType::Primal);
+                            PricingSolver::PricingType::Primal,
+                            no_overcost_goal(input.model));
                     all_columns = pricing_output.columns;
                     overcost = pricing_output.overcost;
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
@@ -1354,7 +1367,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                                 input.parameters.tabu,
                                 duals_sep,
                                 cut_duals,
-                                PricingSolver::PricingType::Primal);
+                                PricingSolver::PricingType::Primal,
+                                no_overcost_goal(input.model));
                         std::vector<std::shared_ptr<const Column>> all_columns_tmp_0
                             = pricing_output.columns;
                         if (i == 0) {
@@ -1706,6 +1720,18 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             && input.number_of_dual_pricing_calls < 2) {
         ++input.number_of_dual_pricing_calls;
 
+        // The 'overcost' from which 'apply_overcost' below cuts the node:
+        // in the feasibility phase, 'solver->objective() + overcost'
+        // proves infeasibility once beyond the tolerance; in the
+        // optimality phase, 'relaxation_solution_value + overcost' reaches
+        // the cutoff.
+        bool minimize = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+        Value dual_pricing_overcost_goal = (input.solve_feasibility)?
+            ((minimize)? FFOT_TOL: -FFOT_TOL) - solver->objective():
+            input.parameters.objective_cutoff
+                + ((minimize)? -FFOT_TOL: FFOT_TOL)
+                - input.output.relaxation_solution_value;
+
         // A single direct call, deliberately bypassing
         // 'parameters.internal_diving' (see its use further up, gating
         // 'PricingType::Primal' calls only): diving's repeated greedy
@@ -1719,7 +1745,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 input.parameters.tabu,
                 duals_out,
                 cut_duals,
-                PricingSolver::PricingType::Dual);
+                PricingSolver::PricingType::Dual,
+                dual_pricing_overcost_goal);
         auto end_pricing = std::chrono::high_resolution_clock::now();
         double dual_pricing_time = std::chrono::duration_cast<std::chrono::duration<double>>(
                 end_pricing - start_pricing).count();
