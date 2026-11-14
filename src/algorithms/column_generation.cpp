@@ -862,7 +862,13 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             lower_bounds,
             upper_bounds);
 
-    // Add initial columns.
+    // Add initial columns, all at once: adding them one by one makes the LP
+    // solver extend its matrix for each of them.
+    lower_bounds.clear();
+    upper_bounds.clear();
+    objective_coefficients.clear();
+    row_ids.clear();
+    row_coefficients.clear();
     for (const std::shared_ptr<const Column>& column: input.initial_columns) {
         input.model.check_generated_column(column);
 
@@ -875,8 +881,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
             continue;
 
-        std::vector<RowIdx> row_ids;
-        std::vector<Value> row_coefficients;
+        std::vector<RowIdx> column_row_ids;
+        std::vector<Value> column_row_coefficients;
         bool ok = true;
         for (const LinearTerm& element: column->elements) {
             // The column might not be feasible.
@@ -894,22 +900,28 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 ok = false;
                 break;
             }
-            row_ids.push_back(input.new_row_indices[element.row]);
-            row_coefficients.push_back(element.coefficient);
+            column_row_ids.push_back(input.new_row_indices[element.row]);
+            column_row_coefficients.push_back(element.coefficient);
         }
         if (!ok)
             continue;
-        append_cut_coefficients(*column, row_ids, row_coefficients);
+        append_cut_coefficients(*column, column_row_ids, column_row_coefficients);
         solver_columns.push_back(column);
         solver_generated_columns.insert(column);
-        solver->add_column(
-                row_ids,
-                row_coefficients,
-                input.solve_feasibility? 0: column->objective_coefficient,
-                0,
-                std::numeric_limits<Value>::infinity());
+        lower_bounds.push_back(0);
+        upper_bounds.push_back(std::numeric_limits<Value>::infinity());
+        objective_coefficients.push_back(
+                input.solve_feasibility? 0: column->objective_coefficient);
+        row_ids.push_back(column_row_ids);
+        row_coefficients.push_back(column_row_coefficients);
         input.output.number_of_columns_in_linear_subproblem++;
     }
+    solver->add_columns(
+            row_ids,
+            row_coefficients,
+            objective_coefficients,
+            lower_bounds,
+            upper_bounds);
 
     auto end_lp_construction = std::chrono::high_resolution_clock::now();
     input.output.time_lp_construction += std::chrono::duration_cast<std::chrono::duration<double>>(
