@@ -952,9 +952,6 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     for (const auto& p: input.solver_cuts)
         cut_duals.push_back({p.first, 0.0});
     double alpha = input.parameters.static_wentges_smoothing_parameter;
-    // Duals of the last pricing call that set 'overcost'.
-    std::vector<Value> overcost_duals(input.number_of_rows, 0);
-    std::vector<std::pair<std::shared_ptr<const Cut>, Value>> overcost_cut_duals = cut_duals;
 
     RoundingHeuristicInput rounding_heuristic_input{
             input,
@@ -980,7 +977,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // of the static columns of the LP at their best bounds + 'overcost',
     // which covers every generated column. Valid at any duals, not only at
     // the optimal duals of the current master solve (Wentges/directional
-    // smoothing, or 'overcost' of a previous iteration). Returns the
+    // smoothing). Returns the
     // sense-aware vacuous bound (-inf minimizing, +inf maximizing) if a
     // term is unbounded.
     auto lagrangian_bound = [&input, &solver_columns, &solver_generated_columns](
@@ -1064,9 +1061,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         }
         // Whether 'overcost' was computed at the optimal duals of the
         // current master solve. Not the case with Wentges/directional
-        // smoothing (the pricing solver is called at the smoothed duals),
-        // or when 'overcost' comes from a previous iteration (this
-        // iteration's new columns came from the column pool).
+        // smoothing (the pricing solver is called at the smoothed duals).
         bool at_lp_duals = true;
         for (RowIdx row_id: input.new_rows) {
             if (duals[row_id] != duals_out[row_id]) {
@@ -1468,10 +1463,8 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             no_overcost_goal(input.model));
                     all_columns = pricing_output.columns;
                     overcost = pricing_output.overcost;
-                    overcost_duals = duals_sep;
-                    overcost_cut_duals = cut_duals;
                     // Each call of the mispricing loop gives a bound.
-                    apply_overcost(overcost, overcost_duals, overcost_cut_duals);
+                    apply_overcost(overcost, duals_sep, cut_duals);
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                     for (const auto& column: all_columns)
                         input.model.check_generated_column(column);
@@ -1492,9 +1485,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             = pricing_output.columns;
                         if (i == 0) {
                             overcost = pricing_output.overcost;
-                            overcost_duals = duals_sep;
-                            overcost_cut_duals = cut_duals;
-                            apply_overcost(overcost, overcost_duals, overcost_cut_duals);
+                            apply_overcost(overcost, duals_sep, cut_duals);
                             pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                         }
                         for (const auto& column: all_columns_tmp_0)
@@ -1620,14 +1611,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         }
 
-        // Update bound (or prove infeasibility) from 'overcost', at the
-        // duals of the pricing call that computed it: the smoothed duals
-        // with Wentges/directional smoothing, or the duals of a previous
-        // iteration if this iteration's new columns came from the column
-        // pool (see 'apply_overcost'). Checked every iteration (not just at
-        // convergence) so the attempt can stop as soon as infeasibility is
-        // provable, rather than continuing to iterate uselessly.
-        apply_overcost(overcost, overcost_duals, overcost_cut_duals);
+        // The bound (or the infeasibility proof) has been updated after each
+        // pricing call, at its duals (see 'apply_overcost'), so the attempt
+        // can stop as soon as infeasibility is provable, rather than
+        // continuing to iterate uselessly.
         input.algorithm_formatter.print_column_generation_iteration(
                 input.output.number_of_column_generation_iterations,
                 input.output.number_of_columns_in_linear_subproblem,
