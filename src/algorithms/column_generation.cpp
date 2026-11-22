@@ -952,6 +952,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     for (const auto& p: input.solver_cuts)
         cut_duals.push_back({p.first, 0.0});
     double alpha = input.parameters.static_wentges_smoothing_parameter;
+    // Duals of the last pricing call that set 'overcost'.
+    std::vector<Value> overcost_duals(input.number_of_rows, 0);
+    std::vector<std::pair<std::shared_ptr<const Cut>, Value>> overcost_cut_duals = cut_duals;
 
     RoundingHeuristicInput rounding_heuristic_input{
             input,
@@ -972,22 +975,118 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // the first opportunity.
     bool pricing_called_previous_iteration = true;
 
-    // Feed a pricing call's 'overcost' (see the 3-way contract on
-    // 'PricingSolver::PricingOutput::overcost') into 'input.output.bound',
-    // exactly the way the per-iteration pricing call below does. Extracted
-    // so the dual-oriented escalation further down -- once the primal-
-    // oriented loop has converged -- can apply its own call's 'overcost'
-    // the same way, without duplicating the infeasibility-proof logic.
-    auto apply_overcost = [&input, &solver](Value overcost)
+    // Lagrangian bound at 'duals' / 'cut_duals' given the 'overcost' of a
+    // pricing call at these duals: c0 + the row and cut terms + the terms
+    // of the static columns of the LP at their best bounds + 'overcost',
+    // which covers every generated column. Valid at any duals, not only at
+    // the optimal duals of the current master solve (Wentges/directional
+    // smoothing, or 'overcost' of a previous iteration). Returns the
+    // sense-aware vacuous bound (-inf minimizing, +inf maximizing) if a
+    // term is unbounded.
+    auto lagrangian_bound = [&input, &solver_columns, &solver_generated_columns](
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& cut_duals,
+            Value overcost) -> Value
     {
-        if (overcost == std::numeric_limits<Value>::infinity())
+        bool minimize = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize);
+        Value no_bound = (minimize)?
+            -std::numeric_limits<Value>::infinity():
+            +std::numeric_limits<Value>::infinity();
+        Value bound = input.c0 + overcost;
+        // Minimizing, a positive dual is the one of 'lower_bound <= a x',
+        // a negative one of 'a x <= upper_bound'; the opposite maximizing.
+        auto add_row_term = [minimize, &bound](
+                Value dual,
+                Value lower_bound,
+                Value upper_bound) -> bool
+        {
+            if (dual == 0)
+                return true;
+            Value rhs = ((dual > 0) == minimize)? lower_bound: upper_bound;
+            if (!std::isfinite(rhs))
+                return false;
+            bound += dual * rhs;
+            return true;
+        };
+        for (RowIdx row_pos = 0; row_pos < input.new_number_of_rows; ++row_pos) {
+            if (!add_row_term(
+                        duals[input.new_rows[row_pos]],
+                        input.new_row_lower_bounds[row_pos],
+                        input.new_row_upper_bounds[row_pos])) {
+                return no_bound;
+            }
+        }
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)cut_duals.size(); ++cut_pos) {
+            if (!add_row_term(
+                        cut_duals[cut_pos].second,
+                        input.new_cut_lower_bounds[cut_pos],
+                        input.new_cut_upper_bounds[cut_pos])) {
+                return no_bound;
+            }
+        }
+        for (const std::shared_ptr<const Column>& column: solver_columns) {
+            // Dummy column (feasibility phase): not part of the problem.
+            if (column == nullptr)
+                return no_bound;
+            if (solver_generated_columns.find(column) != solver_generated_columns.end())
+                continue;
+            Value reduced_cost = input.model.compute_reduced_cost(
+                    false,
+                    *column,
+                    duals,
+                    cut_duals);
+            if (reduced_cost == 0)
+                continue;
+            Value value = ((reduced_cost > 0) == minimize)?
+                column->lower_bound:
+                column->upper_bound;
+            if (!std::isfinite(value))
+                return no_bound;
+            bound += reduced_cost * value;
+        }
+        return bound;
+    };
+
+    // Feed a pricing call's 'overcost' (see the 3-way contract on
+    // 'PricingSolver::PricingOutput::overcost'), computed at 'duals' /
+    // 'cut_duals', into 'input.output.bound'. Extracted so the
+    // dual-oriented escalation further down -- once the primal-oriented
+    // loop has converged -- can apply its own call's 'overcost' the same
+    // way, without duplicating the infeasibility-proof logic.
+    auto apply_overcost = [&input, &solver, &duals_out, &cut_duals, &lagrangian_bound](
+            Value overcost,
+            const std::vector<Value>& duals,
+            const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& overcost_cut_duals)
+    {
+        if (overcost == std::numeric_limits<Value>::infinity()
+                || overcost == -std::numeric_limits<Value>::infinity()) {
             return;
+        }
+        // Whether 'overcost' was computed at the optimal duals of the
+        // current master solve. Not the case with Wentges/directional
+        // smoothing (the pricing solver is called at the smoothed duals),
+        // or when 'overcost' comes from a previous iteration (this
+        // iteration's new columns came from the column pool).
+        bool at_lp_duals = true;
+        for (RowIdx row_id: input.new_rows) {
+            if (duals[row_id] != duals_out[row_id]) {
+                at_lp_duals = false;
+                break;
+            }
+        }
+        for (CutIdx cut_pos = 0; cut_pos < (CutIdx)cut_duals.size(); ++cut_pos) {
+            if (overcost_cut_duals[cut_pos].second != cut_duals[cut_pos].second) {
+                at_lp_duals = false;
+                break;
+            }
+        }
         if (!input.solve_feasibility) {
-            // Update bound, now that 'overcost' reflects a reduced cost
-            // computed at the same duals as 'input.output.
-            // relaxation_solution_value' -- giving the tightest bound
-            // achievable from the master solve it was computed against.
-            Value bound = input.output.relaxation_solution_value + overcost;
+            // At the optimal duals of the master solve, its value is the
+            // Lagrangian bound without the 'overcost' term. Otherwise, the
+            // Lagrangian bound is computed at the duals of 'overcost'.
+            Value bound = (at_lp_duals)?
+                input.output.relaxation_solution_value + overcost:
+                lagrangian_bound(duals, overcost_cut_duals, overcost);
             input.algorithm_formatter.update_bound(bound);
         } else {
             // Feasibility phase: 'relaxation_solution_value' isn't a valid
@@ -995,7 +1094,11 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             // objective coefficient is zeroed in this phase's LP) -- the
             // only sound claim is a rigorous infeasibility proof from
             // 'solver->objective() + overcost' (sign convention matches
-            // the dummy column cost: +1 Minimize, -1 Maximize).
+            // the dummy column cost: +1 Minimize, -1 Maximize), only valid
+            // if 'overcost' was computed at the optimal duals of this
+            // solve.
+            if (!at_lp_duals)
+                return;
             Value phase1_bound = solver->objective() + overcost;
             bool proven_infeasible
                 = (input.model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
@@ -1365,6 +1468,10 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             no_overcost_goal(input.model));
                     all_columns = pricing_output.columns;
                     overcost = pricing_output.overcost;
+                    overcost_duals = duals_sep;
+                    overcost_cut_duals = cut_duals;
+                    // Each call of the mispricing loop gives a bound.
+                    apply_overcost(overcost, overcost_duals, overcost_cut_duals);
                     pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                     for (const auto& column: all_columns)
                         input.model.check_generated_column(column);
@@ -1385,6 +1492,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                             = pricing_output.columns;
                         if (i == 0) {
                             overcost = pricing_output.overcost;
+                            overcost_duals = duals_sep;
+                            overcost_cut_duals = cut_duals;
+                            apply_overcost(overcost, overcost_duals, overcost_cut_duals);
                             pricing_lagrangian_column_values = std::move(pricing_output.lagrangian_column_values);
                         }
                         for (const auto& column: all_columns_tmp_0)
@@ -1510,16 +1620,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         }
 
-        // Update bound (or prove infeasibility), now that 'overcost'
-        // reflects a reduced cost computed at the same duals ('duals_out')
-        // as 'input.output.relaxation_solution_value' above -- giving the
-        // tightest bound achievable from this iteration's master solve,
-        // rather than the previous iteration's (still valid, since
-        // 'relaxation_solution_value' only improves across iterations, but
-        // needlessly loose). Checked every iteration (not just at
+        // Update bound (or prove infeasibility) from 'overcost', at the
+        // duals of the pricing call that computed it: the smoothed duals
+        // with Wentges/directional smoothing, or the duals of a previous
+        // iteration if this iteration's new columns came from the column
+        // pool (see 'apply_overcost'). Checked every iteration (not just at
         // convergence) so the attempt can stop as soon as infeasibility is
         // provable, rather than continuing to iterate uselessly.
-        apply_overcost(overcost);
+        apply_overcost(overcost, overcost_duals, overcost_cut_duals);
         input.algorithm_formatter.print_column_generation_iteration(
                 input.output.number_of_column_generation_iterations,
                 input.output.number_of_columns_in_linear_subproblem,
@@ -1773,7 +1881,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         // does -- this is what actually proves the cut (infeasibility, or
         // the bound reaching the cutoff) when this 'PricingType::Dual'
         // call is exact and finds nothing new below.
-        apply_overcost(pricing_output.overcost);
+        apply_overcost(pricing_output.overcost, duals_out, cut_duals);
 
         std::vector<std::shared_ptr<const Column>> dual_new_columns
             = filter_new_columns(pricing_output.columns);
