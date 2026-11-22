@@ -1050,7 +1050,14 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
     // dual-oriented escalation further down -- once the primal-oriented
     // loop has converged -- can apply its own call's 'overcost' the same
     // way, without duplicating the infeasibility-proof logic.
-    auto apply_overcost = [&input, &solver, &duals_out, &cut_duals, &lagrangian_bound](
+    // Best Lagrangian bound of the attempt and its duals, for
+    // 'ColumnGenerationParameters::wentges_smoothing_best_bound_center'.
+    bool has_best_bound_duals = false;
+    Value best_bound = 0;
+    std::vector<Value> best_bound_duals(input.number_of_rows, 0);
+
+    auto apply_overcost = [&input, &solver, &duals_out, &cut_duals, &lagrangian_bound,
+         &has_best_bound_duals, &best_bound, &best_bound_duals](
             Value overcost,
             const std::vector<Value>& duals,
             const std::vector<std::pair<std::shared_ptr<const Cut>, Value>>& overcost_cut_duals)
@@ -1083,6 +1090,16 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
                 input.output.relaxation_solution_value + overcost:
                 lagrangian_bound(duals, overcost_cut_duals, overcost);
             input.algorithm_formatter.update_bound(bound);
+            if (std::isfinite(bound)
+                    && (!has_best_bound_duals
+                        || optimizationtools::is_bound_strictly_better(
+                            input.model.objective_sense,
+                            best_bound,
+                            bound))) {
+                has_best_bound_duals = true;
+                best_bound = bound;
+                best_bound_duals = duals;
+            }
         } else {
             // Feasibility phase: 'relaxation_solution_value' isn't a valid
             // bound on the real problem here (every real column's
@@ -1315,7 +1332,13 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
         if (call_pricing) {
             // Search for new columns by solving the pricing problem.
 
-            duals_in = duals_sep; // The last shall be the first.
+            if (input.parameters.wentges_smoothing_best_bound_center
+                    && has_best_bound_duals) {
+                // Stability center: the duals of the best Lagrangian bound.
+                duals_in = best_bound_duals;
+            } else {
+                duals_in = duals_sep; // The last shall be the first.
+            }
             //std::cout << "alpha " << alpha << std::endl;
             for (Counter k = 1; ; ++k) {
                 // Mispricing number.
