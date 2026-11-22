@@ -396,6 +396,15 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             if (tabu.find(column) != tabu.end())
                 continue;
 
+            // Don't branch on a column which is at (or below) its fixed
+            // value: the relaxation gives no support for increasing it. The
+            // fixed columns stay in the relaxation solution at their fixed
+            // value, so without this check, a column with a higher
+            // 'branching_priority' than the fractional columns would be
+            // branched on again and again, with increasing values.
+            if (value <= fixed_columns.get_column_value(column, 0) + FFOT_TOL)
+                continue;
+
             Value main_branch_value = std::floor(value);
             if (main_branch_value <= fixed_columns.get_column_value(column, 0)) {
                 main_branch_value = fixed_columns.get_column_value(column, 0) + 1;
@@ -451,6 +460,20 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             if (!column_best_already_fixed) {
                 for (const LinearTerm& element: column_best->elements)
                     hypothetical_row_values[element.row] += value_best * element.coefficient;
+            }
+            // The fixed columns alone must not exceed the upper bound of a
+            // row whose coefficients are all non-negative (for example
+            // 'column_best' fixed to a value larger than the upper bound of
+            // one of its rows): the relaxation would be infeasible.
+            for (RowIdx row_id = 0;
+                    row_id < (RowIdx)model.rows.size();
+                    ++row_id) {
+                if (model.rows[row_id].coefficient_lower_bound >= 0
+                        && hypothetical_row_values[row_id]
+                        > model.rows[row_id].upper_bound + FFOT_TOL) {
+                    skip_relaxation_ok = false;
+                    break;
+                }
             }
             for (const auto& p: node->relaxation_solution->columns()) {
                 if (std::abs(std::round(p.second) - p.second) < 1e-6)
