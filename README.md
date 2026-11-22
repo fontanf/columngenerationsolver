@@ -34,6 +34,8 @@ Features:
   * Static and self-adjusting Wentges smoothing
   * Static and automatic directional smoothing
 
+The column generation algorithm, its stabilization and the computation of its dual bound are described in [`doc/column_generation.md`](doc/column_generation.md).
+
 ## Examples
 
 Data can be downloaded from [fontanf/orproblems](https://github.com/fontanf/orproblems)
