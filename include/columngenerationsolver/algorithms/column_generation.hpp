@@ -193,6 +193,17 @@ struct ColumnGenerationParameters: Parameters
     /** Enable self-adjusting Wentges smoothing. */
     bool self_adjusting_wentges_smoothing = false;
 
+    /**
+     * Stability center of Wentges smoothing: the duals of the best
+     * Lagrangian bound of the attempt (Wentges, 1997), instead of the
+     * duals of the previous pricing call.
+     *
+     * Requires a pricing solver which returns an 'overcost' (see
+     * 'PricingSolver::PricingOutput::overcost'); otherwise, the previous
+     * duals are used.
+     */
+    bool wentges_smoothing_best_bound_center = false;
+
     /** Static directional smoothing parameter (beta). */
     Value static_directional_smoothing_parameter = 0.0;
 
@@ -230,6 +241,7 @@ struct ColumnGenerationParameters: Parameters
             << std::setw(width) << std::left << "Static Wentges smoothing parameter: " << static_wentges_smoothing_parameter << std::endl
             << std::setw(width) << std::left << "Static directional smoothing parameter: " << static_directional_smoothing_parameter << std::endl
             << std::setw(width) << std::left << "Self-adjusting Wentges smoothing: " << self_adjusting_wentges_smoothing << std::endl
+            << std::setw(width) << std::left << "Wentges smoothing best bound center: " << wentges_smoothing_best_bound_center << std::endl
             << std::setw(width) << std::left << "Automatic directional smoothing: " << automatic_directional_smoothing << std::endl
             << std::setw(width) << std::left << "Maximum number of iterations: " << maximum_number_of_iterations << std::endl
             << std::setw(width) << std::left << "Maximum number of cutting-plane iterations: " << maximum_number_of_cutting_plane_iterations << std::endl
@@ -248,6 +260,7 @@ struct ColumnGenerationParameters: Parameters
                 {"StaticWentgesSmoothingParameter", static_wentges_smoothing_parameter},
                 {"StaticDirectionalSmoothingParameter", static_directional_smoothing_parameter},
                 {"SelfAdjustingWentgesSmoothing", self_adjusting_wentges_smoothing},
+                {"WentgesSmoothingBestBoundCenter", wentges_smoothing_best_bound_center},
                 {"AutomaticDirectionalSmoothing", automatic_directional_smoothing},
                 {"MaximumNumberOfIterations", maximum_number_of_iterations},
                 {"MaximumNumberOfCuttingPlaneIterations", maximum_number_of_cutting_plane_iterations},
