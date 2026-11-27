@@ -103,7 +103,7 @@ if args.tests is None or "capacitated-vehicle-routing" in args.tests:
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm limited-discrepancy-search"
-                + " --automatic-stop 1"
+                + " --automatic-stop-factor 4"
                 + "  --output \"" + json_output_path + "\"")
         print(command)
         status = os.system(command)
@@ -250,7 +250,7 @@ if args.tests is None or "vehicle-routing-with-time-windows" in args.tests:
                 + "  --input \"" + instance_path + "\""
                 + " --format \"" + instance_format + "\""
                 + "  --algorithm limited-discrepancy-search"
-                + " --automatic-stop 1"
+                + " --automatic-stop-factor 4"
                 + " --internal-diving initial"
                 + "  --output \"" + json_output_path + "\"")
         print(command)

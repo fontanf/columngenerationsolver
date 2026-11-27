@@ -33,7 +33,7 @@ inline boost::program_options::options_description setup_args()
         ("internal-diving", boost::program_options::value<Activation>(), "set internal diving (never, initial, always)")
         ("rounding-heuristic", boost::program_options::value<Activation>(), "set rounding heuristic (never, initial, always)")
         ("discrepancy-limit", boost::program_options::value<int>(), "set discrepancy limit")
-        ("automatic-stop", boost::program_options::value<bool>(), "set automatic stop")
+        ("automatic-stop-factor", boost::program_options::value<double>(), "set automatic stop factor")
         ("maximum-number-of-branching-candidates", boost::program_options::value<Counter>(), "set the maximum number of branching candidates strong-branch evaluated per node (branch-and-price)")
         ("strong-branching-maximum-number-of-iterations", boost::program_options::value<Counter>(), "set the maximum number of column generation iterations used while strong-branch evaluating a candidate (branch-and-price)")
         ;
@@ -172,8 +172,8 @@ inline const Output run_limited_discrepancy_search(
 #endif
     if (vm.count("discrepancy-limit"))
         parameters.discrepancy_limit = vm["discrepancy-limit"].as<int>();
-    if (vm.count("automatic-stop"))
-        parameters.automatic_stop = vm["automatic-stop"].as<bool>();
+    if (vm.count("automatic-stop-factor"))
+        parameters.automatic_stop_factor = vm["automatic-stop-factor"].as<double>();
     const Output output = limited_discrepancy_search(model, parameters);
 #if XPRESS_FOUND
     if (parameters.column_generation_parameters.solver_name
