@@ -2094,10 +2094,11 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // See 'ColumnGenerationAttemptInput::previous_cutting_plane_relaxation_
     // value': unreachable at the first iteration, since there is no
     // previous round yet.
-    Value previous_cutting_plane_relaxation_value
+    const Value no_previous_cutting_plane_relaxation_value
         = (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize)?
         std::numeric_limits<Value>::infinity():
         -std::numeric_limits<Value>::infinity();
+    Value previous_cutting_plane_relaxation_value = no_previous_cutting_plane_relaxation_value;
 
     // Loop for cutting planes.
     // After the dummy-column loop below converges to a feasible relaxation
@@ -2108,6 +2109,14 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     // are found, cutting planes are disabled, or the cutting-plane
     // iteration limit is reached.
     for (Counter cutting_plane_iteration = 0; ; ++cutting_plane_iteration) {
+
+        // Whether the optimality phase of this round may skip pricing (see
+        // 'already_matches_previous_cutting_plane_round' in
+        // 'run_column_generation_attempt'): then its relaxation is only
+        // optimal over the columns already generated, and no bound is
+        // computed from it.
+        bool pricing_may_be_skipped
+            = (previous_cutting_plane_relaxation_value != no_previous_cutting_plane_relaxation_value);
 
         // Round 0 doesn't need its own header -- it's already unambiguous
         // right after the top-level "Column generation" header, with no
@@ -2436,7 +2445,19 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             solver_cuts = std::move(still_solver_cuts);
         }
 
-        if (new_cuts.empty()) {
+        if (new_cuts.empty()
+                && pricing_may_be_skipped
+                && output.relaxation_solution_is_feasible
+                && !parameters.timer.needs_to_end()) {
+            // No new cut, but this round may have skipped pricing: its
+            // relaxation is only optimal over the columns already generated,
+            // and gives no bound. Run a last round with pricing, which
+            // converges the relaxation with the final set of cuts and
+            // computes the corresponding bound. If its relaxation violates
+            // new cuts, the loop goes on as usual.
+            previous_cutting_plane_relaxation_value = no_previous_cutting_plane_relaxation_value;
+            continue;
+        } else if (new_cuts.empty()) {
             // Nothing found this round (cutting planes disabled/capped, or
             // a genuinely empty attempt): nothing left to try -- including,
             // as of the removal pass above, any cut that was merely slack.
