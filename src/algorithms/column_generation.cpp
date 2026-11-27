@@ -2273,6 +2273,15 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             break;
 
         std::vector<std::shared_ptr<const Cut>> new_cuts;
+
+        // Whether a last round with pricing follows this round: when the
+        // separation finds no new cut, but this round may have skipped
+        // pricing (see 'pricing_may_be_skipped'). Its relaxation is then only
+        // optimal over the columns already generated, and gives no bound: the
+        // last round converges the relaxation with the same set of cuts, and
+        // computes the corresponding bound.
+        bool last_round_with_pricing = false;
+
         if (try_cutting_planes) {
             // Look for a still-violated cut among 'pending_separated_cuts'
             // (the last 'separate_cuts' call's own leftovers) before ever
@@ -2350,6 +2359,20 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
                 if (best_cut != nullptr)
                     new_cuts.push_back(best_cut);
             }
+
+            last_round_with_pricing = new_cuts.empty()
+                && pricing_may_be_skipped
+                && output.relaxation_solution_is_feasible
+                && !parameters.timer.needs_to_end();
+        }
+
+        // The removal pass below is skipped before a last round with pricing:
+        // the loop doesn't end, so the cuts are only removed under the
+        // conditions of the intermediate rounds, and the last round must
+        // converge the relaxation with the same set of cuts. Removing cuts
+        // there without progress of the relaxation could let them be violated
+        // again after pricing, added back, and removed again indefinitely.
+        if (try_cutting_planes && !last_round_with_pricing) {
 
             // Remove cuts that are no longer active: their value at the
             // current relaxation solution has slack on both sides, more than
@@ -2445,16 +2468,10 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             solver_cuts = std::move(still_solver_cuts);
         }
 
-        if (new_cuts.empty()
-                && pricing_may_be_skipped
-                && output.relaxation_solution_is_feasible
-                && !parameters.timer.needs_to_end()) {
-            // No new cut, but this round may have skipped pricing: its
-            // relaxation is only optimal over the columns already generated,
-            // and gives no bound. Run a last round with pricing, which
-            // converges the relaxation with the final set of cuts and
-            // computes the corresponding bound. If its relaxation violates
-            // new cuts, the loop goes on as usual.
+        if (last_round_with_pricing) {
+            // Run a last round with pricing, with the same set of cuts (see
+            // 'last_round_with_pricing'). If its relaxation violates new
+            // cuts, the loop goes on as usual.
             previous_cutting_plane_relaxation_value = no_previous_cutting_plane_relaxation_value;
             continue;
         } else if (new_cuts.empty()) {
