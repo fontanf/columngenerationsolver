@@ -257,7 +257,16 @@ public:
     void solve()
     {
         //model_.writeLp("output");
-        model_.run();
+        // HiGHS returns an error without solving, for example when the
+        // calling thread already holds a HiGHS scheduler with a number of
+        // threads other than 1 (see the 'threads' option above). The
+        // solution would then be stale, so fail instead of reading it.
+        if (model_.run() == HighsStatus::kError) {
+            throw std::runtime_error(
+                    "columngenerationsolver::LinearProgrammingSolverHighs::solve: "
+                    "HiGHS returned an error; model status: "
+                    + model_.modelStatusToString(model_.getModelStatus()) + ".");
+        }
     }
 
     bool infeasible() const { return model_.getModelStatus() == HighsModelStatus::kInfeasible; }
