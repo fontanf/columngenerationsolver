@@ -2,6 +2,7 @@
 
 #include "columngenerationsolver/algorithm_formatter.hpp"
 
+#include <cmath>
 #include <set>
 
 using namespace columngenerationsolver;
@@ -123,9 +124,9 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
         }
         if (output.maximum_depth < node->depth - node->discrepancy)
             output.maximum_depth = node->depth - node->discrepancy;
-        if (parameters.automatic_stop
-                && output.number_of_nodes >= 64
-                && output.number_of_nodes > 4 * output.maximum_depth) {
+        if (std::isfinite(parameters.automatic_stop_factor)
+                && output.number_of_nodes >= parameters.automatic_stop_minimum_number_of_nodes
+                && output.number_of_nodes > parameters.automatic_stop_factor * output.maximum_depth) {
             break;
         }
 
@@ -235,6 +236,22 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             column_generation_parameters.fixed_columns = fixed_columns.columns();
             column_generation_parameters.tabu = tabu;
 
+            // Objective cutoff of the node: the cutoff given by the caller,
+            // or the value of the best solution found by the search if it is
+            // better and 'bound' is enabled.
+            Value node_objective_cutoff = parameters.objective_cutoff;
+            if (parameters.bound && output.solution.feasible()) {
+                Value value = output.solution.objective_value();
+                if (node_objective_cutoff == std::numeric_limits<Value>::infinity()) {
+                    node_objective_cutoff = value;
+                } else if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
+                    node_objective_cutoff = (std::min)(node_objective_cutoff, value);
+                } else {
+                    node_objective_cutoff = (std::max)(node_objective_cutoff, value);
+                }
+            }
+            column_generation_parameters.objective_cutoff = node_objective_cutoff;
+
             // Solve.
             // 'cg_output.time' isn't usable here: 'Timer::elapsed_time'
             // is cumulative since the timer was constructed (shared down
@@ -307,15 +324,17 @@ const LimitedDiscrepancySearchOutput columngenerationsolver::limited_discrepancy
             //        << "  value " << p.second << std::endl;
             //}
 
-            // Check bound
-            if (output.solution.feasible()
-                    && parameters.bound) {
+            // Check bound: prune the node if its bound or the value of its
+            // relaxation reaches the cutoff of the node.
+            if (node_objective_cutoff != std::numeric_limits<Value>::infinity()) {
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Minimize
-                        && output.solution.objective_value() <= cg_output.relaxation_solution.objective_value() + FFOT_TOL) {
+                        && (node_objective_cutoff <= cg_output.relaxation_solution.objective_value() + FFOT_TOL
+                            || node_objective_cutoff <= cg_output.bound + FFOT_TOL)) {
                     continue;
                 }
                 if (model.objective_sense == optimizationtools::ObjectiveDirection::Maximize
-                        && output.solution.objective_value() >= cg_output.relaxation_solution.objective_value() - FFOT_TOL) {
+                        && (node_objective_cutoff >= cg_output.relaxation_solution.objective_value() - FFOT_TOL
+                            || node_objective_cutoff >= cg_output.bound - FFOT_TOL)) {
                     continue;
                 }
             }
