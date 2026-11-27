@@ -184,6 +184,11 @@ public:
         model_.setOptionValue("log_to_console", false);
         model_.setOptionValue("simplex_strategy", 4);
         model_.setOptionValue("dual_feasibility_tolerance", 1e-9);
+        // The primal simplex (strategy 4) is serial: a HiGHS thread pool gives it
+        // nothing, yet each thread that solves an LP would start one of half the
+        // hardware threads and detach its workers when it exits (a use-after-free
+        // on glibc < 2.43, sourceware BZ #19951). One thread starts no workers.
+        model_.setOptionValue("threads", 1);
 
         if (objective_sense == optimizationtools::ObjectiveDirection::Minimize) {
             model_.changeObjectiveSense(ObjSense::kMinimize);
