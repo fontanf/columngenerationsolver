@@ -252,7 +252,20 @@ public:
     void solve()
     {
         //model_.writeLp("output");
+        // The primal simplex warm-started from the previous basis may cycle
+        // after columns are added: on a batch scheduling instance, it ran
+        // for hours on a re-solve that takes 2,324 iterations from scratch.
+        // So cap the iterations of a warm-started solve, and, if the cap is
+        // reached, solve again from scratch. The cap is far above the
+        // number of iterations of a normal re-solve.
+        HighsInt iteration_limit = 10 * (model_.getNumRow() + model_.getNumCol());
+        model_.setOptionValue("simplex_iteration_limit", iteration_limit);
         model_.run();
+        if (model_.getModelStatus() == HighsModelStatus::kIterationLimit) {
+            model_.clearSolver();
+            model_.setOptionValue("simplex_iteration_limit", kHighsIInf);
+            model_.run();
+        }
     }
 
     bool infeasible() const { return model_.getModelStatus() == HighsModelStatus::kInfeasible; }
