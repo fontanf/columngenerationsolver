@@ -72,6 +72,33 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
 
     std::vector<std::shared_ptr<const Column>> column_pool = parameters.column_pool;
 
+    // Objective cutoff of the search: the best of the input cutoff, of the
+    // cutoffs returned by the node callback and of the value of the
+    // incumbent. +infinity (for both senses, as for
+    // 'ColumnGenerationParameters::objective_cutoff'): none.
+    const Value no_cutoff = std::numeric_limits<Value>::infinity();
+    Value objective_cutoff = parameters.column_generation_parameters.objective_cutoff;
+    // True if 'cutoff_2' is a better cutoff than 'cutoff_1'.
+    auto better_cutoff = [minimize, no_cutoff](
+            Value cutoff_1,
+            Value cutoff_2)
+    {
+        if (cutoff_2 == no_cutoff)
+            return false;
+        if (cutoff_1 == no_cutoff)
+            return true;
+        return (minimize)? cutoff_2 < cutoff_1: cutoff_2 > cutoff_1;
+    };
+    auto current_cutoff = [&objective_cutoff, &output, &better_cutoff]()
+    {
+        Value cutoff = objective_cutoff;
+        if (output.solution.feasible()
+                && better_cutoff(cutoff, output.solution.objective_value())) {
+            cutoff = output.solution.objective_value();
+        }
+        return cutoff;
+    };
+
     // Open-node queue, ordered best-bound-first (sense-aware). The global
     // dual bound at any point is the bound of the node at the front of the
     // queue: a valid lower (minimization) / upper (maximization) bound on
@@ -173,10 +200,10 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
             // Let this call bail out (directly, or by skipping the
             // 'PricingSolver::PricingType::Dual' pricing escalation) as
             // soon as it can prove this node has nothing to offer against
-            // the running incumbent, instead of always solving to full
-            // convergence first.
-            if (output.solution.feasible())
-                column_generation_parameters.objective_cutoff = output.solution.objective_value();
+            // the objective cutoff (the running incumbent, or a cutoff of
+            // the caller), instead of always solving to full convergence
+            // first.
+            column_generation_parameters.objective_cutoff = current_cutoff();
             if (node->parent == nullptr) {
                 column_generation_parameters.phase_callback = [&algorithm_formatter](
                         bool solve_feasibility)
@@ -232,6 +259,26 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 algorithm_formatter.print_branch_and_price_header();
                 output.relaxation_solution = *node->relaxation_solution;
             }
+
+            // Node callback: a new objective cutoff (e.g. the value of a
+            // solution of the caller, built from the relaxation solution),
+            // and new columns for the column pool.
+            if (parameters.node_callback) {
+                BranchAndPriceNodeCallbackInput callback_input{
+                        *node->relaxation_solution,
+                        node->bound,
+                        node->depth,
+                        branching_decisions,
+                        current_cutoff()};
+                BranchAndPriceNodeCallbackOutput callback_output
+                    = parameters.node_callback(callback_input);
+                if (better_cutoff(objective_cutoff, callback_output.objective_cutoff))
+                    objective_cutoff = callback_output.objective_cutoff;
+                for (const auto& column: callback_output.columns) {
+                    model.check_generated_column(column);
+                    column_pool.push_back(column);
+                }
+            }
         }
 
         // Report the global bound. This node had the best bound among all
@@ -256,13 +303,15 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
         // 'relaxation_solution' is guaranteed non-null at this point.
         Value relaxation = node->relaxation_solution->objective_value();
 
-        // Prune if this node cannot improve on the incumbent.
-        if (output.solution.feasible()) {
-            if (minimize && node->bound >= output.solution.objective_value() - FFOT_TOL) {
+        // Prune if this node cannot contain a solution strictly better than
+        // the objective cutoff (the incumbent, or a cutoff of the caller).
+        Value cutoff = current_cutoff();
+        if (cutoff != no_cutoff) {
+            if (minimize && node->bound >= cutoff - FFOT_TOL) {
                 algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
                 continue;
             }
-            if (!minimize && node->bound <= output.solution.objective_value() + FFOT_TOL) {
+            if (!minimize && node->bound <= cutoff + FFOT_TOL) {
                 algorithm_formatter.print_branch_and_price_iteration(output.number_of_nodes, node->depth, relaxation);
                 continue;
             }
@@ -359,8 +408,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
                 column_generation_parameters.initial_cuts = node->cuts;
                 column_generation_parameters.fixed_columns = parameters.fixed_columns;
                 column_generation_parameters.branching_decisions = child_branching_decisions;
-                if (output.solution.feasible())
-                    column_generation_parameters.objective_cutoff = output.solution.objective_value();
+                column_generation_parameters.objective_cutoff = current_cutoff();
                 column_generation_parameters.maximum_number_of_iterations
                     = parameters.strong_branching_maximum_number_of_iterations;
                 // Strong-branching evaluations are capped, throwaway
@@ -439,6 +487,7 @@ const BranchAndPriceOutput columngenerationsolver::branch_and_price(
     }
 
     output.optimal = nodes.empty() && !parameters.timer.needs_to_end();
+    output.objective_cutoff = current_cutoff();
 
     algorithm_formatter.end();
     return output;
