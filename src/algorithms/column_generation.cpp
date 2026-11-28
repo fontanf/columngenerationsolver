@@ -822,6 +822,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             // included in a currently fixed column.
             if (input.model.rows[element.row].coefficient_lower_bound >= 0
                     && column->type == VariableType::Integer
+                    && input.row_values[element.row] > 0
                     && input.row_values[element.row] + element.coefficient
                     > input.model.rows[element.row].upper_bound) {
                 //if (print) {
@@ -874,8 +875,9 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
 
         // Check column feasibility.
         if (std::find(infeasible_columns.begin(), infeasible_columns.end(), column)
-                != infeasible_columns.end())
+                != infeasible_columns.end()) {
             continue;
+        }
 
         // Don't add a tabu column.
         if (input.parameters.tabu.find(column) != input.parameters.tabu.end())
@@ -891,6 +893,7 @@ ColumnGenerationAttemptResult run_column_generation_attempt(
             // included in a currently fixed column.
             if (input.model.rows[element.row].coefficient_lower_bound >= 0
                     && column->type == VariableType::Integer
+                    && input.row_values[element.row] > 0
                     && input.row_values[element.row] + element.coefficient
                     > input.model.rows[element.row].upper_bound) {
                 ok = false;
@@ -2011,8 +2014,26 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     std::unordered_set<std::shared_ptr<const Column>,
                        const ColumnHasher&,
                        const ColumnHasher&> column_pool(0, column_hasher, column_hasher);
+    // The columns of the input column pool that the fixed columns or the
+    // branching decisions rule out ('PricingSolver::infeasible_columns'),
+    // e.g. columns generated at the parent of a branch-and-price node that
+    // violate its branching decision: the column pool search would add them
+    // to the linear program.
+    std::unordered_set<std::shared_ptr<const Column>> infeasible_pool_columns;
+    if (!parameters.column_pool.empty()
+            && (!parameters.fixed_columns.empty() || !parameters.branching_decisions.empty())) {
+        for (const auto& column: model.pricing_solver->infeasible_columns(
+                    parameters.column_pool,
+                    parameters.fixed_columns,
+                    parameters.branching_decisions)) {
+            infeasible_pool_columns.insert(column);
+        }
+    }
     // We first add to it the columns from the input column pool.
     for (const auto& column: parameters.column_pool) {
+
+        if (infeasible_pool_columns.find(column) != infeasible_pool_columns.end())
+            continue;
 
         bool ok = true;
         for (const LinearTerm& element: column->elements) {
@@ -2022,6 +2043,7 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
             // included in a currently fixed column.
             if (model.rows[element.row].coefficient_lower_bound >= 0
                     && column->type == VariableType::Integer
+                    && row_values[element.row] > 0
                     && row_values[element.row] + element.coefficient
                     > model.rows[element.row].upper_bound) {
                 ok = false;
@@ -2508,3 +2530,4 @@ const ColumnGenerationOutput columngenerationsolver::column_generation(
     algorithm_formatter.end();
     return output;
 }
+
